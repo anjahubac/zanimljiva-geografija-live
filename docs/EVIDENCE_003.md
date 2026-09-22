@@ -479,8 +479,77 @@ once the change has been seen.
   identical E1–E3 re-run at the new commit, plus `npm run verify`. The existing
   payload-level assertion in `room-lifecycle.test.ts` stays exactly as it is —
   it was never wrong, and weakening or rewriting it would hide the lesson.
-- **Result.** _To be filled after the change._
-- **Limitation.** _To be filled after the change._
+- **Result.** The hypothesis held, exactly and without amendment. No server
+  file, schema, event, scoring rule or timing was touched. Six files changed,
+  all under `src/client/`, plus tests.
+
+  The signal was confirmed in both directions rather than only the convenient
+  one. With the source reverted to the baseline and the new tests left in
+  place, **11 of the 14 new tests fail**, and the failure message is the defect
+  itself: `expected '<p class="opponent-note">Protivnik jo…'` — the baseline
+  still telling the remaining player "Protivnik još igra." after the opponent
+  had gone. With the fix restored, all 14 pass.
+
+  The three that pass in both directions are guards rather than signal: "says
+  nothing about leaving while both players are connected" and "the round keeps
+  running underneath the message" were true before and must stay true after.
+
+  | Check                 | Before (`3048623`)  | After               |
+  | --------------------- | ------------------- | ------------------- |
+  | `npm run verify`      | pass                | pass                |
+  | Tests                 | 261 across 19 files | 275 across 20 files |
+  | E1 synchronized start | pass (3)            | pass (3)            |
+  | E2 close and score    | pass (7)            | pass (7)            |
+  | E3 rejections         | pass (16)           | pass (16)           |
+  | E4                    | **fail (11)**       | **pass**            |
+
+  E1–E3 are byte-identical in count and outcome, which is the point of changing
+  one variable: nothing outside the client's use of an existing field moved.
+
+- **Limitation.** Five, stated plainly:
+
+  1. **This is notification, not reconnect.** A player who refreshes still
+     cannot rejoin the round they left. They see _Nova partija_; their opponent
+     now knows they are gone and can keep playing. `Plan.md` §13 makes full
+     reconnect optional, and adding it here would have been a second variable.
+  2. **The countdown screen was left alone.** An opponent who drops during the
+     three-second countdown is not reported until the answer screen appears.
+     The window is small and the pre-registered change named the screens shown
+     during a live round; widening it mid-experiment would have confounded it.
+  3. **The message cannot distinguish a refresh from a closed tab**, because
+     the server cannot either — both are one dropped socket. "Napustio partiju"
+     is therefore slightly stronger than what is known for a refresh, and is
+     the honest reading given that no reconnect exists to contradict it.
+  4. **Verified by test, not yet by hand.** The two-profile browser round that
+     produced the observation has not been replayed against the fix. That
+     belongs with the two-computer round still outstanding for Step 11.
+  5. **The end-to-end test stops short of the real browser.** It drives a real
+     socket drop through the real reducer into real markup, which is three of
+     the four links, but it renders with `react-dom/server` rather than
+     driving a DOM. Adding a browser test runner would mean a new dependency,
+     which module 11 forbids without asking.
+
+### What changed, file by file
+
+| File                                              | Change                                                               |
+| ------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/client/state/useGameState.ts`                | derive `opponentConnected` from the payload the server already sends |
+| `src/client/strings.ts`                           | one Serbian sentence, `opponentLeft`                                 |
+| `src/client/screens/AnswerScreen.tsx`             | render it, `aria-live="polite"`, departure outranking finish         |
+| `src/client/screens/WaitingForOpponentScreen.tsx` | the same, for a player who already finished                          |
+| `src/client/App.tsx`                              | thread the flag to both screens                                      |
+| `src/client/app.css`                              | `--pen-red` as a second channel behind the sentence                  |
+
+**Why `polite` and not `assertive`.** This fires while someone is typing an
+answer against a clock. An assertive region interrupts the screen reader
+mid-word to deliver news that changes nothing they must do right now. The
+sentence is worth reading, not worth cutting them off for.
+
+**Why the existing test was not touched.** `room-lifecycle.test.ts:145`
+asserts `connected === false` on the server payload. It passed before the fix
+and passes after, because it was never wrong. Rewriting it to cover the client
+would have destroyed the evidence of how the defect survived — two correct
+layers with nothing asserting the join between them.
 
 ### What this change is deliberately not
 

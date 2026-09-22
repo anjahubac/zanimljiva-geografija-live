@@ -12,6 +12,7 @@ type Props = {
   locked: boolean;
   busy: boolean;
   opponentFinished: boolean;
+  opponentConnected: boolean;
   announcement: string;
   onChange: (category: Category, value: string) => void;
   onBlur: (category: Category) => void;
@@ -52,6 +53,7 @@ export function AnswerScreen({
   locked,
   busy,
   opponentFinished,
+  opponentConnected,
   announcement,
   onChange,
   onBlur,
@@ -77,9 +79,16 @@ export function AnswerScreen({
       </header>
 
       {/* The sheet is now one player's page, so the opponent's progress is
-          reported beside it rather than as a second line on the table. */}
-      <p className="opponent-note">
-        {opponentFinished ? UI_SR.opponentFinished : UI_SR.opponentStillPlaying}
+          reported beside it rather than as a second line on the table.
+          `aria-live` is polite rather than assertive on purpose: this fires
+          while someone is typing an answer, and must not interrupt them
+          mid-word. A departure outranks whether they had finished. */}
+      <p className={`opponent-note${opponentConnected ? "" : " opponent-note-gone"}`} aria-live="polite">
+        {!opponentConnected
+          ? UI_SR.opponentLeft
+          : opponentFinished
+            ? UI_SR.opponentFinished
+            : UI_SR.opponentStillPlaying}
       </p>
 
       <p className="visually-hidden" aria-live="polite">

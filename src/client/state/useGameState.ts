@@ -36,6 +36,9 @@ export type GameState = {
   revisions: Record<Category, number>;
   finished: boolean;
   opponentFinished: boolean;
+  /** The opponent's socket is still attached. False once they refresh, close
+   *  the tab or drop; the round itself continues either way (`Plan.md` §13). */
+  opponentConnected: boolean;
   revealed: RoundRevealed | null;
   results: RoundResults | null;
   errorMessage: string | null;
@@ -77,6 +80,9 @@ export const initialGameState: GameState = {
   revisions: emptyByCategory(0),
   finished: false,
   opponentFinished: false,
+  // Assume present until the server says otherwise, so an empty room never
+  // reads as an opponent who left.
+  opponentConnected: true,
   revealed: null,
   results: null,
   errorMessage: null,
@@ -117,6 +123,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         opponentFinished:
           action.payload.players.find((player) => player.slot !== action.payload.you)?.finished ??
           state.opponentFinished,
+        // The server has always sent this; before E4 nothing read it.
+        opponentConnected:
+          action.payload.players.find((player) => player.slot !== action.payload.you)?.connected ??
+          state.opponentConnected,
       };
 
     case "round-scheduled":

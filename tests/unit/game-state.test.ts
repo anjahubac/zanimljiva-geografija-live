@@ -214,3 +214,78 @@ describe("selectScreen", () => {
     );
   });
 });
+
+/**
+ * E4. The reducer is where the defect lived: it derived `opponentFinished`
+ * from the room-state payload and dropped `connected` on the floor, so a
+ * correct server fact never reached a screen.
+ */
+describe("the reducer keeps the opponent's connection, not only their finish", () => {
+  const withOpponent = (connected: boolean, finished = false): RoomState =>
+    roomState({
+      players: [
+        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
+        { slot: 2, displayName: "Marko", connected, clientReady: true, finished },
+      ],
+    });
+
+  it("assumes an opponent is present until the server says otherwise", () => {
+    // An empty room must not read as an opponent who walked out.
+    expect(initialGameState.opponentConnected).toBe(true);
+  });
+
+  it("marks the opponent gone when their slot arrives disconnected", () => {
+    const state = gameReducer(initialGameState, {
+      type: "room-state",
+      payload: withOpponent(false),
+    });
+
+    expect(state.opponentConnected).toBe(false);
+    // Mine is unaffected: this is the opponent's socket, not my connection to
+    // the server, which `state.connected` tracks separately.
+    expect(state.connected).toBe(initialGameState.connected);
+  });
+
+  it("reads the opponent's slot and never the player's own", () => {
+    // Reading the wrong slot would report the player themselves as gone.
+    const asPlayer1 = gameReducer(initialGameState, {
+      type: "room-state",
+      payload: withOpponent(false),
+    });
+    expect(asPlayer1.opponentConnected).toBe(false);
+
+    const asPlayer2 = gameReducer(initialGameState, {
+      type: "room-state",
+      payload: roomState({
+        you: 2,
+        players: [
+          { slot: 1, displayName: "Ana", connected: false, clientReady: true, finished: false },
+          { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false },
+        ],
+      }),
+    });
+    expect(asPlayer2.opponentConnected).toBe(false);
+  });
+
+  it("keeps the last known value when a payload carries no opponent yet", () => {
+    const alone = roomState({
+      players: [
+        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
+      ],
+    });
+    const state = gameReducer(initialGameState, { type: "room-state", payload: alone });
+
+    expect(state.opponentConnected).toBe(true);
+  });
+
+  it("does not disturb the finish flags it already tracked", () => {
+    const state = gameReducer(initialGameState, {
+      type: "room-state",
+      payload: withOpponent(false, true),
+    });
+
+    expect(state.opponentFinished).toBe(true);
+    expect(state.opponentConnected).toBe(false);
+    expect(state.finished).toBe(false);
+  });
+});

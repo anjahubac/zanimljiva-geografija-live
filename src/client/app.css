@@ -602,6 +602,13 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
+/* A departed opponent. The sentence carries the meaning on its own; the pen
+   colour is a second channel, never the only one. --pen-red is 7.1:1 on the
+   white sheet and 7.8:1 at night, both clear of the 4.5:1 floor. */
+.opponent-note-gone {
+  color: var(--pen-red);
+}
+
 /* The unused part of the ruled page. An empty cell collapses to nothing, so
    the blank lines carry their own height and keep the sheet a sheet. */
 .row-blank td {

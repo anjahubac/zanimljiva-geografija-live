@@ -314,6 +314,7 @@ function renderScreen(args: RenderArgs) {
           locked={state.finished || args.remainingMs === 0}
           busy={state.busy}
           opponentFinished={state.opponentFinished}
+          opponentConnected={state.opponentConnected}
           announcement={args.announcement}
           onChange={args.onChange}
           onBlur={args.onBlur}
@@ -325,6 +326,7 @@ function renderScreen(args: RenderArgs) {
       return (
         <WaitingForOpponentScreen
           opponentFinished={state.opponentFinished}
+          opponentConnected={state.opponentConnected}
           remainingMs={args.remainingMs}
         />
       );

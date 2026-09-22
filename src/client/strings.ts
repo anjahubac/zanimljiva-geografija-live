@@ -33,6 +33,7 @@ export const UI_SR = {
   waitingForOpponentFinish: "Čekamo da protivnik završi ili da istekne vreme.",
   opponentFinished: "Protivnik je završio.",
   opponentStillPlaying: "Protivnik još igra.",
+  opponentLeft: "Protivnik je napustio partiju. Runda se nastavlja do isteka vremena.",
   resultsTitle: "Rezultat",
   you: "Ti",
   opponent: "Protivnik",
