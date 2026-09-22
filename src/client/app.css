@@ -387,8 +387,8 @@ button.link {
 
 /* The playing sheet is the scoring sheet: same columns, your line editable. */
 .play-table .cell-input {
-  min-width: 8.75rem;
-  padding: 0.5rem 0.55rem 0.55rem;
+  min-width: 6.75rem;
+  padding: 0.5rem 0.4rem 0.5rem;
 }
 
 .play-table input {
@@ -439,7 +439,7 @@ button.link {
 /* The opponent's line exists on the sheet and stays blank. Their answers are
    not hidden here — the client never receives them before the reveal. */
 .cell-hidden {
-  min-width: 8.75rem;
+  min-width: 6.75rem;
   background-color: rgb(125 141 176 / 7%);
 }
 
@@ -504,8 +504,8 @@ button.link {
   position: sticky;
   left: 0;
   z-index: 1;
-  min-width: 5.5rem;
-  padding: 0.6rem 0.75rem;
+  min-width: 4.5rem;
+  padding: 0.6rem 0.6rem;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -516,9 +516,9 @@ button.link {
 
 .cell {
   position: relative;
-  min-width: 7.5rem;
+  min-width: 6.5rem;
   /* Head-room for the number written in the corner. */
-  padding: 1.45rem 0.6rem 0.55rem;
+  padding: 1.4rem 0.5rem 0.5rem;
 }
 
 .cell-points {
@@ -569,7 +569,7 @@ button.link {
 
 .col-total,
 .cell-total {
-  min-width: 4.5rem;
+  min-width: 3.25rem;
   background-image: var(--rule-h);
   background-repeat: repeat-x;
   background-position: bottom left;
@@ -625,9 +625,11 @@ button.link {
 
 /* -------------------------------------------------------------- narrow */
 
-/* The playing sheet stacks before it would ask anyone to type while scrolling
-   sideways. The results sheet is read-only, so it keeps scrolling instead. */
-@media (max-width: 56rem) {
+/* Nine categories plus a player column and a total need roughly 1100px. Above
+   that the playing sheet stays a table; below it stacks, rather than asking
+   anyone to type while scrolling sideways. The results sheet is read-only, so
+   it keeps its horizontal scroll instead. */
+@media (max-width: 74rem) {
   .play-table,
   .play-table tbody,
   .play-table tr,

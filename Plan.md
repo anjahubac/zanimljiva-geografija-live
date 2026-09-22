@@ -55,7 +55,7 @@ The Week 3 version proves one stable online round. It is not a general gaming pl
 - Server-selected random letter from exactly `A, B, D, K, M, S, V`
 - Shared three-second countdown, `startsAt`, and `endsAt`
 - Exactly 90 seconds of answer time
-- Six categories: Država, Grad, Reka, Planina, Biljka, Životinja
+- Nine categories: Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet
 - Same categories and duration for both players
 - Private answer entry and private server draft saving
 - **Finished** action that atomically saves and locks a player's answers
@@ -96,8 +96,8 @@ The Week 3 version proves one stable online round. It is not a general gaming pl
 
 | Setting | Core value |
 | --- | --- |
-| Categories | `country`, `city`, `river`, `mountain`, `plant`, `animal` |
-| Serbian labels | Država, Grad, Reka, Planina, Biljka, Životinja |
+| Categories | `country`, `city`, `river`, `mountain`, `lake`, `sea`, `animal`, `plant`, `thing` |
+| Serbian labels | Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet |
 | Supported letters | `A`, `B`, `D`, `K`, `M`, `S`, `V` |
 | Countdown | 3,000 ms |
 | Answer time | 90,000 ms |
@@ -604,7 +604,7 @@ Equal contribution is measured through code, tests, documentation, review, and e
 ### Block 0 - 45 minutes: lock scope and evidence setup (paired)
 
 - Obtain/record instructor approval.
-- Agree on title, six categories, 6-8 letters, duration, and unknown-answer policy.
+- Agree on title, nine categories, 6-8 letters, duration, and unknown-answer policy.
 - Create/freeze `GAME_SPEC.md`.
 - Create `BUILD_PROMPT_V1.md`, `CONTEXT_MANIFEST.md`, `EVALS.md`, and initial `AI_USAGE_LOG.md`.
 - Agree on schemas, event names, and Definition of Done.
@@ -790,7 +790,7 @@ The Week 3 build is done only when:
 ## 22. Immediate next steps
 
 1. Obtain and record instructor approval for the game and its minimum real-time backend.
-2. Confirm the title, six categories, 6-8 supported letters, round duration, and unknown-answer policy.
+2. Confirm the title, nine categories, 6-8 supported letters, round duration, and unknown-answer policy.
 3. Create and approve `docs/GAME_SPEC.md` before application implementation.
 4. Create `docs/BUILD_PROMPT_V1.md`, `docs/CONTEXT_MANIFEST.md`, `docs/EVALS.md`, and `docs/AI_USAGE_LOG.md`.
 5. Choose a WebSocket-capable deployment target and prove a minimal deployed connection.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  CATEGORY_COUNT,
   answerValueSchema,
   categorySchema,
   closedReasonSchema,
@@ -93,7 +94,7 @@ export const roundScheduledSchema = z
   .object({
     roundId: roundIdSchema,
     letter: letterSchema,
-    categories: z.array(categorySchema).length(6),
+    categories: z.array(categorySchema).length(CATEGORY_COUNT),
     serverNow: epochMsSchema,
     startsAt: epochMsSchema,
     endsAt: epochMsSchema,
@@ -119,8 +120,8 @@ export const roundRevealedSchema = z
     roundId: roundIdSchema,
     letter: letterSchema,
     closedReason: closedReasonSchema,
-    player1: z.array(revealedAnswerSchema).length(6),
-    player2: z.array(revealedAnswerSchema).length(6),
+    player1: z.array(revealedAnswerSchema).length(CATEGORY_COUNT),
+    player2: z.array(revealedAnswerSchema).length(CATEGORY_COUNT),
   })
   .strict();
 export type RoundRevealed = z.infer<typeof roundRevealedSchema>;
@@ -128,7 +129,7 @@ export type RoundRevealed = z.infer<typeof roundRevealedSchema>;
 export const roundResultsSchema = z
   .object({
     roundId: roundIdSchema,
-    scores: z.array(categoryScoreSchema).length(6),
+    scores: z.array(categoryScoreSchema).length(CATEGORY_COUNT),
     player1Total: z.number().int().nonnegative(),
     player2Total: z.number().int().nonnegative(),
     outcome: outcomeSchema,

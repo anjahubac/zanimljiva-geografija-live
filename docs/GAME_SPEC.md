@@ -4,6 +4,14 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
+**Amendment 1 — 2026-09-22, at the product owner's request.** The category set
+grew from six to nine: `lake` (Jezero), `sea` (More) and `thing` (Predmet) were
+added, and the order now reads Država, Grad, Reka, Planina, Jezero, More,
+Životinja, Biljka, Predmet. Every "six categories" below became "nine". Nothing
+else in this document changed: the rules, scoring, timing, privacy model and
+exclusions are untouched. Recorded in `docs/EVIDENCE_003.md`. The pre-registered
+evaluations in `EVALS.md` are unaffected — none of them names a category count.
+
 **Authority:** this file is the authoritative description of game behavior.
 `Plan.md` holds sequencing, architecture and ownership; where the two disagree
 about *behavior*, this file wins.
@@ -20,16 +28,16 @@ Zanimljiva Geografija in the browser. One player creates a room and shares a
 six-character code; the second player joins with it. Once both game screens
 have loaded, the server picks one random letter and schedules a single shared
 start time and deadline, so neither player can see the letter earlier than the
-other. Each player privately fills in six geography categories for that letter,
+other. Each player privately fills in nine geography categories for that letter,
 and the answers are revealed and scored only after both players finish or the
 server deadline passes.
 
 ## 3. Player objective and controls
 
 **Objective:** score more points than your opponent by writing a valid answer in
-each of the six categories, and by choosing answers your opponent did not.
+each of the nine categories, and by choosing answers your opponent did not.
 
-**Controls:** keyboard only — a name field, a room-code field, six text inputs
+**Controls:** keyboard only — a name field, a room-code field, nine text inputs
 (one per category), and a **Finished** button. No mouse is required and there
 are no timed reflex actions.
 
@@ -39,7 +47,7 @@ are no timed reflex actions.
 create or join a room
   -> both screens load and acknowledge automatically
   -> shared 3-second countdown
-  -> 90 seconds of private typing across six categories
+  -> 90 seconds of private typing across nine categories
   -> the round closes when BOTH players press Finished, or when the server
      deadline is reached, whichever happens first
   -> both answer sets are revealed at the same moment
@@ -51,7 +59,7 @@ countdown reaching zero does not itself end the round.
 
 ## 5. Key rules
 
-1. Both players receive the identical round: same letter, same six categories,
+1. Both players receive the identical round: same letter, same nine categories,
    same `startsAt`, same `endsAt`.
 2. The letter is chosen by the server **only after both clients are ready**, and
    is never revealed to one player before the other.
@@ -65,7 +73,7 @@ countdown reaching zero does not itself end the round.
 8. The server alone decides identity, phase, timing, validity and points.
 
 Supported letters: `A, B, D, K, M, S, V`.
-Categories: Država, Grad, Reka, Planina, Biljka, Životinja.
+Categories: Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet.
 
 ## 6. Minimum visual requirement
 

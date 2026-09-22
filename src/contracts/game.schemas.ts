@@ -2,7 +2,20 @@ import { z } from "zod";
 
 /* ---------------------------------------------------------------- constants */
 
-export const CATEGORIES = ["country", "city", "river", "mountain", "plant", "animal"] as const;
+export const CATEGORIES = [
+  "country",
+  "city",
+  "river",
+  "mountain",
+  "lake",
+  "sea",
+  "animal",
+  "plant",
+  "thing",
+] as const;
+
+/** Derived, never written as a literal: an array bound cannot drift from the set. */
+export const CATEGORY_COUNT = CATEGORIES.length;
 export const SUPPORTED_LETTERS = ["A", "B", "D", "K", "M", "S", "V"] as const;
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_ANSWER_LENGTH = 40;
@@ -23,8 +36,11 @@ export const CATEGORY_LABELS_SR: Record<Category, string> = {
   city: "Grad",
   river: "Reka",
   mountain: "Planina",
-  plant: "Biljka",
+  lake: "Jezero",
+  sea: "More",
   animal: "Životinja",
+  plant: "Biljka",
+  thing: "Predmet",
 };
 
 export const roomCodeSchema = z

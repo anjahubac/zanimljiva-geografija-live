@@ -10,7 +10,7 @@ export type RoundScore = {
 };
 
 /**
- * Scores all six categories in the locked `CATEGORIES` order, so both players
+ * Scores every category in the locked `CATEGORIES` order, so both players
  * receive the same rows in the same order from one deterministic pass.
  */
 export function scoreRound(

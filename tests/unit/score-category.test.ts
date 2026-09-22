@@ -45,14 +45,8 @@ describe("scoreCategory", () => {
   });
 });
 
-const blankAnswers = (): Record<Category, string> => ({
-  country: "",
-  city: "",
-  river: "",
-  mountain: "",
-  plant: "",
-  animal: "",
-});
+const blankAnswers = (): Record<Category, string> =>
+  Object.fromEntries(CATEGORIES.map((category) => [category, ""])) as Record<Category, string>;
 
 const answersOf = (overrides: Partial<Record<Category, string>>): Record<Category, string> => ({
   ...blankAnswers(),
