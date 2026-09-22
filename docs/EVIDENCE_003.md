@@ -171,7 +171,7 @@ and no points markup appears anywhere while a round is running.
   Serbian, and three of them said "Room" — including `ROOM_NOT_FOUND`, which is
   what a player sees after mistyping a partija code, the likeliest error in the
   whole friends flow. All twelve are now Serbian.
-- **The error *codes* did not change.** `Plan.md` §11 requires `game:error` to
+- **The error _codes_ did not change.** `Plan.md` §11 requires `game:error` to
   carry a stable code and a safe message; the codes remain `ROOM_NOT_FOUND`,
   `ROOM_FULL`, `NOT_IN_ROOM` and so on, and only the human sentence was
   translated. Two tests asserting the old English sentence were updated; no
@@ -263,7 +263,7 @@ and no points markup appears anywhere while a round is running.
 
 - **Requested by:** the product owner — after the result is shown there should
   be "some segue to the home".
-- **Change:** the results sheet ends with *Nazad na početak*, bottom right.
+- **Change:** the results sheet ends with _Nazad na početak_, bottom right.
 - **Not a rematch.** `Plan.md` §4 lists "Play Again or multiple rounds in one
   room" under **Stretch**, and §8 states there is exactly one round per room.
   This button leaves the finished room for the lobby, where the player makes a
@@ -303,11 +303,11 @@ and no points markup appears anywhere while a round is running.
 
 ### SC-7 — Two ways into a room, and no name step when signed in (2026-09-22)
 
-- **Requested by:** the product owner: play with friends *or* with random
+- **Requested by:** the product owner: play with friends _or_ with random
   people, two paths; and "if you're logged in, you already gave your name so you
   don't need that step".
-- **Change:** the lobby offers *Igraj sa prijateljem* (create a room, share the
-  code) and *Igraj sa nepoznatim* (a first-come queue). The queue lives beside
+- **Change:** the lobby offers _Igraj sa prijateljem_ (create a room, share the
+  code) and _Igraj sa nepoznatim_ (a first-come queue). The queue lives beside
   the rooms in memory; the second player to queue makes the server create a room
   for the waiting player and join the arriving one, so a matched pair uses the
   existing `createRoom` / `joinRoom` path and inherits every timing, privacy and
@@ -319,7 +319,7 @@ and no points markup appears anywhere while a round is running.
 - **Against the spec:** `Plan.md` §2 called matchmaking "a proposal, not yet an
   implementation requirement", and §4 lists "public matchmaking" under
   exclusions. §2 now records the approval and the rules the queue must keep.
-  The §4 line still stands for *public room lists*, which were not added.
+  The §4 line still stands for _public room lists_, which were not added.
 - **Invariants held, and tested:** one entry per socket (a repeated request
   returns the same queued answer rather than a matchable ghost); a socket that
   drops while queued is removed; an account is never matched with itself on a
@@ -350,42 +350,210 @@ delivered without a new dependency and an external service. See `Plan.md` §2.
 ## 2. Baseline capture (Step 9)
 
 The automated half was run on 2026-09-22 against the untouched baseline commit.
-The manual two-computer half has **not** been done, and E4 is still open.
+The manual browser round was played on 2026-09-23 (§2.1). The **two-computer**
+half is still outstanding, and E4 is still open.
 
-| Item | Value |
-| --- | --- |
-| Commit hash | `481535a9065852ad9001719f96de2a73ebe399b3` |
-| Command | `npm run verify` (typecheck, lint, `vitest run`, production build) |
-| Result | 13 files, **223 tests passed**, client and server builds succeeded |
-| E1 synchronized start | passed — `tests/integration/synchronized-start.test.ts`, 3 tests, including "never reveals a letter to player 1 while player 1 is alone" |
-| E2 close and score once | passed — `tests/integration/close-and-score.test.ts`, 7 tests |
-| E3 rejections | passed — `tests/integration/rejections.test.ts`, 16 tests |
-| Two-browser round | **not performed** |
-| First genuine defect observed (E4) | **still open** |
+| Item                               | Value                                                                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Commit hash                        | `481535a9065852ad9001719f96de2a73ebe399b3`                                                                                               |
+| Command                            | `npm run verify` (typecheck, lint, `vitest run`, production build)                                                                       |
+| Result                             | 13 files, **223 tests passed**, client and server builds succeeded                                                                       |
+| E1 synchronized start              | passed — `tests/integration/synchronized-start.test.ts`, 3 tests, including "never reveals a letter to player 1 while player 1 is alone" |
+| E2 close and score once            | passed — `tests/integration/close-and-score.test.ts`, 7 tests                                                                            |
+| E3 rejections                      | passed — `tests/integration/rejections.test.ts`, 16 tests                                                                                |
+| Two-browser round                  | performed 2026-09-23 by the product owner, two browser profiles on one machine — see §2.1                                                |
+| First genuine defect observed (E4) | **still open**                                                                                                                           |
 
 A correction worth recording: an earlier run in the same session reported 239
 tests. That run included account files that were later removed from the working
 tree, so it was not the baseline commit. 223 is the figure for `481535a`, and
 it was re-run to confirm it rather than inferred by subtraction.
 
-### Why E4 is still empty
+### 2.1 Manual browser round — 2026-09-23
+
+Played by the product owner against commit `c1b3192`, in **two browser profiles
+on one machine**. More than one round was played, covering both close paths.
+
+| Checked                                         | Observed                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------- |
+| Create → join → both ready → countdown → round  | worked end to end                                                |
+| Countdown behaviour                             | no lag; both screens changed phase at the same time              |
+| Letter, categories and deadline on both screens | identical, and neither screen showed the letter before countdown |
+| Close by both pressing **Finished**             | round closed, reveal and scores shown                            |
+| Close by the 150 s deadline expiring            | round closed, reveal and scores shown                            |
+| Defect observed                                 | **none**                                                         |
+
+This is E1 and E2 confirmed in real browsers rather than only headlessly, and it
+is the first time a human has played the game end to end.
+
+**Three limitations, stated rather than glossed over:**
+
+1. **One machine means one system clock.** `Plan.md` §20 lists "device clocks
+   differ" as the first risk in the register, and two profiles on the same
+   computer cannot exercise it. The `serverNow` offset is therefore still
+   unproven against real drift.
+2. **Happy path only.** No refresh mid-round, no disconnect, no mistyped partija
+   code. The §13 failure matrix is covered by automated tests but has not been
+   driven by hand.
+3. **Not the two-computer round** that `Plan.md` §21 requires for the Definition
+   of Done. That remains outstanding, together with the deployed smoke test.
+
+### 2.2 Failure-matrix probe by hand — 2026-09-23
+
+Four probes, listed before they were run, driven in two browser profiles at
+commit `c1b3192` by the product owner.
+
+| Probe                          | Observed                                                                               | Verdict                  |
+| ------------------------------ | -------------------------------------------------------------------------------------- | ------------------------ |
+| Mistyped partija code          | "Partija nije pronađena. Proveri kod." on the join screen; no navigation away          | correct, matches §13     |
+| Refresh a tab mid-round        | The refreshing player returns to _Nova partija_; **the opponent is never told**        | defect — see below       |
+| Close a tab mid-round          | Same symptom: the remaining player is unaware the opponent has gone                    | defect — same cause      |
+| Leave a round idle past reveal | Not run; the scenario was not clearly enough specified to produce a usable observation | still open, low priority |
+
+The mistyped-code probe confirms the §13 row "Invalid or expired room code —
+stay on join screen; show safe message" in a real browser, and the Serbian
+message from SC-11 is the one a player actually sees.
+
+**The refreshing player landing back on _Nova partija_ is not itself the
+defect.** `Plan.md` §13 says "Full reconnect recovery is optional", so a client
+that does not rejoin its room is within spec. The defect is on the _other_
+side, and it is the same in both probes: the remaining player is never shown
+that they are now alone.
+
+### E4 — the first genuine defect, recorded before any fix
+
+`Plan.md` §13's "One player disconnects" row requires the timer to continue,
+accepted drafts to be retained, and the remaining player to **show connection
+status**. The first two hold. The third does not.
+
+The reproduction, the wrong behaviour and the signal that will prove it fixed
+are pre-registered in `docs/EVALS.md` under E4. The mechanism, traced but not
+yet touched:
+
+| Layer    | State                                                                                                                       |
+| -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Server   | **correct** — `markDisconnected` sets `player.connected = false` and broadcasts the room state                              |
+| Contract | **correct** — `connected: z.boolean()` rides in the room-state projection                                                   |
+| Test     | **passes, and is not wrong** — it asserts `connected === false` on the socket payload, which is true                        |
+| Client   | **drops it** — the reducer derives `opponentFinished` from that payload but never `connected`, and no round screen reads it |
+
+Worth stating plainly, because it is the lesson of this baseline: a green test
+and a broken behaviour are not a contradiction here. The test asserts the
+server's payload and the server's payload is right. Nothing asserted what the
+player is shown, so the gap sat between two correct layers for the whole build.
+
+### Why SC-5 is still not E4
 
 The sheet-layout problem the owner reported (SC-5) was a real observation
 against this baseline, but it is filed as a scope change and not as E4, for two
 reasons. It is a mismatch with a reference the owner supplied rather than a
 fault in the game's behavior, and the pre-registered E1–E3 are all behavioral.
 Recording a layout fix as "the first genuine defect" would make the controlled
-change exercise easier than it is meant to be.
-
-E4 therefore waits for the manual two-computer round, which is the step most
-likely to surface a genuine defect — clock drift between two real machines,
-behavior on a real network, or the disconnect path. That round has not been
-run, so nothing is written here about it.
-
----
+change exercise easier than it is meant to be. E4 above is behavioural, was
+observed rather than reasoned about, and contradicts a named row of the §13
+failure matrix.
 
 ## 3. Controlled change (Step 10)
 
-_Not yet performed._ Claim, signal, hypothesis, smallest change and
-verification are written here **before** the change is made, and the identical
-evaluations are re-run afterwards.
+**Written on 2026-09-23 before the change was made.** The result and the
+limitation are appended afterwards; nothing above the result line is edited
+once the change has been seen.
+
+- **Claim.** A player whose opponent disconnects mid-round is never told, and
+  goes on playing against nobody until the reveal.
+- **Signal.** What P1's round screen renders after P2's socket drops. Today it
+  renders "Protivnik još igra." — unchanged from before the drop.
+- **Hypothesis.** The cause is not in the server or the schema, both of which
+  carry `connected` correctly, but in the client reducer, which derives
+  `opponentFinished` from the room-state payload and silently discards
+  `connected`. Deriving it and rendering it on the round screens is therefore
+  sufficient, and no server, schema, event or scoring change is required.
+- **Smallest change.** One explanatory variable: the client's use of a field the
+  server already sends. Derive `opponentConnected` in the `room-state` branch of
+  the reducer, thread it to the screens shown during a live round, and announce
+  it through the existing `aria-live` region so the accessibility floor in
+  module 10 is met rather than bolted on. No new event, no new schema field, no
+  new dependency, and no change to timing, privacy or scoring.
+- **Verification.** A test that drops a socket mid-round and asserts the
+  disconnect appears in what the remaining player's screen renders, plus the
+  identical E1–E3 re-run at the new commit, plus `npm run verify`. The existing
+  payload-level assertion in `room-lifecycle.test.ts` stays exactly as it is —
+  it was never wrong, and weakening or rewriting it would hide the lesson.
+- **Result.** _To be filled after the change._
+- **Limitation.** _To be filled after the change._
+
+### What this change is deliberately not
+
+It is **not** reconnect. A refreshed player still lands on _Nova partija_ and
+cannot rejoin the round they left. `Plan.md` §13 makes full reconnect recovery
+optional and Step 10 permits exactly one variable, so implementing resume here
+would confound the experiment and expand scope in the same move. The unused
+`resumeToken` — minted per player, sent to the client, stored by nobody, and
+consumed by no handler — is recorded in §5 as a separate finding, not fixed as
+part of this change.
+
+---
+
+## 4. Pre-deploy verification (Step 11, local half)
+
+Run on 2026-09-23 at commit `c1b3192`, against the **production build**
+(`npm run build`, then `npm start`) rather than the dev server — the point is
+to exercise the artifacts that will actually be deployed. HTTPS and WSS are not
+covered here; they need the real host and are the remaining half of Step 11.
+
+### The failure matrix in `Plan.md` §13
+
+Every row is covered by an automated test, all passing:
+
+| §13 row                                 | Covering test                                                                                                                                                               |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid or expired room code            | `rejects a join for an unknown room code`; `reaps an abandoned lobby, after which its code is no longer joinable`                                                           |
+| Third player attempts to join           | `rejects a third player and leaves the two existing players untouched`                                                                                                      |
+| Malformed payload                       | `rejects a malformed create payload without creating a room`; `rejects an unknown category`; `rejects a draft carrying an extra authority key`                              |
+| Wrong room or stale round               | `rejects a draft carrying a stale roundId`                                                                                                                                  |
+| Draft before start or at/after deadline | `rejects a draft before startsAt`; `rejects a draft at or after endsAt, before the deadline callback runs`                                                                  |
+| Draft after player finished             | `rejects a draft after that player finished`                                                                                                                                |
+| Duplicate Finish                        | `acknowledges a duplicate finish without a second reveal or a changed score`                                                                                                |
+| Finish races deadline                   | `closes once when a finish one millisecond before the deadline races the timer`                                                                                             |
+| One player disconnects                  | `reports a disconnected opponent without ending the room`; `still reveals to the player who stayed when the opponent disconnects`                                           |
+| Server restarts                         | Not automated. The client shows the session-ended banner from `UI_SR.connectionLost` when the socket drops while a room is held; restart durability is out of scope by §13. |
+
+### Production-build smoke test
+
+| Check                                   | Result                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET /healthz`                          | `200` `{"status":"ok"}`                                                                     |
+| `GET /`                                 | `200 text/html`                                                                             |
+| SPA fallback on `/some/deep/route`      | `200`, serves `index.html` — a refreshed client route loads                                 |
+| `GET /api/session` with no cookie       | `200` `{"account":null}`                                                                    |
+| Hashed CSS asset                        | `200 text/css`                                                                              |
+| Socket.IO transport                     | **`websocket`** — a real upgrade, not the long-polling fallback                             |
+| Two clients, create → join → both ready | Both received `round:scheduled` with identical `roundId`, `letter`, `startsAt` and `endsAt` |
+| Round metadata                          | letter `V`, 8 categories, 150 s window, 3 s countdown                                       |
+
+This is E1 re-run against the deployable artifacts. It does not replace the
+two-computer acceptance round, which is still outstanding along with E4.
+
+---
+
+## 5. Open findings not fixed here
+
+### The resume token is minted, sent, and used by nobody
+
+`generateResumeToken()` produces 32 random bytes per player, and the value is
+returned to that player in the `room:create` / `room:join` ack. Nothing in
+`src/client/` stores it, and the server registers no handler that accepts it.
+It is a secret generated and transmitted over the wire for no current purpose.
+
+- **Not a gameplay defect**, which is why it is not E4: no player sees anything
+  wrong because of it.
+- **Why it is worth recording anyway.** The security guardrail in
+  `.github/copilot-instructions.md` names resume tokens explicitly, and the
+  privacy tests already assert the token never reaches the _opponent_
+  (`drafts-privacy.test.ts:118`). Those assertions are worth keeping. But the
+  cheapest way to not leak a secret is to not mint one until something consumes
+  it.
+- **Two honest options**, neither taken during Step 10 because each would be a
+  second variable: remove the token until reconnect is actually implemented, or
+  implement reconnect and give it a purpose. The first is smaller; the second
+  is what the token was designed for.
