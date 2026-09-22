@@ -8,7 +8,7 @@ export function WaitingScreen({ room }: Props) {
 
   return (
     <section className="screen" aria-labelledby="waiting-title">
-      <h1 id="waiting-title">{UI_SR.waitingTitle}</h1>
+      <h1 className="screen-title" id="waiting-title">{UI_SR.waitingTitle}</h1>
 
       <p className="room-code">
         <span className="room-code-label">{UI_SR.roomCode}</span>

@@ -15,7 +15,7 @@ export function LobbyScreen({ busy, errorMessage, onCreate, onSwitchToJoin }: Pr
 
   return (
     <section className="screen" aria-labelledby="lobby-title">
-      <h1 id="lobby-title">{UI_SR.appTitle}</h1>
+      <h1 className="screen-title" id="lobby-title">{UI_SR.appTitle}</h1>
 
       <form
         className="stack"

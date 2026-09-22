@@ -24,6 +24,8 @@ const STATUS_TEXT: Record<DraftStatus, string> = {
   rejected: UI_SR.statusRejected,
 };
 
+const LOW_TIME_MS = 15_000;
+
 function formatRemaining(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -47,14 +49,19 @@ export function AnswerScreen({
   return (
     <section className="screen" aria-labelledby="answer-title">
       <header className="round-header">
-        <h1 id="answer-title">{UI_SR.answeringTitle}</h1>
-        <p className="letter">
-          {UI_SR.letterIs}: <strong>{letter}</strong>
-        </p>
-        {/* Updated every second, so it is not announced; milestones are
-            announced through the live region below instead. */}
-        <p className="timer" aria-hidden="true">
-          {UI_SR.timeLeft}: {formatRemaining(remainingMs)}
+        <div>
+          <h1 id="answer-title" className="screen-title">
+            {UI_SR.answeringTitle}
+          </h1>
+          <p className="letter">
+            {UI_SR.letterIs} <strong>{letter}</strong>
+          </p>
+        </div>
+        {/* Reads once per second, so it is hidden from assistive technology;
+            the live region below announces milestones instead. */}
+        <p className={`timer${remainingMs <= LOW_TIME_MS ? " timer-low" : ""}`} aria-hidden="true">
+          <span className="timer-label">{UI_SR.timeLeft}</span>
+          {formatRemaining(remainingMs)}
         </p>
       </header>
 
@@ -62,47 +69,51 @@ export function AnswerScreen({
         {announcement}
       </p>
 
-      <form
-        className="answers"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onFinish();
-        }}
-      >
-        {CATEGORIES.map((category) => {
-          const status = draftStatus[category];
-          const error = fieldError[category];
-          const describedBy = [`${category}-status`, error ? `${category}-error` : null]
-            .filter(Boolean)
-            .join(" ");
+      <form className="answers" onSubmit={(event) => { event.preventDefault(); onFinish(); }}>
+        <ol className="sheet">
+          {CATEGORIES.map((category) => {
+            const status = draftStatus[category];
+            const error = fieldError[category];
+            const describedBy = [`${category}-status`, error ? `${category}-error` : null]
+              .filter(Boolean)
+              .join(" ");
 
-          return (
-            <div className="field" key={category}>
-              <label htmlFor={`answer-${category}`}>{CATEGORY_LABELS_SR[category]}</label>
-              <input
-                id={`answer-${category}`}
-                name={category}
-                value={answers[category]}
-                maxLength={MAX_ANSWER_LENGTH}
-                disabled={locked}
-                autoComplete="off"
-                aria-describedby={describedBy}
-                aria-invalid={error ? true : undefined}
-                onChange={(event) => onChange(category, event.target.value)}
-                onBlur={() => onBlur(category)}
-              />
-              {/* Text, not colour alone, carries the saved/pending meaning. */}
-              <span className={`status status-${status}`} id={`${category}-status`}>
-                {STATUS_TEXT[status]}
-              </span>
-              {error ? (
-                <p className="field-error" id={`${category}-error`}>
-                  {error}
-                </p>
-              ) : null}
-            </div>
-          );
-        })}
+            return (
+              <li className="sheet-row" key={category}>
+                <label className="sheet-cat" htmlFor={`answer-${category}`}>
+                  {CATEGORY_LABELS_SR[category]}
+                </label>
+
+                <div className="sheet-write">
+                  <input
+                    id={`answer-${category}`}
+                    name={category}
+                    value={answers[category]}
+                    maxLength={MAX_ANSWER_LENGTH}
+                    disabled={locked}
+                    autoComplete="off"
+                    autoCapitalize="words"
+                    spellCheck={false}
+                    aria-describedby={describedBy}
+                    aria-invalid={error ? true : undefined}
+                    onChange={(event) => onChange(category, event.target.value)}
+                    onBlur={() => onBlur(category)}
+                  />
+                  {/* The word carries the meaning; the pen colour only seconds it. */}
+                  <span className={`status status-${status}`} id={`${category}-status`}>
+                    {STATUS_TEXT[status]}
+                  </span>
+                </div>
+
+                {error ? (
+                  <p className="field-error" id={`${category}-error`}>
+                    {error}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
 
         <button type="submit" disabled={locked || busy}>
           {UI_SR.finish}

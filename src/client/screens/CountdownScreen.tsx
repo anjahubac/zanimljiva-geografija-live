@@ -9,7 +9,9 @@ type Props = { secondsToStart: number; letter: string };
 export function CountdownScreen({ secondsToStart, letter }: Props) {
   return (
     <section className="screen countdown" aria-labelledby="countdown-title">
-      <h1 id="countdown-title">{UI_SR.countdownTitle}</h1>
+      <h1 id="countdown-title" className="screen-title">
+        {UI_SR.countdownTitle}
+      </h1>
 
       <p className="countdown-number" aria-hidden="true">
         {secondsToStart}
@@ -18,7 +20,7 @@ export function CountdownScreen({ secondsToStart, letter }: Props) {
         {UI_SR.countdownTitle}: {secondsToStart}
       </p>
       <p className="letter">
-        {UI_SR.letterIs}: <strong>{letter}</strong>
+        {UI_SR.letterIs} <strong>{letter}</strong>
       </p>
     </section>
   );

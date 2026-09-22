@@ -7,7 +7,7 @@ export function WaitingForOpponentScreen({ opponentFinished, remainingMs }: Prop
 
   return (
     <section className="screen" aria-labelledby="locked-title">
-      <h1 id="locked-title">{UI_SR.finishedTitle}</h1>
+      <h1 className="screen-title" id="locked-title">{UI_SR.finishedTitle}</h1>
       <p aria-live="polite">{UI_SR.waitingForOpponentFinish}</p>
       <p>{opponentFinished ? UI_SR.opponentFinished : UI_SR.opponentStillPlaying}</p>
       <p aria-hidden="true">

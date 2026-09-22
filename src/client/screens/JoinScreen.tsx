@@ -19,7 +19,7 @@ export function JoinScreen({ busy, errorMessage, onJoin, onBack }: Props) {
 
   return (
     <section className="screen" aria-labelledby="join-title">
-      <h1 id="join-title">{UI_SR.joinInstead}</h1>
+      <h1 className="screen-title" id="join-title">{UI_SR.joinInstead}</h1>
 
       <form
         className="stack"

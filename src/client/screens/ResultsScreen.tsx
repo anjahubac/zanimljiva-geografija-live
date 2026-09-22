@@ -33,21 +33,39 @@ export function ResultsScreen({ you, revealed, results }: Props) {
       : { yours: score.player2Points, theirs: score.player1Points, reason: score.reason };
   };
 
-  const describe = (answer: RoundRevealed["player1"][number] | undefined) => {
-    if (!answer || answer.raw.trim() === "") return UI_SR.noAnswer;
-    return `${answer.raw} — ${answer.valid ? UI_SR.valid : UI_SR.invalid}`;
+  /**
+   * An unanswered cell gets the diagonal the paper game strikes through it.
+   * The words stay in the DOM for assistive technology, so the meaning never
+   * rests on a drawn line or on ink colour alone.
+   */
+  const renderCell = (answer: RoundRevealed["player1"][number] | undefined) => {
+    if (!answer || answer.raw.trim() === "") {
+      return (
+        <td className="cell-empty" key="empty">
+          <span className="visually-hidden">{UI_SR.noAnswer}</span>
+        </td>
+      );
+    }
+    return (
+      <td key="filled">
+        <span className={answer.valid ? undefined : "answer-invalid"}>{answer.raw}</span>
+        <span className="verdict">{answer.valid ? UI_SR.valid : UI_SR.invalid}</span>
+      </td>
+    );
   };
 
   return (
-    <section className="screen" aria-labelledby="results-title">
-      <h1 id="results-title">{UI_SR.resultsTitle}</h1>
+    <section className="screen screen-results" aria-labelledby="results-title">
+      <h1 id="results-title" className="screen-title">
+        {UI_SR.resultsTitle}
+      </h1>
 
       <p className="outcome" aria-live="polite">
         {outcomeText} {yourTotal} : {theirTotal}
       </p>
 
       <p className="letter">
-        {UI_SR.letterIs}: <strong>{revealed.letter}</strong>
+        {UI_SR.letterIs} <strong>{revealed.letter}</strong>
       </p>
 
       <div className="table-scroll">
@@ -67,8 +85,8 @@ export function ResultsScreen({ you, revealed, results }: Props) {
               return (
                 <tr key={score.category}>
                   <th scope="row">{CATEGORY_LABELS_SR[score.category]}</th>
-                  <td>{describe(answerFor(yourAnswers, score.category))}</td>
-                  <td>{describe(answerFor(theirAnswers, score.category))}</td>
+                  {renderCell(answerFor(yourAnswers, score.category))}
+                  {renderCell(answerFor(theirAnswers, score.category))}
                   <td>
                     <span className="points">
                       {points.yours} : {points.theirs}
