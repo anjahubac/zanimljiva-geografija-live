@@ -1,4 +1,4 @@
-import { CATEGORY_LABELS_SR } from "@contracts/game.schemas";
+import { CATEGORIES, CATEGORY_LABELS_SR } from "@contracts/game.schemas";
 import type { Category, PlayerSlot } from "@contracts/game.schemas";
 import type { RoundResults, RoundRevealed } from "@contracts/socket.schemas";
 import { UI_SR } from "@client/strings";
@@ -9,9 +9,53 @@ type Props = {
   results: RoundResults;
 };
 
+type SheetCell = {
+  category: Category;
+  raw: string;
+  valid: boolean;
+  points: number;
+  reason: string;
+};
+
+/**
+ * One line of the paper sheet. Core plays a single round, so the sheet has one
+ * line per player; the shape is an array so more lines are a data change, not
+ * a layout rewrite.
+ */
+type SheetRow = {
+  key: string;
+  label: string;
+  cells: SheetCell[];
+  total: number;
+};
+
 export function ResultsScreen({ you, revealed, results }: Props) {
-  const yourAnswers = you === 1 ? revealed.player1 : revealed.player2;
-  const theirAnswers = you === 1 ? revealed.player2 : revealed.player1;
+  const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
+    const answers = slot === 1 ? revealed.player1 : revealed.player2;
+
+    const cells = CATEGORIES.map((category) => {
+      const answer = answers.find((entry) => entry.category === category);
+      const score = results.scores.find((entry) => entry.category === category);
+      return {
+        category,
+        raw: answer?.raw ?? "",
+        valid: answer?.valid ?? false,
+        points: (slot === 1 ? score?.player1Points : score?.player2Points) ?? 0,
+        reason: score ? UI_SR.reasons[score.reason] : "",
+      };
+    });
+
+    return {
+      key: `player-${slot}`,
+      label,
+      cells,
+      total: slot === 1 ? results.player1Total : results.player2Total,
+    };
+  };
+
+  const opponent: PlayerSlot = you === 1 ? 2 : 1;
+  const rows = [buildRow(you, UI_SR.you), buildRow(opponent, UI_SR.opponent)];
+
   const yourTotal = you === 1 ? results.player1Total : results.player2Total;
   const theirTotal = you === 1 ? results.player2Total : results.player1Total;
 
@@ -21,38 +65,6 @@ export function ResultsScreen({ you, revealed, results }: Props) {
       : (results.outcome === "player_1") === (you === 1)
         ? UI_SR.outcomeWin
         : UI_SR.outcomeLoss;
-
-  const answerFor = (list: RoundRevealed["player1"], category: Category) =>
-    list.find((answer) => answer.category === category);
-
-  const pointsFor = (category: Category) => {
-    const score = results.scores.find((entry) => entry.category === category);
-    if (!score) return { yours: 0, theirs: 0, reason: "neither" as const };
-    return you === 1
-      ? { yours: score.player1Points, theirs: score.player2Points, reason: score.reason }
-      : { yours: score.player2Points, theirs: score.player1Points, reason: score.reason };
-  };
-
-  /**
-   * An unanswered cell gets the diagonal the paper game strikes through it.
-   * The words stay in the DOM for assistive technology, so the meaning never
-   * rests on a drawn line or on ink colour alone.
-   */
-  const renderCell = (answer: RoundRevealed["player1"][number] | undefined) => {
-    if (!answer || answer.raw.trim() === "") {
-      return (
-        <td className="cell-empty" key="empty">
-          <span className="visually-hidden">{UI_SR.noAnswer}</span>
-        </td>
-      );
-    }
-    return (
-      <td key="filled">
-        <span className={answer.valid ? undefined : "answer-invalid"}>{answer.raw}</span>
-        <span className="verdict">{answer.valid ? UI_SR.valid : UI_SR.invalid}</span>
-      </td>
-    );
-  };
 
   return (
     <section className="screen screen-results" aria-labelledby="results-title">
@@ -69,42 +81,64 @@ export function ResultsScreen({ you, revealed, results }: Props) {
       </p>
 
       <div className="table-scroll">
-        <table className="results-table">
+        <table className="sheet-table">
           <caption className="visually-hidden">{UI_SR.resultsTitle}</caption>
           <thead>
             <tr>
-              <th scope="col">{UI_SR.points}</th>
-              <th scope="col">{UI_SR.you}</th>
-              <th scope="col">{UI_SR.opponent}</th>
-              <th scope="col">{UI_SR.points}</th>
+              <th scope="col" className="col-head col-row-head">
+                {UI_SR.player}
+              </th>
+              {CATEGORIES.map((category) => (
+                <th scope="col" className="col-head" key={category}>
+                  {CATEGORY_LABELS_SR[category]}
+                </th>
+              ))}
+              <th scope="col" className="col-head col-total">
+                {UI_SR.total}
+              </th>
             </tr>
           </thead>
+
           <tbody>
-            {results.scores.map((score) => {
-              const points = pointsFor(score.category);
-              return (
-                <tr key={score.category}>
-                  <th scope="row">{CATEGORY_LABELS_SR[score.category]}</th>
-                  {renderCell(answerFor(yourAnswers, score.category))}
-                  {renderCell(answerFor(theirAnswers, score.category))}
-                  <td>
-                    <span className="points">
-                      {points.yours} : {points.theirs}
-                    </span>
-                    <span className="reason">{UI_SR.reasons[score.reason]}</span>
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((row) => (
+              <tr key={row.key}>
+                <th scope="row" className="col-row-head">
+                  {row.label}
+                </th>
+
+                {row.cells.map((cell) => {
+                  const empty = cell.raw.trim() === "";
+                  return (
+                    <td className={empty ? "cell cell-empty" : "cell"} key={cell.category}>
+                      {/* Marked in the corner in red pen, the way the points are
+                          written on the paper sheet. */}
+                      <span className="cell-points">
+                        <span className="visually-hidden">{UI_SR.points}: </span>
+                        {cell.points}
+                      </span>
+
+                      {empty ? (
+                        <span className="visually-hidden">{UI_SR.noAnswer}</span>
+                      ) : (
+                        <>
+                          <span className={cell.valid ? "cell-answer" : "cell-answer answer-invalid"}>
+                            {cell.raw}
+                          </span>
+                          <span className="verdict">
+                            {cell.valid ? UI_SR.valid : UI_SR.invalid}
+                          </span>
+                        </>
+                      )}
+
+                      <span className="visually-hidden">{cell.reason}</span>
+                    </td>
+                  );
+                })}
+
+                <td className="cell cell-total">{row.total}</td>
+              </tr>
+            ))}
           </tbody>
-          <tfoot>
-            <tr>
-              <th scope="row">{UI_SR.total}</th>
-              <td>{yourTotal}</td>
-              <td>{theirTotal}</td>
-              <td />
-            </tr>
-          </tfoot>
         </table>
       </div>
 

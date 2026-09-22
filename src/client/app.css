@@ -466,39 +466,31 @@ button.link {
   font-weight: 700;
 }
 
+/*
+ * The scoresheet: category names across the top, one ruled line per player,
+ * points written in red in the corner of each cell, and the row total at the
+ * end. It is genuinely wide, so it scrolls sideways rather than shrinking the
+ * answers into illegibility — and the row header stays pinned while it does.
+ */
 .table-scroll {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-color: var(--rule-strong) transparent;
+  padding-bottom: 0.25rem;
 }
 
-.results-table {
-  border-collapse: collapse;
+.sheet-table {
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
-  min-width: 22rem;
   font-variant-numeric: tabular-nums;
 }
 
-.results-table th,
-.results-table td {
-  padding: 0.55rem 0.7rem;
+.sheet-table th,
+.sheet-table td {
   text-align: left;
   vertical-align: top;
-  background-image: var(--rule-h);
-  background-repeat: repeat-x;
-  background-position: bottom left;
-}
-
-.results-table thead th {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.results-table tbody th {
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+  /* Every cell carries its own ruled line and column divider. */
   background-image: var(--rule-h), var(--rule-v);
   background-repeat: repeat-x, repeat-y;
   background-position:
@@ -506,31 +498,53 @@ button.link {
     right top;
 }
 
-.results-table tfoot th,
-.results-table tfoot td {
+.col-head {
+  padding: 0.35rem 0.6rem 0.5rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: var(--ink);
-  background-image: none;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  white-space: nowrap;
 }
 
-/* The diagonal the paper game strikes through an unanswered cell. The word
-   "bez odgovora" is still in the DOM for assistive technology. */
-.cell-empty {
+/* Pinned so you always know whose line you are reading mid-scroll. */
+.col-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 5.5rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background-color: var(--paper-sheet);
+}
+
+.cell {
   position: relative;
-  min-width: 5rem;
+  min-width: 7.5rem;
+  /* Head-room for the number written in the corner. */
+  padding: 1.45rem 0.6rem 0.55rem;
 }
 
-.cell-empty::after {
-  content: "";
+.cell-points {
   position: absolute;
-  inset: 18% 14%;
-  background: linear-gradient(
-    to top right,
-    transparent calc(50% - 0.8px),
-    var(--rule-strong) calc(50% - 0.8px),
-    var(--rule-strong) calc(50% + 0.8px),
-    transparent calc(50% + 0.8px)
-  );
+  top: 0.3rem;
+  right: 0.5rem;
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pen-red);
+}
+
+.cell-answer {
+  display: block;
+  font-size: 1.02rem;
+  overflow-wrap: anywhere;
 }
 
 .answer-invalid {
@@ -541,21 +555,41 @@ button.link {
 
 .verdict {
   display: block;
-  font-size: 0.8rem;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   color: var(--ink-soft);
 }
 
-.points {
-  display: block;
-  font-weight: 700;
-  font-size: 1.05rem;
+/* The diagonal the paper game strikes through an unanswered cell. The words
+   "bez odgovora" stay in the DOM for assistive technology. */
+.cell-empty::after {
+  content: "";
+  position: absolute;
+  inset: 45% 18% 20%;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.8px),
+    var(--rule-strong) calc(50% - 0.8px),
+    var(--rule-strong) calc(50% + 0.8px),
+    transparent calc(50% + 0.8px)
+  );
 }
 
-.reason {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+.col-total,
+.cell-total {
+  min-width: 4.5rem;
+  background-image: var(--rule-h);
+  background-repeat: repeat-x;
+  background-position: bottom left;
+}
+
+.cell-total {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  padding-top: 0.9rem;
 }
 
 .notice {
