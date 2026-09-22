@@ -1,15 +1,303 @@
+/*
+ * Light styling only, as GAME_SPEC.md §6 requires. The rules that are not
+ * decoration: visible focus everywhere, text (not colour) carrying the draft
+ * status, and a layout that works at 360px without horizontal scrolling.
+ */
+
 :root {
+  --bg: #ffffff;
+  --fg: #16181d; /* 15.8:1 on white */
+  --muted: #53575f; /* 7.4:1 on white */
+  --line: #c6cad1;
+  --accent: #10416f; /* 9.3:1 on white */
+  --accent-fg: #ffffff;
+  --danger: #a1211c; /* 6.4:1 on white */
+  --ok: #1d5c2a; /* 6.3:1 on white */
+  --surface: #f3f5f8;
+
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #f2f4f7; /* 15.2:1 on --bg */
+    --muted: #b9bec7; /* 9.4:1 on --bg */
+    --line: #464b54;
+    --accent: #9cc4ee; /* 9.6:1 on --bg */
+    --accent-fg: #10161d;
+    --danger: #ff9d96; /* 8.3:1 on --bg */
+    --ok: #8bd79b; /* 10.5:1 on --bg */
+    --surface: #1e2229;
+  }
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
 }
 
 .app {
   margin: 0 auto;
   max-width: 48rem;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+  font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+  margin: 0 0 1rem;
+}
+
+/* A single visible focus treatment, never removed. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.screen {
+  display: grid;
+  gap: 1rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+  max-width: 24rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+label {
+  font-weight: 600;
+}
+
+input {
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  border: 2px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--fg);
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+input:disabled {
+  background: var(--surface);
+  color: var(--muted);
+  /* Not colour alone: a disabled field also stops accepting focus styling. */
+  border-style: dashed;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.6rem 1.1rem;
+  border: 2px solid transparent;
+  border-radius: 0.4rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 1;
+  background: var(--surface);
+  color: var(--muted);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  text-decoration: underline;
+  padding: 0.25rem;
+  min-height: auto;
+}
+
+.field-error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.banner {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--danger);
+  border-radius: 0.4rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.room-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.room-code strong {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 1.75rem;
+  letter-spacing: 0.2em;
+}
+
+.room-code-label,
+.reason {
+  color: var(--muted);
+}
+
+.players {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.code-input {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.countdown-number {
+  font-size: clamp(3rem, 2rem + 8vw, 6rem);
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+}
+
+.round-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 0.5rem;
+}
+
+.round-header h1 {
+  margin: 0;
+}
+
+.letter strong {
+  font-size: 1.5rem;
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.answers {
+  display: grid;
+  gap: 1rem;
+}
+
+.status {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.status-saved {
+  color: var(--ok);
+}
+
+.status-rejected {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.results-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 20rem;
+}
+
+.results-table th,
+.results-table td {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.results-table thead th,
+.results-table tfoot th {
+  background: var(--surface);
+}
+
+.points {
+  display: block;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.reason {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.outcome {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.notice {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notice-en {
+  font-style: italic;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 30rem) {
+  .app {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .round-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
