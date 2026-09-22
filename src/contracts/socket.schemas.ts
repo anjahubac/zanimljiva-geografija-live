@@ -32,6 +32,13 @@ export const joinRoomRequestSchema = z
   .strict();
 export type JoinRoomRequest = z.infer<typeof joinRoomRequestSchema>;
 
+/** Same payload as creating a room: the queue needs only a name to show. */
+export const quickPlayRequestSchema = z.object({ displayName: displayNameSchema }).strict();
+export type QuickPlayRequest = z.infer<typeof quickPlayRequestSchema>;
+
+/** Leaving the queue carries nothing; the caller is resolved from the socket. */
+export const cancelQuickPlayRequestSchema = z.object({}).strict();
+
 export const clientReadyRequestSchema = z.object({ roomCode: roomCodeSchema }).strict();
 export type ClientReadyRequest = z.infer<typeof clientReadyRequestSchema>;
 
@@ -55,6 +62,24 @@ export const roomAckSchema = z
   .object({ roomCode: roomCodeSchema, you: playerSlotSchema, resumeToken: resumeTokenSchema })
   .strict();
 export type RoomAck = z.infer<typeof roomAckSchema>;
+
+/**
+ * Either the caller is waiting for an opponent, or one was already waiting and
+ * the room exists. A queued caller learns the rest from `room:state` when the
+ * next player arrives, so no partner detail is returned here.
+ */
+export const quickPlayAckSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("queued") }).strict(),
+  z
+    .object({
+      status: z.literal("matched"),
+      roomCode: roomCodeSchema,
+      you: playerSlotSchema,
+      resumeToken: resumeTokenSchema,
+    })
+    .strict(),
+]);
+export type QuickPlayAck = z.infer<typeof quickPlayAckSchema>;
 
 export const clientReadyAckSchema = z.object({ accepted: z.literal(true) }).strict();
 export type ClientReadyAck = z.infer<typeof clientReadyAckSchema>;
@@ -142,6 +167,8 @@ export type RoundResults = z.infer<typeof roundResultsSchema>;
 export const CLIENT_EVENTS = {
   createRoom: "room:create",
   joinRoom: "room:join",
+  quickPlay: "room:quick-play",
+  cancelQuickPlay: "room:cancel-quick-play",
   clientReady: "room:client-ready",
   draft: "round:draft",
   finish: "round:finish",

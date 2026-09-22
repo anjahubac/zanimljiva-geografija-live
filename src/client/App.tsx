@@ -7,6 +7,7 @@ import { JoinScreen } from "@client/screens/JoinScreen";
 import { WaitingScreen } from "@client/screens/WaitingScreen";
 import { CountdownScreen } from "@client/screens/CountdownScreen";
 import { AnswerScreen } from "@client/screens/AnswerScreen";
+import { SearchingScreen } from "@client/screens/SearchingScreen";
 import { WaitingForOpponentScreen } from "@client/screens/WaitingForOpponentScreen";
 import { ResultsScreen } from "@client/screens/ResultsScreen";
 import { UI_SR } from "@client/strings";
@@ -16,7 +17,14 @@ const TICK_MS = 250;
 /** Seconds at which the countdown is announced, instead of every second. */
 const ANNOUNCED_SECONDS = new Set([60, 30, 10, 5, 4, 3, 2, 1, 0]);
 
-export function App() {
+type AppProps = {
+  /** The signed-in player's name, or null for a guest. */
+  accountName?: string | null;
+  /** Leave the finished room and start over from the lobby. */
+  onLeave: () => void;
+};
+
+export function App({ accountName = null, onLeave }: AppProps) {
   const [state, dispatch] = useGameState();
   const [now, setNow] = useState(() => Date.now());
   const [announcement, setAnnouncement] = useState("");
@@ -190,6 +198,29 @@ export function App() {
     });
   }, [dispatch]);
 
+  const handleQuickPlay = useCallback((displayName: string) => {
+    dispatch({ type: "busy", busy: true });
+    void socketRef.current?.quickPlay(displayName).then((ack) => {
+      dispatch({ type: "busy", busy: false });
+      if (!ack.ok) {
+        dispatch({ type: "error", message: ack.error.message });
+        return;
+      }
+      // A match that already existed arrives as room:state too; the queued
+      // case is the only one that needs a screen of its own.
+      if (ack.data.status === "queued") dispatch({ type: "entry", entry: "searching" });
+      else dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
+    });
+  }, [dispatch]);
+
+  const handleCancelSearch = useCallback(() => {
+    dispatch({ type: "busy", busy: true });
+    void socketRef.current?.cancelQuickPlay().then(() => {
+      dispatch({ type: "busy", busy: false });
+      dispatch({ type: "entry", entry: "lobby" });
+    });
+  }, [dispatch]);
+
   const screen = useMemo(() => selectScreen(state), [state]);
 
   return (
@@ -200,8 +231,12 @@ export function App() {
         msToStart,
         remainingMs,
         announcement,
+        accountName,
         onCreate: handleCreate,
         onJoin: handleJoin,
+        onQuickPlay: handleQuickPlay,
+        onCancelSearch: handleCancelSearch,
+        onLeave,
         onChange: handleChange,
         onBlur: flush,
         onFinish: handleFinish,
@@ -224,8 +259,12 @@ type RenderArgs = {
   msToStart: number;
   remainingMs: number;
   announcement: string;
+  accountName: string | null;
   onCreate: (displayName: string) => void;
   onJoin: (roomCode: string, displayName: string) => void;
+  onQuickPlay: (displayName: string) => void;
+  onCancelSearch: () => void;
+  onLeave: () => void;
   onChange: (category: Category, value: string) => void;
   onBlur: (category: Category) => void;
   onFinish: () => void;
@@ -242,10 +281,14 @@ function renderScreen(args: RenderArgs) {
         <JoinScreen
           busy={state.busy}
           errorMessage={state.errorMessage}
+          accountName={args.accountName}
           onJoin={args.onJoin}
           onBack={args.onBack}
         />
       );
+
+    case "searching":
+      return <SearchingScreen busy={state.busy} onCancel={args.onCancelSearch} />;
 
     case "waiting":
       return state.room ? <WaitingScreen room={state.room} /> : null;
@@ -288,7 +331,12 @@ function renderScreen(args: RenderArgs) {
 
     case "results":
       return state.revealed && state.results && state.you ? (
-        <ResultsScreen you={state.you} revealed={state.revealed} results={state.results} />
+        <ResultsScreen
+          you={state.you}
+          revealed={state.revealed}
+          results={state.results}
+          onLeave={args.onLeave}
+        />
       ) : (
         <p aria-live="polite">{UI_SR.resultsTitle}…</p>
       );
@@ -299,7 +347,9 @@ function renderScreen(args: RenderArgs) {
         <LobbyScreen
           busy={state.busy}
           errorMessage={state.errorMessage}
+          accountName={args.accountName}
           onCreate={args.onCreate}
+          onQuickPlay={args.onQuickPlay}
           onSwitchToJoin={args.onSwitchToJoin}
         />
       );

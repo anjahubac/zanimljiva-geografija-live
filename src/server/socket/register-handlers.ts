@@ -11,8 +11,13 @@ import {
   finishRequestSchema,
   joinRoomRequestSchema,
   roomAckSchema,
+  quickPlayRequestSchema,
+  quickPlayAckSchema,
+  cancelQuickPlayRequestSchema,
 } from "@contracts/socket.schemas";
 import type { RoomStore } from "@server/rooms/room-store";
+import type { AccountStore } from "@server/accounts/account-store";
+import { sessionToken } from "@server/accounts/account-http";
 
 /**
  * Flood protection for one socket. Wall-clock time is correct here: this is a
@@ -49,7 +54,7 @@ function createRateLimiter() {
  * no timing and no scoring decision: it parses, resolves the caller from the
  * socket (never from the payload), delegates, and acknowledges.
  */
-export function registerHandlers(io: Server, store: RoomStore): void {
+export function registerHandlers(io: Server, store: RoomStore, accounts?: AccountStore): void {
   const limiter = createRateLimiter();
 
   io.on("connection", (socket: Socket) => {
@@ -95,7 +100,16 @@ export function registerHandlers(io: Server, store: RoomStore): void {
 
     socket.on(CLIENT_EVENTS.createRoom, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.createRoom, createRoomRequestSchema, raw, ack, (input) => {
-        const created = store.createRoom(input.displayName, socket.id);
+        const token = sessionToken(socket.request.headers.cookie);
+        const account = accounts?.getSession(token);
+        if (token && !account) return fail("NOT_IN_ROOM");
+        const existing = store.getRoomBySocket(socket.id);
+        if (existing) {
+          const player = Object.values(existing.players).find((each) => each.socketId === socket.id);
+          if (!player) return fail("NOT_IN_ROOM");
+          return ok(roomAckSchema.parse({ roomCode: existing.roomCode, you: player.slot, resumeToken: player.resumeToken }));
+        }
+        const created = store.createRoom(account?.displayName ?? input.displayName, socket.id, account?.id);
         return ok(
           roomAckSchema.parse({
             roomCode: created.room.roomCode,
@@ -108,7 +122,11 @@ export function registerHandlers(io: Server, store: RoomStore): void {
 
     socket.on(CLIENT_EVENTS.joinRoom, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.joinRoom, joinRoomRequestSchema, raw, ack, (input) => {
-        const joined = store.joinRoom(input.roomCode, input.displayName, socket.id);
+        if (store.getRoomBySocket(socket.id)) return fail("WRONG_PHASE");
+        const token = sessionToken(socket.request.headers.cookie);
+        const account = accounts?.getSession(token);
+        if (token && !account) return fail("NOT_IN_ROOM");
+        const joined = store.joinRoom(input.roomCode, account?.displayName ?? input.displayName, socket.id, account?.id);
         if (!joined.ok) return joined;
         return ok(
           roomAckSchema.parse({
@@ -117,6 +135,41 @@ export function registerHandlers(io: Server, store: RoomStore): void {
             resumeToken: joined.data.resumeToken,
           }),
         );
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.quickPlay, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.quickPlay, quickPlayRequestSchema, raw, ack, (input) => {
+        const token = sessionToken(socket.request.headers.cookie);
+        const account = accounts?.getSession(token);
+        if (token && !account) return fail("NOT_IN_ROOM");
+
+        const result = store.quickPlay(
+          account?.displayName ?? input.displayName,
+          socket.id,
+          account?.id,
+        );
+        if (!result.ok) return result;
+
+        return ok(
+          quickPlayAckSchema.parse(
+            result.data.status === "queued"
+              ? { status: "queued" }
+              : {
+                  status: "matched",
+                  roomCode: result.data.room.roomCode,
+                  you: result.data.slot,
+                  resumeToken: result.data.resumeToken,
+                },
+          ),
+        );
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.cancelQuickPlay, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.cancelQuickPlay, cancelQuickPlayRequestSchema, raw, ack, () => {
+        store.cancelQuickPlay(socket.id);
+        return ok({ accepted: true as const });
       });
     });
 

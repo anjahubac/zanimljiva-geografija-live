@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zanimljiva Geografija Live</title>
+    <script>
+      // Runs before the first paint so a stored choice never flashes the other
+      // theme. React owns this attribute from the moment the toggle mounts.
+      try {
+        var stored = localStorage.getItem("zg-theme");
+        if (stored === "light" || stored === "dark") {
+          document.documentElement.setAttribute("data-theme", stored);
+        }
+      } catch (error) {
+        // Storage blocked: the system setting decides, which is the default.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

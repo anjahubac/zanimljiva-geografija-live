@@ -27,18 +27,18 @@ export type GameErrorCode = z.infer<typeof gameErrorCodeSchema>;
  * opponent answer may ever reach a client.
  */
 export const ERROR_MESSAGES: Record<GameErrorCode, string> = {
-  INVALID_PAYLOAD: "That request was not valid.",
-  ROOM_NOT_FOUND: "Room not found. Check the code.",
-  ROOM_FULL: "That room already has two players.",
-  NOT_IN_ROOM: "You are not in this room.",
-  WRONG_PHASE: "That action is not available right now.",
-  ROUND_STALE: "That round has already ended.",
-  TOO_EARLY: "The round has not started yet.",
-  TOO_LATE: "Time is up.",
-  ALREADY_FINISHED: "Your answers are already locked.",
-  STALE_REVISION: "A newer answer was already saved.",
-  RATE_LIMITED: "Too many requests. Slow down.",
-  INTERNAL: "Something went wrong.",
+  INVALID_PAYLOAD: "Zahtev nije ispravan.",
+  ROOM_NOT_FOUND: "Partija nije pronađena. Proveri kod.",
+  ROOM_FULL: "Ta partija već ima dva igrača.",
+  NOT_IN_ROOM: "Nisi u ovoj partiji.",
+  WRONG_PHASE: "Ta radnja sada nije moguća.",
+  ROUND_STALE: "Ta runda je već završena.",
+  TOO_EARLY: "Runda još nije počela.",
+  TOO_LATE: "Vreme je isteklo.",
+  ALREADY_FINISHED: "Tvoji odgovori su već zaključani.",
+  STALE_REVISION: "Noviji odgovor je već sačuvan.",
+  RATE_LIMITED: "Previše zahteva. Uspori.",
+  INTERNAL: "Nešto je pošlo naopako.",
 };
 
 export const gameErrorSchema = z

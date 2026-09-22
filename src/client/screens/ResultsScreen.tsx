@@ -7,6 +7,7 @@ type Props = {
   you: PlayerSlot;
   revealed: RoundRevealed;
   results: RoundResults;
+  onLeave: () => void;
 };
 
 type SheetCell = {
@@ -29,7 +30,11 @@ type SheetRow = {
   total: number;
 };
 
-export function ResultsScreen({ you, revealed, results }: Props) {
+/** Two scored lines plus the rest of the ruled page, so the sheet keeps the
+ *  same height and shape it had while the round was being played. */
+const BLANK_SHEET_ROWS = [1, 2, 3];
+
+export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
   const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
     const answers = slot === 1 ? revealed.player1 : revealed.player2;
 
@@ -138,14 +143,35 @@ export function ResultsScreen({ you, revealed, results }: Props) {
                 <td className="cell cell-total">{row.total}</td>
               </tr>
             ))}
+
+            {BLANK_SHEET_ROWS.map((line) => (
+              <tr className="row-blank" aria-hidden="true" key={line}>
+                <td className="col-row-head" />
+                {CATEGORIES.map((category) => (
+                  <td className="cell" key={category} />
+                ))}
+                <td className="cell cell-total" />
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      <p className="notice">{UI_SR.honorSystemSr}</p>
-      <p className="notice notice-en" lang="en">
-        {UI_SR.honorSystemEn}
-      </p>
+      {/* The closing note and the way out share one line: the round is over and
+          a room holds exactly one round, so the way on is a new room rather
+          than a rematch in this one. */}
+      <div className="results-footer">
+        <div className="results-note">
+          <p className="notice">{UI_SR.honorSystemSr}</p>
+          <p className="notice notice-en" lang="en">
+            {UI_SR.honorSystemEn}
+          </p>
+        </div>
+
+        <button type="button" onClick={onLeave}>
+          {UI_SR.backToLobby}
+        </button>
+      </div>
     </section>
   );
 }

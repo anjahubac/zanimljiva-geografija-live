@@ -5,16 +5,18 @@ import { UI_SR } from "@client/strings";
 type Props = {
   busy: boolean;
   errorMessage: string | null;
+  /** Set when signed in: the account already supplies the name. */
+  accountName: string | null;
   onJoin: (roomCode: string, displayName: string) => void;
   onBack: () => void;
 };
 
-export function JoinScreen({ busy, errorMessage, onJoin, onBack }: Props) {
+export function JoinScreen({ busy, errorMessage, accountName, onJoin, onBack }: Props) {
   const [roomCode, setRoomCode] = useState("");
   const [displayName, setDisplayName] = useState("");
 
   const code = roomCode.trim().toUpperCase();
-  const name = displayName.trim();
+  const name = accountName ?? displayName.trim();
   const canSubmit = code.length === ROOM_CODE_LENGTH && name.length > 0;
 
   return (
@@ -42,18 +44,24 @@ export function JoinScreen({ busy, errorMessage, onJoin, onBack }: Props) {
           />
         </div>
 
-        <div className="field">
-          <label htmlFor="join-name">{UI_SR.displayName}</label>
-          <input
-            id="join-name"
-            name="displayName"
-            autoComplete="nickname"
-            maxLength={MAX_DISPLAY_NAME_LENGTH}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            required
-          />
-        </div>
+        {accountName ? (
+          <p className="playing-as">
+            {UI_SR.playingAs} <strong>{accountName}</strong>
+          </p>
+        ) : (
+          <div className="field">
+            <label htmlFor="join-name">{UI_SR.displayName}</label>
+            <input
+              id="join-name"
+              name="displayName"
+              autoComplete="nickname"
+              maxLength={MAX_DISPLAY_NAME_LENGTH}
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              required
+            />
+          </div>
+        )}
 
         {errorMessage ? (
           <p className="field-error" id="join-error" role="alert">

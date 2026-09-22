@@ -14,14 +14,16 @@
 
 :root {
   /* Paper */
-  --paper: #f3ecdb;
-  --paper-sheet: #fbf7ec;
-  --paper-shade: #e4d9bf;
+  --paper: #f7f8fb;
+  --paper-grid: #c9cfdc;
+  --paper-shadow: rgb(154 163 194 / 0.3);
+  --paper-sheet: #ffffff;
+  --paper-shade: #dde3ea;
 
   /* Ink */
-  --ink: #182a4e; /* 12.4:1 on --paper-sheet */
-  --ink-soft: #47557a; /* 6.6:1 on --paper-sheet */
-  --rule-strong: #7d8db0; /* 3.1:1 — control boundaries only */
+  --ink: #182a4e; /* 14.2:1 on white */
+  --ink-soft: #47557a; /* 7.4:1 on white */
+  --rule-strong: #74849f; /* 3.8:1 — control boundaries only */
   --margin-line: #c2564f;
 
   /* Pens */
@@ -31,76 +33,198 @@
   --focus: #10416f;
 
   /* Hand-drawn rules, baked per theme because a CSS url() cannot inherit colour. */
-  --rule-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%237d8db0' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  --rule-h-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%23b6c0d4' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
-  --rule-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%237d8db0' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  --rule-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%2374849f' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  --rule-h-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%23cddaec' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
+  --rule-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%2374849f' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
 
-  /* Paper grain. */
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-  --grain-opacity: 0.16;
-  --grain-blend: multiply;
+  --rule-v-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%23cddaec' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  /* A frame of hand-drawn doodles of the categories around the squared paper,
+     in four pieces: a strip along the top and bottom, a column down each side.
+     Each piece is pinned to its own edge, so the frame fits any shape of
+     screen without cropping. Baked per theme, like the rules above: the
+     drawings are multi-coloured, so they cannot be one mask tinted by one
+     colour. */
+  --doodles-top: url("./assets/doodles-top-light.svg");
+  --doodles-bottom: url("./assets/doodles-bottom-light.svg");
+  --doodles-left: url("./assets/doodles-left-light.svg");
+  --doodles-right: url("./assets/doodles-right-light.svg");
+  --doodle-opacity: 0.7;
+  /* The width the top and bottom strips are drawn at. Never narrower than
+     56.25rem, so on a phone the doodles keep a readable size and the strip
+     is cropped to its middle instead of shrinking. */
+  --frame-w: max(100vw, 56.25rem);
+
+  /* The header is one row at a fixed height, so the doodle frame can start
+     exactly where it ends. */
+  --header-h: 3.5rem;
+
+  /* The sheet's punched edge, torn out of a ring binder. A mask, so the holes
+     are real holes and the paper behind shows through. */
+  --sheet-punch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='120'%3E%3Cpath fill-rule='evenodd' d='M3 0C4 12 2 26 3 40C4 48 2 52 3 57.5L9 57.5A5.6 5.6 0 1 1 9 62.5L3 62.5C2 75 4 90 3 100C2 108 4 115 3 120H28V0ZM8.5 20a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0ZM8.5 100a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0 -11 0Z'/%3E%3C/svg%3E");
+  --sheet-shadow: rgb(24 42 78 / 22%);
+
+  /* The night palette, defined once here and switched on by the two selectors
+     below — by the system setting, or by an explicit choice that overrides it. */
+  --night-paper: #14171d;
+  --night-paper-sheet: #1e222a;
+  --night-paper-shade: #0e1116;
+  --night-paper-grid: #2b313d;
+  --night-paper-shadow: rgb(0 0 0 / 0.35);
+  --night-sheet-shadow: rgb(0 0 0 / 55%);
+  --night-ink: #eef2f8; /* 14.2:1 on --night-paper-sheet */
+  --night-ink-soft: #b3bdd0; /* 8.2:1 */
+  --night-rule-strong: #707d92; /* 3.8:1 */
+  --night-pen-red: #ff9c94; /* 7.8:1 */
+  --night-pen-green: #86d79b; /* 9.1:1 */
+  --night-focus: #9cc4ee;
+  --night-rule-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%23707d92' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  --night-rule-h-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%232f3746' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
+  --night-rule-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%23707d92' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  --night-rule-v-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%232f3746' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
 
   --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Chosen with the author: installed faces only, no download and no external
      request. It renders differently per operating system by design. */
-  --font-hand: "Bradley Hand", "Segoe Script", "Ink Free", "Chalkboard SE", "Comic Sans MS", cursive;
+  --font-hand:
+    "Bradley Hand", "Segoe Script", "Ink Free", "Chalkboard SE",
+    "Comic Sans MS", cursive;
   --font-code: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: var(--font-ui);
   line-height: 1.5;
   accent-color: var(--focus);
 }
 
+/* Two ways into the night palette. The system setting applies unless the
+   player has explicitly chosen light; an explicit dark choice always wins. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    /* The same sheet, late at night under a desk lamp. */
-    --paper: #14171d;
-    --paper-sheet: #1e222a;
-    --paper-shade: #0e1116;
-
-    --ink: #eef2f8; /* 14.2:1 on --paper-sheet */
-    --ink-soft: #b3bdd0; /* 8.2:1 */
-    --rule-strong: #707d92; /* 3.8:1 */
-    --margin-line: #c2564f;
-
-    --pen-red: #ff9c94; /* 7.8:1 */
-    --pen-green: #86d79b; /* 9.1:1 */
-
-    --focus: #9cc4ee;
-
-    --rule-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%23707d92' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-    --rule-h-faint: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3.2 C 20 1.7, 40 4.4, 60 3.1 S 100 1.9, 120 3.2' fill='none' stroke='%232f3746' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E");
-    --rule-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='120'%3E%3Cpath d='M3.2 0 C 1.7 20, 4.4 40, 3.1 60 S 1.9 100, 3.2 120' fill='none' stroke='%23707d92' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-
-    --grain-opacity: 0.3;
-    --grain-blend: soft-light;
+  :root:not([data-theme="light"]) {
+    --paper: var(--night-paper);
+    --paper-sheet: var(--night-paper-sheet);
+    --paper-shade: var(--night-paper-shade);
+    --ink: var(--night-ink);
+    --ink-soft: var(--night-ink-soft);
+    --rule-strong: var(--night-rule-strong);
+    --pen-red: var(--night-pen-red);
+    --pen-green: var(--night-pen-green);
+    --focus: var(--night-focus);
+    --rule-h: var(--night-rule-h);
+    --rule-h-faint: var(--night-rule-h-faint);
+    --rule-v: var(--night-rule-v);
+    --rule-v-faint: var(--night-rule-v-faint);
+    --paper-grid: var(--night-paper-grid);
+    --paper-shadow: var(--night-paper-shadow);
+    --sheet-shadow: var(--night-sheet-shadow);
+    --doodles-top: url("./assets/doodles-top-dark.svg");
+    --doodles-bottom: url("./assets/doodles-bottom-dark.svg");
+    --doodles-left: url("./assets/doodles-left-dark.svg");
+    --doodles-right: url("./assets/doodles-right-dark.svg");
+    --doodle-opacity: 0.6;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --paper: var(--night-paper);
+  --paper-sheet: var(--night-paper-sheet);
+  --paper-shade: var(--night-paper-shade);
+  --ink: var(--night-ink);
+  --ink-soft: var(--night-ink-soft);
+  --rule-strong: var(--night-rule-strong);
+  --pen-red: var(--night-pen-red);
+  --pen-green: var(--night-pen-green);
+  --focus: var(--night-focus);
+  --rule-h: var(--night-rule-h);
+  --rule-h-faint: var(--night-rule-h-faint);
+  --rule-v: var(--night-rule-v);
+  --rule-v-faint: var(--night-rule-v-faint);
+  --paper-grid: var(--night-paper-grid);
+  --paper-shadow: var(--night-paper-shadow);
+  --sheet-shadow: var(--night-sheet-shadow);
+  --doodles-top: url("./assets/doodles-top-dark.svg");
+  --doodles-bottom: url("./assets/doodles-bottom-dark.svg");
+  --doodles-left: url("./assets/doodles-left-dark.svg");
+  --doodles-right: url("./assets/doodles-right-dark.svg");
+  --doodle-opacity: 0.6;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* Squared exercise-book paper, printed: straight, even squares, so the
+   hand-drawn doodles around the edge are the only thing that wobbles. */
 body {
   margin: 0;
   min-height: 100vh;
   background-color: var(--paper);
-  background-image: var(--rule-h-faint);
-  background-size: 120px 2rem;
+  background-image:
+    linear-gradient(to right, var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--paper-grid) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
+  background-position: center top;
   color: var(--ink);
 }
 
-/* Grain sits behind the content, never over it. */
+/* Doodles on the page. Decorative only: a background layer, so it is absent
+   from the accessibility tree, and it never intercepts a click. It starts
+   below the header, so the header never hides a drawing, and the frame, the
+   shadow and the centred sheet all share one box. The side columns shrink to
+   fit between the strips on a short window. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: var(--header-h) 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    var(--doodles-top), var(--doodles-bottom), var(--doodles-left),
+    var(--doodles-right);
+  background-position:
+    center top,
+    center bottom,
+    left center,
+    right center;
+  background-repeat: no-repeat;
+  background-size:
+    var(--frame-w) auto,
+    var(--frame-w) auto,
+    auto max(0px, min(var(--frame-w) * 0.345, 100% - var(--frame-w) * 0.2375)),
+    auto max(0px, min(var(--frame-w) * 0.345, 100% - var(--frame-w) * 0.2375));
+  opacity: var(--doodle-opacity);
+}
+
+/* On a phone the sheet fills the width and would hide the side columns
+   anyway, so only the strips above and below it are drawn. */
+@media (max-width: 40rem) {
+  body::after {
+    background-image: var(--doodles-top), var(--doodles-bottom);
+  }
+}
+
+/* A soft shadow pooled in the middle of the sheet, as on the reference paper.
+   Fixed to the viewport, behind the content, never over it. */
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: var(--header-h) 0 0;
   z-index: -1;
-  background-image: var(--grain);
-  opacity: var(--grain-opacity);
-  mix-blend-mode: var(--grain-blend);
   pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 32% 34% at 42% 54%,
+      var(--paper-shadow),
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 26% 30% at 62% 48%,
+      var(--paper-shadow),
+      transparent 100%
+    );
+  filter: blur(40px);
 }
 
 /* Browser surfaces belong to the design too. */
@@ -115,9 +239,26 @@ body::before {
   border-radius: 2px;
 }
 
+/* The header on top, the page below it filling the rest of the window. */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* The sheet sits in the middle of the page, inside the doodle frame. A sheet
+   taller than the window simply grows the page and scrolls, from the top. */
 .app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
   margin: 0 auto;
-  max-width: min(74rem, 100%);
+  /* Wide enough for the scoring sheet — eleven columns — to fit without a
+     sideways scroll. Forms do not sprawl to match: `.screen` keeps its own
+     44rem cap, and only the two sheet screens opt out of it. */
+  max-width: min(96rem, 100%);
   padding: 2rem 1rem 3rem;
 }
 
@@ -142,23 +283,39 @@ p {
   max-width: 44rem;
   margin-inline: auto;
   width: 100%;
-  padding: 1.75rem 1.5rem 2rem;
-  background: var(--paper-sheet);
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  /* Offset and blur: the sheet lies on the desk, it does not glow. */
-  box-shadow:
-    0 1px 0 var(--paper-shade),
-    0 14px 28px -18px rgb(24 42 78 / 55%);
+  padding: 1.75rem 1.5rem 2rem 3.5rem;
+  /* The paper is drawn by `::after` so the holes can be cut out of it. The
+     shadow is a drop-shadow, not a box-shadow, so it follows the torn edge and
+     shows through the holes; a box-shadow would be cut away by the mask. The
+     first shadow is a hairline edge, so white paper still reads on pale paper. */
+  isolation: isolate;
+  filter: drop-shadow(0 0 0.5px var(--rule-strong))
+    drop-shadow(0 8px 12px var(--sheet-shadow));
 }
 
-/* The red margin line every school sheet has. */
+.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 12px;
+  background: var(--paper-sheet);
+  pointer-events: none;
+  -webkit-mask:
+    var(--sheet-punch) 0 0 / 28px 120px no-repeat round,
+    linear-gradient(#000 0 0) 27px 0 / calc(100% - 27px) 100% no-repeat;
+  mask:
+    var(--sheet-punch) 0 0 / 28px 120px no-repeat round,
+    linear-gradient(#000 0 0) 27px 0 / calc(100% - 27px) 100% no-repeat;
+}
+
+/* The margin line, just inside the holes. */
 .screen::before {
   content: "";
   position: absolute;
-  inset-block: 0;
-  left: 0.85rem;
-  width: 1px;
+  inset-block: 0.75rem;
+  left: 2.35rem;
+  width: 1.5px;
   background: var(--margin-line);
   opacity: 0.55;
   pointer-events: none;
@@ -230,11 +387,13 @@ button {
   color: var(--paper-sheet);
   cursor: pointer;
   justify-self: start;
+  transition: opacity 120ms ease;
 }
 
+/* Hover lifts the ink rather than swapping colour: a navy-to-navy change was
+   barely visible. At 85% the label still clears 4.5:1 in both themes. */
 button:hover:not(:disabled) {
-  background: var(--focus);
-  border-color: var(--focus);
+  opacity: 0.85;
 }
 
 button:disabled {
@@ -247,6 +406,7 @@ button:disabled {
 
 button.link {
   background: none;
+  text-align: start;
   border: 0;
   color: var(--focus);
   font-weight: 600;
@@ -254,6 +414,13 @@ button.link {
   text-underline-offset: 0.2em;
   padding: 0.25rem 0;
   min-height: auto;
+}
+
+/* Links fade too, and the underline thickens, so hover is not carried by
+   opacity alone. */
+button.link:hover:not(:disabled) {
+  opacity: 0.75;
+  text-decoration-thickness: 2px;
 }
 
 .field-error {
@@ -387,15 +554,14 @@ button.link {
 
 /* The playing sheet is the scoring sheet: same columns, your line editable. */
 .play-table .cell-input {
-  min-width: 6.75rem;
-  padding: 0.5rem 0.4rem 0.5rem;
+  padding: 0.5rem 0.35rem;
 }
 
 .play-table input {
   border-bottom: 0;
   min-height: 2.6rem;
-  padding: 0.35rem 0.15rem;
-  font-size: 1.02rem;
+  padding: 0.35rem 0.1rem;
+  font-size: 0.98rem;
 }
 
 .play-table input:hover:not(:disabled) {
@@ -403,8 +569,9 @@ button.link {
   background: rgb(125 141 176 / 8%);
 }
 
-/* On a wide sheet the column header names the field, so the label is hidden
-   here and comes back when the sheet stacks. */
+/* The column header names the field on screen, so the label is hidden visually
+   rather than removed: it stays in the DOM, attached to its input, for anyone
+   reading the page with assistive technology. */
 .play-table .cell-label {
   position: absolute;
   width: 1px;
@@ -426,21 +593,20 @@ button.link {
   font-size: 0.78rem;
 }
 
-.row-note {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.72rem;
+/* Beside the sheet rather than on it: the sheet is one player's page, so the
+   opponent's progress is reported next to it. */
+.opponent-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
   color: var(--ink-soft);
 }
 
-/* The opponent's line exists on the sheet and stays blank. Their answers are
-   not hidden here — the client never receives them before the reveal. */
-.cell-hidden {
-  min-width: 6.75rem;
-  background-color: rgb(125 141 176 / 7%);
+/* The unused part of the ruled page. An empty cell collapses to nothing, so
+   the blank lines carry their own height and keep the sheet a sheet. */
+.row-blank td {
+  height: 2.9rem;
+  padding: 0;
 }
 
 .cell-pending {
@@ -475,6 +641,11 @@ button.link {
   border-spacing: 0;
   width: 100%;
   font-variant-numeric: tabular-nums;
+  /* Fixed layout is what lets the sheet fit: the letter and total columns take
+     the widths set below and the nine categories share whatever is left,
+     instead of each cell demanding a minimum and pushing the sheet wider than
+     the screen. Long answers wrap rather than widening their column. */
+  table-layout: fixed;
 }
 
 .sheet-table th,
@@ -490,13 +661,13 @@ button.link {
 }
 
 .col-head {
-  padding: 0.35rem 0.6rem 0.5rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.4rem 0.5rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* Pinned so you always know whose line you are reading mid-scroll. */
@@ -504,21 +675,25 @@ button.link {
   position: sticky;
   left: 0;
   z-index: 1;
-  min-width: 4.5rem;
-  padding: 0.6rem 0.6rem;
-  font-size: 0.85rem;
+  /* Sized for the longest label, PROTIVNIK (about 69px at this size). It used
+     to overflow into the first category. A system font wider than expected
+     wraps the word rather than spilling it into the next cell. */
+  width: 5.5rem;
+  padding: 0.6rem 0.4rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
   background-color: var(--paper-sheet);
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .cell {
   position: relative;
-  min-width: 6.5rem;
   /* Head-room for the number written in the corner. */
-  padding: 1.4rem 0.5rem 0.5rem;
+  padding: 1.4rem 0.4rem 0.5rem;
 }
 
 .cell-points {
@@ -534,7 +709,7 @@ button.link {
 
 .cell-answer {
   display: block;
-  font-size: 1.02rem;
+  font-size: 0.98rem;
   overflow-wrap: anywhere;
 }
 
@@ -569,7 +744,7 @@ button.link {
 
 .col-total,
 .cell-total {
-  min-width: 3.25rem;
+  width: 3.5rem;
   background-image: var(--rule-h);
   background-repeat: repeat-x;
   background-position: bottom left;
@@ -625,76 +800,288 @@ button.link {
 
 /* -------------------------------------------------------------- narrow */
 
-/* Nine categories plus a player column and a total need roughly 1100px. Above
-   that the playing sheet stays a table; below it stacks, rather than asking
-   anyone to type while scrolling sideways. The results sheet is read-only, so
-   it keeps its horizontal scroll instead. */
-@media (max-width: 74rem) {
-  .play-table,
-  .play-table tbody,
-  .play-table tr,
-  .play-table th,
-  .play-table td {
-    display: block;
+/* The closing note and the way out sit on one line, the button at the end of
+   it. `button` sets `justify-self: start` for the grid screens, so the button
+   overrides that here rather than inheriting a left-aligned position. */
+.results-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+.results-footer button {
+  justify-self: end;
+  flex: none;
+  /* Optically level with the first line of the note beside it. */
+  margin-top: -0.35rem;
+}
+
+.results-note {
+  flex: 1 1 28ch;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.results-note .notice {
+  margin: 0;
+}
+
+/* --------------------------------------------------- the two ways to play */
+
+.paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.path-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.playing-as {
+  margin: 0 0 0.5rem;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------ accounts and profiles */
+
+/* The site header. Product name on the left, the few global actions on the
+   right, both aligned to the same column as the page content below — the bar
+   was previously capped narrower than `.app`, so the two never lined up.
+   It is drawn on the paper itself, ruled off by a hand-drawn line, and kept to
+   one row at --header-h: when space runs out the product name is shortened,
+   never wrapped onto a second row. */
+.site-header {
+  height: var(--header-h);
+  background-image: var(--rule-h);
+  background-repeat: repeat-x;
+  background-position: bottom left;
+}
+
+.site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 100%;
+  max-width: min(96rem, 100%);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.brand {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-nav {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0 1.25rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.nav-who {
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* A phone has room for the actions only. The name and the "Tema" label leave
+   the screen but stay in the page, so a screen reader still announces them. */
+@media (max-width: 30rem) {
+  .site-nav {
+    gap: 0 1rem;
   }
 
-  .play-table thead {
+  .nav-who,
+  .theme-toggle label {
     position: absolute;
     width: 1px;
     height: 1px;
-    margin: -1px;
     overflow: hidden;
     clip-path: inset(50%);
-  }
-
-  .play-table tr {
-    margin-bottom: 0.75rem;
-  }
-
-  .play-table .col-row-head {
-    position: static;
-    min-width: 0;
-    padding: 0.5rem 0 0.35rem;
-    background-image: var(--rule-h);
-    background-repeat: repeat-x;
-    background-position: bottom left;
-  }
-
-  .play-table .cell {
-    display: grid;
-    grid-template-columns: minmax(6rem, 8rem) 1fr;
-    align-items: center;
-    gap: 0 0.75rem;
-    min-width: 0;
-    padding: 0.35rem 0 0.4rem;
-    background-image: var(--rule-h);
-    background-repeat: repeat-x;
-    background-position: bottom left;
-  }
-
-  .play-table .cell-label {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 0;
-    clip-path: none;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-  }
-
-  .play-table .status,
-  .play-table .field-error {
-    grid-column: 2;
-  }
-
-  /* One line of status stands in for the opponent's blank row. */
-  .play-table .row-opponent .cell {
-    display: none;
+    white-space: nowrap;
   }
 }
+
+/* A link in the bar is still a control, so it gets a real target to hit
+   rather than the bare text height `button.link` would otherwise give it. */
+.site-nav button.link {
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
+}
+
+/* Which page you are on, carried by the attribute assistive technology reads
+   rather than by colour alone. */
+.site-nav button.link[aria-current="page"] {
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.theme-toggle label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.theme-toggle select {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--rule-strong);
+  border-radius: 0;
+  padding: 0.25rem 0.15rem;
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+
+.theme-toggle select:hover {
+  border-bottom-color: var(--ink-soft);
+}
+
+.field-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.profile-name {
+  margin: 0 0 1rem;
+  font-family: var(--font-hand);
+  font-size: clamp(1.5rem, 1.2rem + 1.6vw, 2.1rem);
+  line-height: 1.1;
+}
+
+.profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.profile-stats div {
+  min-width: 5rem;
+}
+
+.profile-stats dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.profile-stats dd {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-hand);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.history {
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.history-game + .history-game {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  background-image: var(--rule-h-faint);
+  background-repeat: repeat-x;
+  background-position: top left;
+}
+
+.history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.history-letter {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* The word carries the result; the colour only seconds it. */
+.history-outcome {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.outcome-win {
+  color: var(--pen-green);
+}
+
+.outcome-loss {
+  color: var(--pen-red);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+/* The playing sheet and the scoring sheet are one sheet, at every width: the
+   categories stay columns and the sheet scrolls sideways inside `.table-scroll`
+   rather than stacking into a list. An earlier breakpoint stacked the form
+   below 74rem so nobody had to type while scrolling, but this is a game two
+   people play on two computers, and a laptop window narrower than 1184px is
+   ordinary — so the rule fired on the main case and broke the one thing the
+   sheet is for. The row header stays pinned while it scrolls. */
 
 @media (max-width: 30rem) {
   .app {
@@ -702,11 +1089,11 @@ button.link {
   }
 
   .screen {
-    padding: 1.25rem 1rem 1.5rem;
+    padding: 1.25rem 1rem 1.5rem 3rem;
   }
 
   .screen::before {
-    left: 0.5rem;
+    left: 2.1rem;
   }
 
   .round-header {

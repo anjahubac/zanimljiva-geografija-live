@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="1520 180 480 690" width="480" height="690"><defs><filter id="wobble" filterUnits="userSpaceOnUse" x="0" y="0" width="2000" height="1070"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" /></filter></defs><g fill="#d9a142"><circle cx="1897" cy="470" r="9" />
+    </g><g fill="none" stroke="#c9d3e3" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#wobble)"><g transform="translate(1860 300) rotate(-3.1)">
+      <path d="M-5 75C-5 30 5 0 15 -35" />
+      <g transform="translate(4.0 5.1)"><path d="M15 -35C-10 -60 -45 -55 -60 -35C-35 -42 -15 -38 15 -35Z" fill="#5fae72" fill-opacity="0.5" stroke="none" />
+      </g><path d="M15 -35C-10 -60 -45 -55 -60 -35C-35 -42 -15 -38 15 -35Z" fill="none" fill-opacity="0.5" />
+      <g transform="translate(5.8 5.8)"><path d="M15 -35C40 -60 75 -50 80 -25C60 -38 40 -38 15 -35Z" fill="#5fae72" fill-opacity="0.5" stroke="none" />
+      </g><path d="M15 -35C40 -60 75 -50 80 -25C60 -38 40 -38 15 -35Z" fill="none" fill-opacity="0.5" />
+      <g transform="translate(8.8 6.5)"><path d="M15 -35C0 -75 25 -95 45 -85C30 -70 22 -55 15 -35Z" fill="#5fae72" fill-opacity="0.5" stroke="none" />
+      </g><path d="M15 -35C0 -75 25 -95 45 -85C30 -70 22 -55 15 -35Z" fill="none" fill-opacity="0.5" />
+      <g transform="translate(6.6 6.1)"><circle cx="10" cy="-28" r="7" fill="#a07a52" stroke="none" />
+      </g><circle cx="10" cy="-28" r="7" fill="none" />
+      <g transform="translate(7.4 3.3)"><circle cx="22" cy="-26" r="7" fill="#a07a52" stroke="none" />
+      </g><circle cx="22" cy="-26" r="7" fill="none" />
+      <g transform="translate(8.5 6.9)"><path d="M-70 85C-60 60 50 60 70 85Z" fill="#d9a142" stroke="none" />
+      </g><path d="M-70 85C-60 60 50 60 70 85Z" fill="none" />
+      <path d="M-95 95C-80 85 -65 105 -50 95M50 95C65 85 80 105 95 95" stroke="#86b6e4" stroke-width="4" />
+    </g>
+
+    
+    <g transform="translate(1695 330) rotate(5.1)">
+      <path d="M-55 75V-60" />
+      <g transform="translate(8.4 7.0)"><rect x="-55" y="-55" width="110" height="72" fill="#4a78c8" stroke="none" />
+      </g><rect x="-55" y="-55" width="110" height="72" fill="none" />
+      <path d="M-55 -27H55M-20 -55V17" stroke="#f0c63a" stroke-width="14" stroke-linecap="butt" />
+      <rect x="-55" y="-55" width="110" height="72" />
+    </g>
+
+    
+    <g transform="translate(1790 490) rotate(-30) rotate(-5.1)">
+      <g transform="translate(6.0 5.0)"><path d="M0 -55C40 -30 40 30 0 55C-40 30 -40 -30 0 -55Z" fill="#5fae72" fill-opacity="0.35" stroke="none" />
+      </g><path d="M0 -55C40 -30 40 30 0 55C-40 30 -40 -30 0 -55Z" fill="none" fill-opacity="0.35" />
+      <path d="M0 -55V70M0 -20L18 -35M0 0L22 -15M0 20L-18 5M0 -5L-20 -20" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(1665 620) rotate(1.3)">
+      <g transform="translate(4.5 6.2)"><circle r="50" fill="#4d7aa8" stroke="none" />
+      </g><circle r="50" fill="none" />
+      <path d="M-25 -40C-10 -35 -12 -20 -25 -15C-40 -10 -30 10 -15 15C-5 18 -8 35 0 45M15 -45C8 -30 25 -25 32 -32M22 5C15 20 30 28 42 20" fill="none" stroke="#5fae72" stroke-width="4" />
+      <path d="M-62 -25C-78 30 -30 80 28 62" />
+      <path d="M0 58V80M-28 80H28" />
+    </g>
+
+    
+    <g transform="translate(1865 650) rotate(2.2)">
+      <g transform="translate(4.3 3.3)"><path d="M-40 -45L-30 -65L-15 -50H15L30 -65L40 -45C50 0 45 55 0 60C-45 55 -50 0 -40 -45Z" fill="#d9a142" stroke="none" />
+      </g><path d="M-40 -45L-30 -65L-15 -50H15L30 -65L40 -45C50 0 45 55 0 60C-45 55 -50 0 -40 -45Z" fill="none" />
+      <circle cx="-16" cy="-28" r="15" fill="#14171d" />
+      <circle cx="16" cy="-28" r="15" fill="#14171d" />
+      <circle cx="-16" cy="-28" r="5" fill="#c9d3e3" />
+      <circle cx="16" cy="-28" r="5" fill="#c9d3e3" />
+      <path d="M-5 -10L0 -2L5 -10Z" fill="#c9d3e3" />
+      <path d="M-15 15C-10 22 -5 22 0 15C5 22 10 22 15 15M-15 32C-10 39 -5 39 0 32C5 39 10 39 15 32" stroke-width="3" />
+      <path d="M-55 62H55" />
+    </g>
+
+    
+    <g transform="translate(1730 800) rotate(-2.0)">
+      <circle r="42" fill="#14171d" />
+      <circle r="34" stroke-width="3" />
+      <g transform="translate(5.0 3.8)"><path d="M0 -26L8 0L0 26L-8 0Z" fill="#d9625b" stroke="none" />
+      </g><path d="M0 -26L8 0L0 26L-8 0Z" fill="none" />
+      <path d="M0 0L8 0L0 26L-8 0Z" fill="#14171d" />
+      <path d="M0 -42V-52M-8 -52H8" />
+    </g>
+  <path d="M1575 460C1545 455 1540 500 1570 502C1598 505 1595 475 1578 482C1555 492 1580 520 1612 512" stroke="#d9a142" stroke-width="7" /></g></svg>

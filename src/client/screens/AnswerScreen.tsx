@@ -27,6 +27,10 @@ const STATUS_TEXT: Record<DraftStatus, string> = {
 
 const LOW_TIME_MS = 15_000;
 
+/** The paper sheet is ruled for several letters down the page. Core plays one
+ *  round, so the remaining lines stay blank rather than disappearing. */
+const BLANK_SHEET_ROWS = [1, 2, 3, 4];
+
 function formatRemaining(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -35,9 +39,9 @@ function formatRemaining(remainingMs: number): string {
 }
 
 /**
- * The same sheet the results are scored on: categories across the top, your
- * line editable, the opponent's line present but blank — the client never
- * holds their answers before the canonical reveal.
+ * The paper sheet: the round letter down the left, categories across the top,
+ * and your line the only one you write on. The opponent's answers are never in
+ * client state before the canonical reveal, so nothing here hides them.
  */
 export function AnswerScreen({
   letter,
@@ -72,6 +76,12 @@ export function AnswerScreen({
         </p>
       </header>
 
+      {/* The sheet is now one player's page, so the opponent's progress is
+          reported beside it rather than as a second line on the table. */}
+      <p className="opponent-note">
+        {opponentFinished ? UI_SR.opponentFinished : UI_SR.opponentStillPlaying}
+      </p>
+
       <p className="visually-hidden" aria-live="polite">
         {announcement}
       </p>
@@ -82,26 +92,16 @@ export function AnswerScreen({
             <caption className="visually-hidden">{UI_SR.answeringTitle}</caption>
             <thead>
               <tr>
-                <th scope="col" className="col-head col-row-head">
-                  {UI_SR.player}
-                </th>
                 {CATEGORIES.map((category) => (
                   <th scope="col" className="col-head" key={category}>
                     {CATEGORY_LABELS_SR[category]}
                   </th>
                 ))}
-                <th scope="col" className="col-head col-total">
-                  {UI_SR.total}
-                </th>
               </tr>
             </thead>
 
             <tbody>
               <tr>
-                <th scope="row" className="col-row-head">
-                  {UI_SR.you}
-                </th>
-
                 {CATEGORIES.map((category) => {
                   const status = draftStatus[category];
                   const error = fieldError[category];
@@ -143,32 +143,17 @@ export function AnswerScreen({
                     </td>
                   );
                 })}
-
-                <td className="cell cell-total cell-pending">
-                  <span aria-hidden="true">—</span>
-                  <span className="visually-hidden">{UI_SR.notScoredYet}</span>
-                </td>
               </tr>
 
-              <tr className="row-opponent">
-                <th scope="row" className="col-row-head">
-                  {UI_SR.opponent}
-                  <span className="row-note">
-                    {opponentFinished ? UI_SR.opponentFinished : UI_SR.opponentStillPlaying}
-                  </span>
-                </th>
-
-                {CATEGORIES.map((category) => (
-                  <td className="cell cell-hidden" key={category}>
-                    <span className="visually-hidden">{UI_SR.hiddenUntilReveal}</span>
-                  </td>
-                ))}
-
-                <td className="cell cell-total cell-pending">
-                  <span aria-hidden="true">—</span>
-                  <span className="visually-hidden">{UI_SR.notScoredYet}</span>
-                </td>
-              </tr>
+              {/* Ruled but unused: the blank part of the page. Decorative, so
+                  assistive technology is not walked through empty cells. */}
+              {BLANK_SHEET_ROWS.map((line) => (
+                <tr className="row-blank" aria-hidden="true" key={line}>
+                  {CATEGORIES.map((category) => (
+                    <td className="cell" key={category} />
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

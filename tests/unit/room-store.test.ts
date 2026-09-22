@@ -156,7 +156,7 @@ describe("joinRoom", () => {
     const result = harness.store.joinRoom("ZZZZZZ", "Bojan", P2);
     expect(result).toEqual({
       ok: false,
-      error: { code: "ROOM_NOT_FOUND", message: "Room not found. Check the code." },
+      error: { code: "ROOM_NOT_FOUND", message: "Partija nije pronađena. Proveri kod." },
     });
   });
 
@@ -649,5 +649,49 @@ describe("cleanup", () => {
     harness.advance(harness.config.waitingRoomTtlMs);
     harness.store.cleanup();
     expect(harness.store.getRoomByCode(roomCode)).toBeDefined();
+  });
+});
+
+describe("the random-opponent queue", () => {
+  it("never pairs one account with itself on a second device", () => {
+    const { store } = createHarness();
+
+    expect(store.quickPlay("Ana", P1, "account-ana")).toEqual({
+      ok: true,
+      data: { status: "queued" },
+    });
+
+    // The same account from another browser must keep waiting, not play itself.
+    const second = store.quickPlay("Ana", P2, "account-ana");
+    expect(second.ok && second.data.status).toBe("queued");
+    expect(store.queueLength()).toBe(2);
+
+    // A different account matches the one who waited longest.
+    const third = store.quickPlay("Marko", P3, "account-marko");
+    if (!third.ok || third.data.status !== "matched") throw new Error("not matched");
+    expect(third.data.room.players[1]?.socketId).toBe(P1);
+    expect(store.queueLength()).toBe(1);
+  });
+
+  it("pairs two guests, who have no account to collide", () => {
+    const { store } = createHarness();
+
+    store.quickPlay("Ana", P1);
+    const matched = store.quickPlay("Marko", P2);
+    if (!matched.ok || matched.data.status !== "matched") throw new Error("not matched");
+
+    expect(matched.data.slot).toBe(2);
+    expect(matched.data.room.phase).toBe("synchronizing");
+    expect(store.queueLength()).toBe(0);
+  });
+
+  it("leaves the queue empty once a waiting player disconnects", () => {
+    const { store } = createHarness();
+
+    store.quickPlay("Ana", P1);
+    expect(store.queueLength()).toBe(1);
+
+    store.markDisconnected(P1);
+    expect(store.queueLength()).toBe(0);
   });
 });

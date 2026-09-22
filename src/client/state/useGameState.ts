@@ -14,6 +14,7 @@ export type DraftStatus = "empty" | "pending" | "saved" | "rejected";
 export type Screen =
   | "lobby"
   | "join"
+  | "searching"
   | "waiting"
   | "countdown"
   | "answering"
@@ -22,8 +23,8 @@ export type Screen =
 
 export type GameState = {
   connected: boolean;
-  /** Which of the two entry forms the player is on before a room exists. */
-  entry: "lobby" | "join";
+  /** Which entry step the player is on before a room exists. */
+  entry: "lobby" | "join" | "searching";
   roomCode: string | null;
   you: PlayerSlot | null;
   room: RoomState | null;
@@ -45,7 +46,7 @@ export type GameState = {
 
 export type GameAction =
   | { type: "connection"; connected: boolean }
-  | { type: "entry"; entry: "lobby" | "join" }
+  | { type: "entry"; entry: "lobby" | "join" | "searching" }
   | { type: "joined"; roomCode: string; you: PlayerSlot }
   | { type: "room-state"; payload: RoomState }
   | { type: "round-scheduled"; payload: RoundScheduled; receivedAt: number }

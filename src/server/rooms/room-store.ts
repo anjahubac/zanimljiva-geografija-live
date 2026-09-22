@@ -30,6 +30,7 @@ import { scoreRound } from "@domain/score-round";
 import type { Cancel, Clock, Scheduler } from "@server/clock";
 import { generateResumeToken, generateRoomCode, generateRoundId } from "@server/ids";
 import type { LetterSelector } from "@server/letters";
+import type { HistoryEntry } from "@contracts/account.schemas";
 
 /* ------------------------------------------------------- internal state */
 
@@ -41,6 +42,7 @@ type Draft = { value: string; revision: number };
  * per-recipient projection below (module 01).
  */
 type Player = {
+  accountId: string | null;
   slot: PlayerSlot;
   displayName: string;
   socketId: string | null;
@@ -94,14 +96,22 @@ export type RoomStoreDeps = {
   selectLetter: LetterSelector;
   config: ServerConfig;
   deliver: (delivery: Delivery) => void;
+  saveHistory?: (entries: { accountId: string; entry: HistoryEntry }[]) => void;
 };
 
 export type CreateRoomResult = { room: Room; resumeToken: string; slot: PlayerSlot };
 export type JoinRoomResult = CreateRoomResult;
 
+export type QuickPlayResult =
+  | { status: "queued" }
+  | { status: "matched"; room: Room; resumeToken: string; slot: PlayerSlot };
+
 export type RoomStore = {
-  createRoom(displayName: string, socketId: string): CreateRoomResult;
-  joinRoom(roomCode: string, displayName: string, socketId: string): Ack<JoinRoomResult>;
+  createRoom(displayName: string, socketId: string, accountId?: string): CreateRoomResult;
+  joinRoom(roomCode: string, displayName: string, socketId: string, accountId?: string): Ack<JoinRoomResult>;
+  quickPlay(displayName: string, socketId: string, accountId?: string): Ack<QuickPlayResult>;
+  cancelQuickPlay(socketId: string): void;
+  queueLength(): number;
   markClientReady(roomCode: string, socketId: string): Ack<{ accepted: true }>;
   applyDraft(input: DraftRequest, socketId: string): Ack<DraftAck>;
   finish(roundId: string, socketId: string): Ack<FinishAck>;
@@ -127,6 +137,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const rooms = new Map<string, Room>();
   const roomCodeBySocket = new Map<string, string>();
   const roomCodeByRound = new Map<string, string>();
+  const pendingHistory = new Map<string, { accountId: string; entry: HistoryEntry }[]>();
+  /** Players waiting for a random opponent, oldest first. */
+  const waiting: { socketId: string; displayName: string; accountId?: string }[] = [];
 
   /* ------------------------------------------------------------ helpers */
 
@@ -146,8 +159,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     throw new Error("Could not allocate an unused room code");
   }
 
-  function createPlayer(slot: PlayerSlot, displayName: string, socketId: string): Player {
+  function createPlayer(slot: PlayerSlot, displayName: string, socketId: string, accountId?: string): Player {
     return {
+      accountId: accountId ?? null,
       slot,
       displayName,
       socketId,
@@ -253,9 +267,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
   /* ---------------------------------------------------------- mutations */
 
-  function createRoom(displayName: string, socketId: string): CreateRoomResult {
+  function createRoom(displayName: string, socketId: string, accountId?: string): CreateRoomResult {
     const roomCode = nextRoomCode();
-    const player = createPlayer(1, displayName, socketId);
+    const player = createPlayer(1, displayName, socketId, accountId);
     const room: Room = {
       roomCode,
       phase: "waiting_for_player",
@@ -274,20 +288,72 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     return { room, resumeToken: player.resumeToken, slot: 1 };
   }
 
-  function joinRoom(roomCode: string, displayName: string, socketId: string): Ack<JoinRoomResult> {
+  function joinRoom(roomCode: string, displayName: string, socketId: string, accountId?: string): Ack<JoinRoomResult> {
     const room = rooms.get(roomCode);
     if (!room) return fail("ROOM_NOT_FOUND");
     // Slot 2 occupied is the only way a room is full; a room in any later
     // phase already has two players, so there is no separate phase check here.
     if (room.players[2]) return fail("ROOM_FULL");
+    if (accountId && room.players[1]?.accountId === accountId) return fail("WRONG_PHASE");
 
-    const player = createPlayer(2, displayName, socketId);
+    const player = createPlayer(2, displayName, socketId, accountId);
     room.players[2] = player;
     room.phase = "synchronizing";
     roomCodeBySocket.set(socketId, roomCode);
 
     broadcastRoomState(room);
     return ok({ room, resumeToken: player.resumeToken, slot: 2 });
+  }
+
+  /**
+   * Two strangers who never exchanged a code. The queue holds one entry per
+   * waiting socket; the second arrival creates the room and joins it, so a
+   * matched pair travels exactly the path a room made from a code travels —
+   * there is no second way to start a round.
+   */
+  function quickPlay(
+    displayName: string,
+    socketId: string,
+    accountId?: string,
+  ): Ack<QuickPlayResult> {
+    if (getRoomBySocket(socketId)) return fail("WRONG_PHASE");
+    // Asking twice is not an error; it is the same answer.
+    if (waiting.some((entry) => entry.socketId === socketId)) return ok({ status: "queued" });
+
+    // Never pair an account with itself on a second device.
+    const index = waiting.findIndex((entry) => !accountId || entry.accountId !== accountId);
+    if (index === -1) {
+      waiting.push({ socketId, displayName, accountId });
+      return ok({ status: "queued" });
+    }
+
+    const partner = waiting.splice(index, 1)[0]!;
+    const created = createRoom(partner.displayName, partner.socketId, partner.accountId);
+    const joined = joinRoom(created.room.roomCode, displayName, socketId, accountId);
+    if (!joined.ok) {
+      // Leave nothing behind: the partner's room would sit empty and
+      // unreachable, and the partner would wait forever.
+      rooms.delete(created.room.roomCode);
+      roomCodeBySocket.delete(partner.socketId);
+      waiting.unshift(partner);
+      return joined;
+    }
+
+    return ok({
+      status: "matched",
+      room: joined.data.room,
+      resumeToken: joined.data.resumeToken,
+      slot: joined.data.slot,
+    });
+  }
+
+  function cancelQuickPlay(socketId: string): void {
+    const index = waiting.findIndex((entry) => entry.socketId === socketId);
+    if (index !== -1) waiting.splice(index, 1);
+  }
+
+  function queueLength(): number {
+    return waiting.length;
   }
 
   function markClientReady(roomCode: string, socketId: string): Ack<{ accepted: true }> {
@@ -438,6 +504,33 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     // 7. One scored result, to both.
     const scored = scoreRound(answers1, answers2, round.letter);
     const results: RoundResults = roundResultsSchema.parse({ roundId, ...scored });
+    const history = players.flatMap((player) => {
+      if (!player.accountId) return [];
+      const first = player.slot === 1;
+      const entry: HistoryEntry = {
+        roundId,
+        completedAt: room.resultsAt ?? clock.now(),
+        letter: round.letter,
+        opponent: first ? player2.displayName : player1.displayName,
+        answers: (first ? revealed.player1 : revealed.player2).map((answer) => {
+          const score = results.scores.find((each) => each.category === answer.category)!;
+          return { category: answer.category, raw: answer.raw, valid: answer.valid,
+            points: first ? score.player1Points : score.player2Points };
+        }),
+        total: first ? results.player1Total : results.player2Total,
+        opponentTotal: first ? results.player2Total : results.player1Total,
+        outcome: results.outcome === "draw" ? "draw" : (results.outcome === "player_1") === first ? "win" : "loss",
+      };
+      return [{ accountId: player.accountId, entry }];
+    });
+    if (history.length) {
+      try { deps.saveHistory?.(history); }
+      catch {
+        // Retain failed writes for cleanup retries without closing/scoring again.
+        pendingHistory.set(roundId, history);
+        console.error("Completed round history could not be saved; retry pending.");
+      }
+    }
     for (const player of players) {
       if (!player.socketId) continue;
       deliver({ socketId: player.socketId, event: SERVER_EVENTS.roundResults, payload: results });
@@ -449,6 +542,10 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   /* --------------------------------------------------------- lifecycle */
 
   function markDisconnected(socketId: string): void {
+    // A socket that drops while queued must not be matched with the next
+    // arrival, who would then wait for someone who has gone.
+    cancelQuickPlay(socketId);
+
     const room = getRoomBySocket(socketId);
     roomCodeBySocket.delete(socketId);
     if (!room) return;
@@ -485,6 +582,10 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
   /** Bounded memory: finished rooms and abandoned lobbies are both reaped. */
   function cleanup(): void {
+    for (const [roundId, entries] of pendingHistory) {
+      try { deps.saveHistory?.(entries); pendingHistory.delete(roundId); }
+      catch { /* Keep the scored snapshot for the next retry. */ }
+    }
     const now = clock.now();
     for (const room of [...rooms.values()]) {
       const finishedLongEnough =
@@ -499,6 +600,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   return {
     createRoom,
     joinRoom,
+    quickPlay,
+    cancelQuickPlay,
+    queueLength,
     markClientReady,
     applyDraft,
     finish,

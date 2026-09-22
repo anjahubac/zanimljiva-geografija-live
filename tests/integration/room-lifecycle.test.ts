@@ -89,7 +89,7 @@ describe("room lifecycle over the wire", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("ROOM_NOT_FOUND");
-      expect(result.error.message).toBe("Room not found. Check the code.");
+      expect(result.error.message).toBe("Partija nije pronađena. Proveri kod.");
     }
   });
 

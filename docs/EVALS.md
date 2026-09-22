@@ -64,5 +64,5 @@ fabricating evidence.
 
 | Run | Date | Code state | Command | E1 | E2 | E3 | E4 | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Baseline | _to fill at Step 9_ | _commit_ | `npm run verify` | | | | | |
+| Baseline (automated) | 2026-09-22 | `481535a` | `npm run verify` | pass (3) | pass (7) | pass (16) | open | 223 tests, 13 files. Manual two-computer round not yet run, so E4 is still unfilled — see `EVIDENCE_003.md` §2. |
 | After controlled change | _to fill at Step 10_ | _commit_ | `npm run verify` | | | | | |

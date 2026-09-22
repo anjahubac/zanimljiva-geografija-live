@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 845 2000 225" width="2000" height="225"><defs><filter id="wobble" filterUnits="userSpaceOnUse" x="0" y="0" width="2000" height="1070"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" /></filter></defs><g fill="#d9a142"><circle cx="1172" cy="880" r="12" />
+    </g><g fill="none" stroke="#c9d3e3" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#wobble)"><g transform="translate(160 965) rotate(7.2)">
+      <circle cx="-55" cy="20" r="38" />
+      <circle cx="55" cy="20" r="38" />
+      <path d="M-55 20L-20 -30H35L55 20M-20 -30L0 20L35 -30M0 20H-55" stroke-width="4" />
+      <path d="M-30 -30H-8M35 -30L30 -50H48" stroke-width="4" />
+      <g transform="translate(4.8 3.6)"><circle cy="20" r="6" fill="#d9a142" stroke="none" />
+    </g><circle cy="20" r="6" fill="none" />
+    </g>
+
+    
+    <g transform="translate(400 965) rotate(1.2)">
+      <path d="M-45 70V-60" />
+      <g transform="translate(4.3 6.8)"><rect x="-45" y="-55" width="80" height="80" fill="#d9625b" stroke="none" />
+      </g><rect x="-45" y="-55" width="80" height="80" fill="none" />
+      <path d="M-15 -35h20v15h15v20h-15v15h-20v-15h-15v-20h15Z" fill="#e6eaf0" stroke-width="3" />
+    </g>
+
+    
+    <g transform="translate(610 965) rotate(-1.7)">
+      <path d="M-80 60V-30H-50V60M50 60V-30H80V60" />
+      <path d="M-80 -30V-45H-72V-37H-58V-45H-50V-30M50 -30V-45H58V-37H72V-45H80V-30" />
+      <path d="M-50 60V0H50V60" />
+      <path d="M-50 0V-12H-38V-4H-22V-12H-10V-4H10V-12H22V-4H38V-12H50V0" />
+      <g transform="translate(4.6 4.2)"><path d="M-18 60V32C-18 15 18 15 18 32V60Z" fill="#d9a142" stroke="none" />
+      </g><path d="M-18 60V32C-18 15 18 15 18 32V60Z" fill="none" />
+      <path d="M-65 -30V-75M65 -30V-75" />
+      <g transform="translate(6.0 7.4)"><path d="M-65 -75L-40 -68L-65 -60Z" fill="#d9625b" stroke="none" />
+      </g><path d="M-65 -75L-40 -68L-65 -60Z" fill="none" />
+      <g transform="translate(4.4 5.2)"><path d="M65 -75L90 -68L65 -60Z" fill="#4a78c8" stroke="none" />
+      </g><path d="M65 -75L90 -68L65 -60Z" fill="none" />
+      <path d="M-100 60H100" />
+    </g>
+
+    
+    <g transform="translate(860 960) rotate(7.6)">
+      <path d="M-110 60L-40 -55L0 0L40 -40L110 60Z" fill="#14171d" />
+      <path d="M-40 -55L-55 -30L-45 -35L-38 -25L-28 -35Z" fill="#e6eaf0" />
+      <path d="M40 -40L30 -22L40 -28L50 -20Z" fill="#e6eaf0" />
+      <g transform="translate(6.7 7.4)"><path d="M0 0C-15 15 15 25 -5 40C-15 48 -25 55 -30 60H0C5 50 20 45 22 35C28 18 5 12 0 0Z" fill="#4d7aa8" stroke="none" stroke-width="3" />
+      </g><path d="M0 0C-15 15 15 25 -5 40C-15 48 -25 55 -30 60H0C5 50 20 45 22 35C28 18 5 12 0 0Z" fill="none" stroke="#86b6e4" stroke-width="3" />
+      <path d="M-85 30l8 -18l8 18M75 35l8 -18l8 18" stroke="#5fae72" stroke-width="4" />
+    </g>
+
+    
+    <g transform="translate(1070 960) rotate(-20) rotate(-7.3)">
+      <g transform="translate(8.1 7.3)"><circle cx="-50" r="25" fill="#d9a142" stroke="none" />
+      </g><circle cx="-50" r="25" fill="none" />
+      <circle cx="-50" r="9" fill="#14171d" />
+      <path d="M-25 0H70M50 0V20M65 0V15M35 0V12" />
+    </g>
+
+    
+    <g transform="translate(1270 960) rotate(5.7)">
+      <path d="M-25 65V-10M25 65V0M0 65V-30" />
+      <path d="M-25 40C-45 30 -50 10 -45 5C-35 10 -28 25 -25 40M25 45C45 35 50 15 45 10C35 15 28 30 25 45" />
+      <g transform="translate(5.4 5.1)"><path d="M-40 -35L-35 -10H-15L-10 -35L-20 -25L-25 -40L-30 -25Z" fill="#d9625b" stroke="none" />
+      </g><path d="M-40 -35L-35 -10H-15L-10 -35L-20 -25L-25 -40L-30 -25Z" fill="none" />
+      <g transform="translate(5.8 7.4)"><path d="M-15 -55L-10 -30H10L15 -55L5 -45L0 -60L-5 -45Z" fill="#d9a142" stroke="none" />
+      </g><path d="M-15 -55L-10 -30H10L15 -55L5 -45L0 -60L-5 -45Z" fill="none" />
+      <g transform="translate(8.8 3.8)"><path d="M10 -25L15 0H35L40 -25L30 -15L25 -30L20 -15Z" fill="#d9625b" stroke="none" />
+      </g><path d="M10 -25L15 0H35L40 -25L30 -15L25 -30L20 -15Z" fill="none" />
+      <path d="M-45 65H45" />
+    </g>
+
+    
+    <g transform="translate(1445 960) rotate(-3.4)">
+      <circle cy="-50" r="12" />
+      <path d="M0 -38V50M-28 -20H28" />
+      <path d="M-45 20C-40 45 -20 52 0 52C20 52 40 45 45 20M-45 20L-55 30M-45 20L-32 26M45 20L55 30M45 20L32 26" />
+      <path d="M-80 75C-65 62 -50 88 -35 75C-20 62 -5 88 10 75C25 62 40 88 55 75C70 62 85 88 90 78" stroke="#86b6e4" />
+    </g>
+
+    
+    <g transform="translate(1630 960) rotate(-5.7)">
+      <path d="M-55 75V-60" />
+      <g transform="translate(4.9 4.2)"><rect x="-55" y="-55" width="110" height="24" fill="#d9625b" stroke="none" />
+      </g><rect x="-55" y="-55" width="110" height="24" fill="none" />
+      <g transform="translate(5.2 5.4)"><rect x="-55" y="-31" width="110" height="24" fill="#4a78c8" stroke="none" />
+      </g><rect x="-55" y="-31" width="110" height="24" fill="none" />
+      <rect x="-55" y="-7" width="110" height="24" fill="#e6eaf0" />
+      <rect x="-55" y="-55" width="110" height="72" />
+    </g>
+
+    
+    <g transform="translate(1850 960) rotate(-6.1)">
+      <g transform="translate(6.9 4.3)"><path d="M-70 30C-70 -40 70 -40 70 30Z" fill="#5fae72" fill-opacity="0.35" stroke="none" />
+      </g><path d="M-70 30C-70 -40 70 -40 70 30Z" fill="none" fill-opacity="0.35" />
+      <path d="M-40 30L-25 -5H25L40 30M-25 -5L-10 -30M25 -5L10 -30" stroke-width="4" />
+      <path d="M70 15C95 5 105 25 90 35C82 40 72 35 70 30" />
+      <circle cx="90" cy="20" r="3" fill="#c9d3e3" />
+      <path d="M-50 30V50H-30V30M30 30V50H50V30M-70 25L-90 32" />
+      <path d="M-100 55H110" />
+    </g>
+
+    
+    
+    <path d="M1090 850L1098 830L1104 858L1095 880ZM1116 842L1122 824L1128 848L1120 866Z" stroke="#c9d3e3" stroke-width="4" /><path d="M1500 865C1510 830 1560 830 1550 855C1540 878 1515 860 1535 845C1555 830 1575 860 1560 880" stroke="#d9a142" stroke-width="6" /></g></svg>

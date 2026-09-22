@@ -1,5 +1,6 @@
 import { createServer, type Server as HttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server as SocketServer } from "socket.io";
@@ -11,6 +12,8 @@ import type { LetterSelector } from "@server/letters";
 import { randomLetterSelector } from "@server/letters";
 import { createRoomStore, type RoomStore } from "@server/rooms/room-store";
 import { registerHandlers } from "@server/socket/register-handlers";
+import { createAccountStore, type AccountStore } from "@server/accounts/account-store";
+import { createAccountHttp, sameOrigin } from "@server/accounts/account-http";
 
 const CLIENT_DIR = join(process.cwd(), "dist", "client");
 const CLEANUP_INTERVAL_MS = 60_000;
@@ -44,6 +47,7 @@ export type GameServerDeps = {
   clock?: Clock;
   scheduler?: Scheduler;
   selectLetter?: LetterSelector;
+  accounts?: AccountStore;
 };
 
 export type GameServer = {
@@ -65,9 +69,11 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     scheduler = systemScheduler,
     selectLetter = randomLetterSelector,
   } = deps;
+  const accountHttp = deps.accounts ? createAccountHttp(deps.accounts, config.nodeEnv === "production") : null;
 
   const httpServer = createServer((req, res) => {
     void (async () => {
+      if (accountHttp && await accountHttp(req, res)) return;
       if (req.url === "/healthz") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ status: "ok" }));
@@ -91,23 +97,31 @@ export function createGameServer(deps: GameServerDeps): GameServer {
 
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       res.end("Not found. Run `npm run build:client` first.");
-    })();
+    })().catch(() => {
+      if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" });
+      res.end("Internal server error");
+    });
   });
 
   const io = new SocketServer(httpServer);
+  io.use((socket, next) => {
+    if (socket.request.headers.origin && !sameOrigin(socket.request)) return next(new Error("Origin not allowed"));
+    next();
+  });
 
   const store = createRoomStore({
     clock,
     scheduler,
     selectLetter,
     config,
+    saveHistory: deps.accounts?.saveRound,
     // The store addresses a recipient; only this line knows about sockets.
     deliver: ({ socketId, event, payload }) => {
       io.to(socketId).emit(event, payload);
     },
   });
 
-  registerHandlers(io, store);
+  registerHandlers(io, store, deps.accounts);
 
   return {
     httpServer,
@@ -127,7 +141,10 @@ export function createGameServer(deps: GameServerDeps): GameServer {
 const entryPoint = process.argv[1] ? resolve(process.argv[1]) : "";
 if (entryPoint === fileURLToPath(import.meta.url)) {
   const config = loadConfig(process.env);
-  const server = createGameServer({ config });
+  // One persistent disk, one process. Never keep this directory in git.
+  mkdirSync("data", { recursive: true, mode: 0o700 });
+  const accounts = createAccountStore("data/players.sqlite");
+  const server = createGameServer({ config, accounts });
 
   const cleanupTimer = setInterval(() => server.store.cleanup(), CLEANUP_INTERVAL_MS);
   cleanupTimer.unref();

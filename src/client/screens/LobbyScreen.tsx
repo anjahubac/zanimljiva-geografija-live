@@ -5,25 +5,37 @@ import { UI_SR } from "@client/strings";
 type Props = {
   busy: boolean;
   errorMessage: string | null;
+  /** Set when signed in: the account already supplies the name, so the form
+   *  does not ask for it and the server ignores it either way. */
+  accountName: string | null;
   onCreate: (displayName: string) => void;
+  onQuickPlay: (displayName: string) => void;
   onSwitchToJoin: () => void;
 };
 
-export function LobbyScreen({ busy, errorMessage, onCreate, onSwitchToJoin }: Props) {
+export function LobbyScreen({
+  busy,
+  errorMessage,
+  accountName,
+  onCreate,
+  onQuickPlay,
+  onSwitchToJoin,
+}: Props) {
   const [displayName, setDisplayName] = useState("");
-  const trimmed = displayName.trim();
+  const name = accountName ?? displayName.trim();
+  const ready = name.length > 0;
 
   return (
     <section className="screen" aria-labelledby="lobby-title">
-      <h1 className="screen-title" id="lobby-title">{UI_SR.appTitle}</h1>
+      <h1 className="screen-title" id="lobby-title">
+        {UI_SR.lobbyTitle}
+      </h1>
 
-      <form
-        className="stack"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (trimmed) onCreate(trimmed);
-        }}
-      >
+      {accountName ? (
+        <p className="playing-as">
+          {UI_SR.playingAs} <strong>{accountName}</strong>
+        </p>
+      ) : (
         <div className="field">
           <label htmlFor="lobby-name">{UI_SR.displayName}</label>
           <input
@@ -36,17 +48,31 @@ export function LobbyScreen({ busy, errorMessage, onCreate, onSwitchToJoin }: Pr
             aria-describedby={errorMessage ? "lobby-error" : undefined}
             required
           />
-          {errorMessage ? (
-            <p className="field-error" id="lobby-error" role="alert">
-              {errorMessage}
-            </p>
-          ) : null}
+        </div>
+      )}
+
+      {errorMessage ? (
+        <p className="field-error" id="lobby-error" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
+
+      {/* Two ways into a room; both end in the same scheduled round. */}
+      <div className="paths">
+        <div className="path">
+          <button type="button" disabled={busy || !ready} onClick={() => onCreate(name)}>
+            {UI_SR.playWithFriend}
+          </button>
+          <p className="path-note">{UI_SR.playWithFriendNote}</p>
         </div>
 
-        <button type="submit" disabled={busy || trimmed.length === 0}>
-          {UI_SR.createRoom}
-        </button>
-      </form>
+        <div className="path">
+          <button type="button" disabled={busy || !ready} onClick={() => onQuickPlay(name)}>
+            {UI_SR.playWithStranger}
+          </button>
+          <p className="path-note">{UI_SR.playWithStrangerNote}</p>
+        </div>
+      </div>
 
       <p>
         {UI_SR.haveCode}{" "}

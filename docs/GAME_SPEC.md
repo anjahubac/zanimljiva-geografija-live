@@ -4,10 +4,32 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
+**Amendment 3 — 2026-09-22, at the product owner's request.** Real accounts,
+profiles and persistent personal history are now included as an extension to
+Core. Players register with their email address, a display name and a password,
+or continue as guests. The email address is the identity, matched case- and
+whitespace-insensitively, so one address is one account. Sign-in with Google
+was asked about and is **not** included: it needs an external identity provider
+and a new dependency, and is recorded as a proposal in `Plan.md` §2.
+Login works across devices using the same server. Each
+completed round saves the account holder's eight answers, validity, category
+points, letter, date, opponent display name, outcome and totals. Only the
+authenticated owner can read their history; no drafts are persisted or exposed
+through history before close. Duplicate closes must not duplicate points.
+The profile shows lifetime points and paginated completed rounds. Room-code
+play and all existing round rules remain. Matchmaking is proposed, not added.
+The exclusions in §7 describe the original Core, except as amended here.
+
 **Amendment 2 — 2026-09-22, at the product owner's request.** An answer must
 now be at least two characters after normalization: the round letter typed back
 on its own no longer scores. The round is 150 seconds instead of 90, for nine
 categories rather than six. Both are recorded in `docs/EVIDENCE_003.md`.
+
+**Amendment 4 — 2026-09-23, at the product owner's request.** `lake` (Jezero)
+was removed from the category set, which is now eight: Država, Grad, Reka,
+Planina, More, Životinja, Biljka, Predmet. Amendment 1 below records the set as
+nine and is left as written, so the history stays auditable. Round length is
+unchanged at 150 seconds. Recorded in `docs/EVIDENCE_003.md`.
 
 **Amendment 1 — 2026-09-22, at the product owner's request.** The category set
 grew from six to nine: `lake` (Jezero), `sea` (More) and `thing` (Predmet) were
@@ -33,16 +55,16 @@ Zanimljiva Geografija in the browser. One player creates a room and shares a
 six-character code; the second player joins with it. Once both game screens
 have loaded, the server picks one random letter and schedules a single shared
 start time and deadline, so neither player can see the letter earlier than the
-other. Each player privately fills in nine geography categories for that letter,
+other. Each player privately fills in eight geography categories for that letter,
 and the answers are revealed and scored only after both players finish or the
 server deadline passes.
 
 ## 3. Player objective and controls
 
 **Objective:** score more points than your opponent by writing a valid answer in
-each of the nine categories, and by choosing answers your opponent did not.
+each of the eight categories, and by choosing answers your opponent did not.
 
-**Controls:** keyboard only — a name field, a room-code field, nine text inputs
+**Controls:** keyboard only — a name field, a room-code field, eight text inputs
 (one per category), and a **Finished** button. No mouse is required and there
 are no timed reflex actions.
 
@@ -52,7 +74,7 @@ are no timed reflex actions.
 create or join a room
   -> both screens load and acknowledge automatically
   -> shared 3-second countdown
-  -> 150 seconds of private typing across nine categories
+  -> 150 seconds of private typing across eight categories
   -> the round closes when BOTH players press Finished, or when the server
      deadline is reached, whichever happens first
   -> both answer sets are revealed at the same moment
@@ -64,7 +86,7 @@ countdown reaching zero does not itself end the round.
 
 ## 5. Key rules
 
-1. Both players receive the identical round: same letter, same nine categories,
+1. Both players receive the identical round: same letter, same eight categories,
    same `startsAt`, same `endsAt`.
 2. The letter is chosen by the server **only after both clients are ready**, and
    is never revealed to one player before the other.
@@ -79,7 +101,7 @@ countdown reaching zero does not itself end the round.
 8. The server alone decides identity, phase, timing, validity and points.
 
 Supported letters: `A, B, D, K, M, S, V`.
-Categories: Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet.
+Categories: Država, Grad, Reka, Planina, More, Životinja, Biljka, Predmet.
 
 ## 6. Minimum visual requirement
 

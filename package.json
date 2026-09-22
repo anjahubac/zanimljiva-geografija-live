@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "tsup src/server/index.ts --format esm --target node20 --out-dir dist/server --clean",
+    "build:server": "tsup src/server/index.ts --format esm --target node22 --out-dir dist/server --clean",
     "start": "node dist/server/index.js",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },

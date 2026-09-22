@@ -56,10 +56,12 @@ const validScores = CATEGORIES.map((category) => ({
 /* -------------------------------------------------------- primitive bounds */
 
 describe("primitive schemas", () => {
-  it("accepts the nine locked categories and rejects anything else", () => {
-    expect(CATEGORIES).toHaveLength(9);
+  it("accepts the eight locked categories and rejects anything else", () => {
+    expect(CATEGORIES).toHaveLength(8);
     for (const category of CATEGORIES) expect(categorySchema.parse(category)).toBe(category);
     expect(categorySchema.safeParse("capital").success).toBe(false);
+    // Removed from the set on 2026-09-23; it must not parse from an old payload.
+    expect(categorySchema.safeParse("lake").success).toBe(false);
   });
 
   it("accepts the seven supported letters and rejects others", () => {

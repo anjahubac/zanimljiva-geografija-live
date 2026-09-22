@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 180 480 690" width="480" height="690"><defs><filter id="wobble" filterUnits="userSpaceOnUse" x="0" y="0" width="2000" height="1070"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" /></filter></defs><g fill="#f0b44c"><circle cx="60" cy="740" r="12" />
+    </g><g fill="none" stroke="#1f2a44" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#wobble)"><g transform="translate(120 275) rotate(-6.9)">
+      <g transform="translate(7.8 5.9)"><path d="M-40 60C-50 10 -30 -20 0 -20C30 -20 50 10 40 60Z" fill="#f0b44c" stroke="none" />
+      </g><path d="M-40 60C-50 10 -30 -20 0 -20C30 -20 50 10 40 60Z" fill="none" />
+      <circle cy="-40" r="30" fill="#f7f8fb" />
+      <path d="M-26 -55L-24 -85L-6 -68M26 -55L24 -85L6 -68" />
+      <circle cx="-10" cy="-42" r="3" fill="#1f2a44" />
+      <circle cx="10" cy="-42" r="3" fill="#1f2a44" />
+      <path d="M-4 -32L0 -28L4 -32M-15 -30H-40M15 -30H40M-15 -25L-36 -18M15 -25L36 -18" stroke-width="3" />
+      <path d="M40 55C70 55 75 20 60 10" />
+    </g>
+
+    
+    <g transform="translate(320 265) rotate(-6.5)">
+      <path d="M-55 75V-60" />
+      <rect x="-55" y="-55" width="110" height="72" fill="#ffffff" />
+      <g transform="translate(8.4 4.6)"><rect x="-55" y="-55" width="37" height="72" fill="#3d8a4f" stroke="none" />
+      </g><rect x="-55" y="-55" width="37" height="72" fill="none" />
+      <g transform="translate(7.5 6.0)"><rect x="18" y="-55" width="37" height="72" fill="#c8413b" stroke="none" />
+      </g><rect x="18" y="-55" width="37" height="72" fill="none" />
+      <rect x="-55" y="-55" width="110" height="72" />
+    </g>
+
+    
+    <g transform="translate(125 450) rotate(-1.2)">
+      <g transform="translate(6.9 5.3)"><ellipse rx="85" ry="35" fill="#9cc3e6" stroke="none" />
+      </g><ellipse rx="85" ry="35" fill="none" />
+      <path d="M-40 -5C-30 -12 -20 2 -10 -5M15 8C25 1 35 15 45 8" stroke="#4f86bf" stroke-width="3" />
+      <path d="M60 -20V-80M75 -15V-65M48 -18L42 -60" />
+      <g transform="translate(8.2 7.7)"><path d="M60 -80C55 -90 65 -95 64 -80M75 -65C70 -75 80 -80 79 -65" fill="#f0b44c" stroke="none" />
+    </g><path d="M60 -80C55 -90 65 -95 64 -80M75 -65C70 -75 80 -80 79 -65" fill="none" />
+    </g>
+
+    
+    <g transform="translate(305 450) rotate(-12) rotate(5.2)">
+      <g transform="translate(6.4 6.3)"><path d="M-70 0C-65 -55 65 -55 70 0C58 -10 45 -10 35 0C25 -10 10 -10 0 0C-10 -10 -25 -10 -35 0C-45 -10 -58 -10 -70 0Z" fill="#f0b44c" stroke="none" />
+      </g><path d="M-70 0C-65 -55 65 -55 70 0C58 -10 45 -10 35 0C25 -10 10 -10 0 0C-10 -10 -25 -10 -35 0C-45 -10 -58 -10 -70 0Z" fill="none" />
+      <path d="M0 -40V0M-35 0C-30 -25 -15 -38 0 -42M35 0C30 -25 15 -38 0 -42" />
+      <path d="M0 0V55C0 70 -22 70 -22 55" />
+      <path d="M0 -40V-52" />
+    </g>
+
+    
+    <g transform="translate(110 620) rotate(-6.0)">
+      <path d="M0 20V95M0 70C-30 55 -40 70 -35 80C-20 85 -10 80 0 70M0 55C25 40 38 55 32 65C20 70 8 65 0 55" />
+      <g transform="translate(4.3 6.5)"><g fill="#f0b44c" stroke="none">
+        <ellipse cx="0" cy="-45" rx="10" ry="18" />
+        <ellipse cx="0" cy="25" rx="10" ry="18" transform="rotate(0 0 -10)" />
+        <ellipse cx="-35" cy="-10" rx="18" ry="10" />
+        <ellipse cx="35" cy="-10" rx="18" ry="10" />
+        <ellipse cx="-25" cy="-35" rx="10" ry="18" transform="rotate(-45 -25 -35)" />
+        <ellipse cx="25" cy="-35" rx="10" ry="18" transform="rotate(45 25 -35)" />
+        <ellipse cx="-25" cy="15" rx="10" ry="18" transform="rotate(45 -25 15)" />
+        <ellipse cx="25" cy="15" rx="10" ry="18" transform="rotate(-45 25 15)" />
+      </g>
+      </g><g fill="none">
+        <ellipse cx="0" cy="-45" rx="10" ry="18" />
+        <ellipse cx="0" cy="25" rx="10" ry="18" transform="rotate(0 0 -10)" />
+        <ellipse cx="-35" cy="-10" rx="18" ry="10" />
+        <ellipse cx="35" cy="-10" rx="18" ry="10" />
+        <ellipse cx="-25" cy="-35" rx="10" ry="18" transform="rotate(-45 -25 -35)" />
+        <ellipse cx="25" cy="-35" rx="10" ry="18" transform="rotate(45 25 -35)" />
+        <ellipse cx="-25" cy="15" rx="10" ry="18" transform="rotate(45 -25 15)" />
+        <ellipse cx="25" cy="15" rx="10" ry="18" transform="rotate(-45 25 15)" />
+      </g>
+      <g transform="translate(7.2 8.0)"><circle cy="-10" r="20" fill="#7a5a3a" stroke="none" />
+    </g><circle cy="-10" r="20" fill="none" />
+    </g>
+
+    
+    <g transform="translate(300 650) rotate(-4.4)">
+      <g transform="translate(8.1 4.4)"><path d="M-80 10C-80 -40 20 -50 50 -5C60 10 75 0 85 -15C90 5 85 20 75 25C70 45 -80 55 -80 10Z" fill="#9cc3e6" stroke="none" />
+      </g><path d="M-80 10C-80 -40 20 -50 50 -5C60 10 75 0 85 -15C90 5 85 20 75 25C70 45 -80 55 -80 10Z" fill="none" />
+      <circle cx="-50" cy="-5" r="4" fill="#1f2a44" />
+      <path d="M-78 18C-60 28 -40 25 -30 18" />
+      <path d="M-40 -40V-62M-40 -60C-50 -75 -60 -70 -62 -62M-40 -60C-30 -75 -20 -70 -18 -62" stroke="#4f86bf" stroke-width="4" />
+    </g>
+
+    
+    <g transform="translate(290 820) rotate(2.0)">
+      <g transform="translate(5.9 6.3)"><path d="M-40 10C-40 -25 20 -30 30 0C45 5 50 15 40 20C20 35 -30 40 -40 10Z" fill="#f0b44c" stroke="none" />
+      </g><path d="M-40 10C-40 -25 20 -30 30 0C45 5 50 15 40 20C20 35 -30 40 -40 10Z" fill="none" />
+      <circle cx="18" cy="-5" r="4" fill="#1f2a44" />
+      <g transform="translate(4.1 5.3)"><path d="M30 0L50 -5L35 8" fill="#c8413b" stroke="none" />
+      </g><path d="M30 0L50 -5L35 8" fill="none" />
+      <path d="M-15 5C-5 -10 10 5 0 15Z" />
+      <path d="M-40 10L-65 -5L-60 20Z" />
+      <path d="M-5 32V48M8 32V48M-12 48H2M1 48H15" stroke-width="3" />
+    </g>
+
+    
+    
+    <path d="M520 200L565 172L545 205L595 178L575 212L612 192" stroke="#f0b44c" stroke-width="7" /><path d="M150 780C160 770 170 790 182 780M172 800C182 790 192 810 204 800" stroke="#1f2a44" stroke-width="4" /><path d="M430 830C440 818 452 842 464 830C476 818 488 842 500 830" stroke="#4f86bf" stroke-width="4" /></g></svg>
