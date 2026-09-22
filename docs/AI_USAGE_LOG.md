@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **5**.
+Used so far: **6**.
 
 ---
 
@@ -138,3 +138,38 @@ Used so far: **5**.
 - **Next decision:** Step 8 — the seven screens, rendering only parsed server
   projections, with the accessibility floor from module 10 treated as
   acceptance criteria.
+
+## 006 — Step 8, the client (Claude Code, 2026-09-22)
+
+- **Phase:** implementation, browser layer.
+- **Reason:** make the verified server playable, with screens that render only
+  parsed server projections.
+- **Expected:** seven screens driven by one reducer; debounced drafts; a locked
+  form on an accepted finish; no opponent answer in client state before reveal;
+  the module 10 accessibility floor met as acceptance criteria.
+- **Actual (verified in-session):** `npm run verify` green — typecheck clean,
+  `eslint . --max-warnings=0` clean, **216 tests passed across 13 files**, both
+  builds succeeded. The built server was run for real on a spare port: `GET /`
+  returned the built `index.html` referencing the hashed bundle, and the
+  Socket.IO handshake at `/socket.io/?EIO=4&transport=polling` returned 200 from
+  the same process.
+- **Thirteen new reducer tests** cover the client rules that are easy to get
+  wrong: a late acknowledgement for an older revision must not mark a newer edit
+  as saved; the form locks on the accepted finish ack, not the click; and no
+  opponent answer exists anywhere in state before the reveal payload arrives.
+- **Deviation recorded:** the results screen shows the honor-system notice in
+  Serbian, with the exact English sentence from `Plan.md` §7 beneath it, because
+  the rest of the interface is Serbian and the plan fixes that wording.
+- **Known limitations, stated plainly:**
+  1. There are **no DOM or component tests**. Adding a test renderer would mean
+     new dependencies, which module 11 forbids without asking. The reducer and
+     the socket adapter are tested; the rendered markup is not.
+  2. Step 8's exit criterion — two browser profiles completing a full local
+     round — has **not** been performed. It needs a human at two browsers, and
+     the evidence belongs in Step 9.
+  3. Contrast ratios in `app.css` were chosen from documented token values, not
+     measured with a tool in this session.
+- **Next decision:** Step 9 — run the pre-written evals unchanged against this
+  commit, play a two-browser round, and record the real output, screenshots and
+  commit hash in `docs/EVIDENCE_003.md`. Do not fix anything before the baseline
+  is captured.
