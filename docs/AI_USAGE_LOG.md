@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **3**.
+Used so far: **5**.
 
 ---
 
@@ -92,3 +92,49 @@ Used so far: **3**.
   `resumeToken` it already promised in prose.
 - **Next decision:** Step 3 — pure domain functions (normalize, validate, score)
   with the full scoring table from `GAME_SPEC.md` §5.
+
+## 005 — Steps 3–7, the whole server (Claude Code, 2026-09-22)
+
+- **Phase:** implementation, domain through socket layer. No client screens yet.
+- **Reason:** finish every layer the browser cannot be trusted with, and prove
+  it with tests that do not need a browser.
+- **Expected:** pure domain functions matching the `Plan.md` §6 table; injected
+  clock, scheduler and letter selection; a room store whose full phase machine
+  and idempotent `closeRound` are testable without Socket.IO; handlers that only
+  translate events into store calls; E1, E2 and E3 passing over real sockets.
+- **Actual (verified in-session):** `npm run verify` green — `tsc --noEmit`
+  clean, `eslint . --max-warnings=0` clean, **203 tests passed across 12 files**,
+  `vite build` + `tsup` both succeeded. `npm run test:coverage` reported 100% on
+  `src/domain` and `src/contracts` and 99.65% statements on `room-store.ts`,
+  against thresholds of 80/70. The built server was started for real:
+  `GET /healthz` → 200 `{"status":"ok"}`, an unknown client route → 200 via the
+  SPA fallback.
+- **Three decisions worth recording:**
+  1. `Plan.md` §7 lists "at most 40 characters" as validity condition 1 but the
+     verbatim `isValidAnswer` body it supplies does not check length.
+     `GAME_SPEC.md` §5 (higher priority) treats the cap as an input bound and
+     validity as non-empty + starts with the letter. The cap therefore stays
+     owned by `answerValueSchema` at the boundary, and the domain function is
+     used exactly as written. One rule, one owner.
+  2. The store emits addressed *deliveries* (`socketId` + event + payload)
+     through an injected sink rather than touching Socket.IO. A deadline close
+     has no request in flight, so it needs a push path, and this keeps the whole
+     state machine testable without a transport.
+  3. Outbound payloads are parsed through the strict contract schemas before
+     delivery, so an internal field added by accident throws at the projection
+     instead of leaking to a browser.
+- **Two test failures that were real, and what they taught:**
+  - `loadConfig` echoed the rejected value in its error message, because Zod's
+    enum text quotes it. A mis-assigned environment variable could hold a
+    credential, so the message now names the variable only. Product code was
+    fixed; the assertion was not weakened.
+  - The deadline race could not be reproduced with `advance`, which fires the
+    timer first and honestly yields `ROUND_STALE`. Moving the clock with
+    `setNow` — wall time past `endsAt`, callback not yet run — is the only way
+    to reach the `TOO_LATE` branch, and that is now how both the unit and the
+    E3 test express it.
+- **Known limitation:** no client screens yet, so no end-to-end human round has
+  been played. E1–E3 pass headlessly; the two-browser evidence is Step 9 work.
+- **Next decision:** Step 8 — the seven screens, rendering only parsed server
+  projections, with the accessibility floor from module 10 treated as
+  acceptance criteria.
