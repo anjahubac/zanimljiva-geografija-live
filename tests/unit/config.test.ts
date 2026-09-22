@@ -11,7 +11,7 @@ describe("serverConfigSchema", () => {
     expect(serverConfigSchema.parse({})).toEqual({
       port: 3000,
       nodeEnv: "development",
-      roundDurationMs: 90_000,
+      roundDurationMs: 150_000,
       countdownMs: 3_000,
       completedRoomTtlMs: 300_000,
       waitingRoomTtlMs: 1_800_000,
@@ -63,7 +63,7 @@ describe("loadConfig", () => {
     expect(loadConfig({})).toEqual({
       port: 3000,
       nodeEnv: "development",
-      roundDurationMs: 90_000,
+      roundDurationMs: 150_000,
       countdownMs: 3_000,
       completedRoomTtlMs: 300_000,
       waitingRoomTtlMs: 1_800_000,

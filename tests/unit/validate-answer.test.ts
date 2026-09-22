@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ANSWER_LENGTH, answerValueSchema } from "@contracts/game.schemas";
+import {
+  MAX_ANSWER_LENGTH,
+  MIN_ANSWER_LENGTH,
+  answerValueSchema,
+} from "@contracts/game.schemas";
 import { isValidAnswer } from "@domain/validate-answer";
 
 describe("isValidAnswer", () => {
@@ -16,6 +20,32 @@ describe("isValidAnswer", () => {
   it("rejects an answer that does not start with the round letter", () => {
     expect(isValidAnswer("Beograd", "S")).toBe(false);
     expect(isValidAnswer("Morava", "K")).toBe(false);
+  });
+
+  it("rejects the round letter typed back on its own", () => {
+    // The cheapest way to farm points before this rule existed.
+    expect(isValidAnswer("S", "S")).toBe(false);
+    expect(isValidAnswer("s", "S")).toBe(false);
+    expect(isValidAnswer(" S ", "S")).toBe(false);
+  });
+
+  it("rejects any single character, matching letter or not", () => {
+    expect(isValidAnswer("B", "S")).toBe(false);
+    expect(isValidAnswer("7", "S")).toBe(false);
+  });
+
+  it("accepts the shortest real answer at the floor", () => {
+    expect(MIN_ANSWER_LENGTH).toBe(2);
+    // "Sa" is two characters: at the floor, so valid.
+    expect(isValidAnswer("Sa", "S")).toBe(true);
+    expect(isValidAnswer("Sava", "S")).toBe(true);
+  });
+
+  it("counts length after normalization, not before", () => {
+    // Padding does not buy length.
+    expect(isValidAnswer("  S  ", "S")).toBe(false);
+    // Collapsed internal whitespace still leaves two characters.
+    expect(isValidAnswer("S    a", "S")).toBe(true);
   });
 
   it("rejects blank and whitespace-only answers", () => {

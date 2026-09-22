@@ -19,6 +19,15 @@ export const CATEGORY_COUNT = CATEGORIES.length;
 export const SUPPORTED_LETTERS = ["A", "B", "D", "K", "M", "S", "V"] as const;
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_ANSWER_LENGTH = 40;
+/**
+ * Shortest answer that can score. A single letter is the round letter typed
+ * back, not a geography answer.
+ *
+ * This is a *validity* rule, not an input bound: `answerValueSchema` keeps no
+ * minimum so a one-character draft still saves while someone is typing
+ * "Srbija" one key at a time. Validity is decided at scoring, as always.
+ */
+export const MIN_ANSWER_LENGTH = 2;
 export const MAX_DISPLAY_NAME_LENGTH = 24;
 export const ROOM_CODE_LENGTH = 6;
 
@@ -113,7 +122,7 @@ export type Outcome = z.infer<typeof outcomeSchema>;
 export const serverConfigSchema = z.object({
   port: z.coerce.number().int().min(1).max(65_535).default(3000),
   nodeEnv: z.enum(["development", "test", "production"]).default("development"),
-  roundDurationMs: z.coerce.number().int().min(5_000).max(600_000).default(90_000),
+  roundDurationMs: z.coerce.number().int().min(5_000).max(600_000).default(150_000),
   countdownMs: z.coerce.number().int().min(1_000).max(30_000).default(3_000),
   completedRoomTtlMs: z.coerce.number().int().min(10_000).default(300_000),
   waitingRoomTtlMs: z.coerce.number().int().min(60_000).default(1_800_000),

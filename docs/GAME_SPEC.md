@@ -4,6 +4,11 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
+**Amendment 2 — 2026-09-22, at the product owner's request.** An answer must
+now be at least two characters after normalization: the round letter typed back
+on its own no longer scores. The round is 150 seconds instead of 90, for nine
+categories rather than six. Both are recorded in `docs/EVIDENCE_003.md`.
+
 **Amendment 1 — 2026-09-22, at the product owner's request.** The category set
 grew from six to nine: `lake` (Jezero), `sea` (More) and `thing` (Predmet) were
 added, and the order now reads Država, Grad, Reka, Planina, Jezero, More,
@@ -47,7 +52,7 @@ are no timed reflex actions.
 create or join a room
   -> both screens load and acknowledge automatically
   -> shared 3-second countdown
-  -> 90 seconds of private typing across nine categories
+  -> 150 seconds of private typing across nine categories
   -> the round closes when BOTH players press Finished, or when the server
      deadline is reached, whichever happens first
   -> both answer sets are revealed at the same moment
@@ -64,8 +69,9 @@ countdown reaching zero does not itself end the round.
 2. The letter is chosen by the server **only after both clients are ready**, and
    is never revealed to one player before the other.
 3. At most one answer per category per player; at most 40 characters.
-4. An answer is **valid** when, after normalization, it is non-empty and starts
-   with the round letter. Geographic and semantic correctness is **not** checked.
+4. An answer is **valid** when, after normalization, it is **at least two
+   characters** and starts with the round letter. Geographic and semantic
+   correctness is **not** checked.
 5. Answers are invisible to the opponent until the reveal.
 6. **Finished** permanently locks that player's answers and cannot be undone.
 7. Scoring per category: two different valid answers → 10 each; the same valid

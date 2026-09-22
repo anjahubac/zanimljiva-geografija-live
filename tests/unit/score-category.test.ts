@@ -18,6 +18,10 @@ const cases = [
   { p1: "Beograd", p2: "", points: [0, 0], reason: "neither" },
   { p1: "   ", p2: "x".repeat(41), points: [0, 0], reason: "neither" },
   { p1: "Beograd", p2: "Beograd", points: [0, 0], reason: "neither" },
+  // A lone round letter scores nothing, even against a real answer.
+  { p1: "S", p2: "Srbija", points: [0, 10], reason: "only_player_2" },
+  { p1: "Srbija", p2: "S", points: [10, 0], reason: "only_player_1" },
+  { p1: "S", p2: "S", points: [0, 0], reason: "neither" },
 ] as const;
 
 describe("scoreCategory", () => {

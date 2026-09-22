@@ -54,7 +54,7 @@ The Week 3 version proves one stable online round. It is not a general gaming pl
 - Automatic two-client synchronization after both game screens load
 - Server-selected random letter from exactly `A, B, D, K, M, S, V`
 - Shared three-second countdown, `startsAt`, and `endsAt`
-- Exactly 90 seconds of answer time
+- Exactly 150 seconds of answer time
 - Nine categories: Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet
 - Same categories and duration for both players
 - Private answer entry and private server draft saving
@@ -100,7 +100,7 @@ The Week 3 version proves one stable online round. It is not a general gaming pl
 | Serbian labels | Država, Grad, Reka, Planina, Jezero, More, Životinja, Biljka, Predmet |
 | Supported letters | `A`, `B`, `D`, `K`, `M`, `S`, `V` |
 | Countdown | 3,000 ms |
-| Answer time | 90,000 ms |
+| Answer time | 150,000 ms |
 | Display-name length | 1-24 characters after trimming |
 | Answer length | 0-40 characters before normalization |
 | Room code | 6 characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` |
@@ -159,7 +159,8 @@ The Core game uses an explicit honor-system rule. It does **not** decide whether
 An answer is valid when all of these are true:
 
 1. The raw value is a string no longer than 40 characters.
-2. After normalization it is not empty.
+2. After normalization it is at least two characters long. A single character
+   is the round letter typed back, not an answer.
 3. The normalized answer begins with the selected single-letter round letter, compared case-insensitively.
 
 Use this exact normalization function:
@@ -180,7 +181,7 @@ Use this exact validity rule:
 function isValidAnswer(raw: string, letter: string): boolean {
   const normalized = normalizeAnswer(raw);
   const normalizedLetter = normalizeAnswer(letter);
-  return normalized.length > 0 && normalized.startsWith(normalizedLetter);
+  return normalized.length >= MIN_ANSWER_LENGTH && normalized.startsWith(normalizedLetter);
 }
 ```
 
@@ -200,6 +201,7 @@ Examples for letter `S`:
 - `"Slovenija"` and `"Srbija"` are both valid and different, so they score 10/10.
 - `"Beograd"` is invalid because it does not start with `S`.
 - `"   "` is invalid.
+- `"S"` is invalid: one character is the round letter typed back, not an answer.
 
 The results screen must show: **Answers are checked only for the selected starting letter in this Week 3 version. Players are responsible for semantic correctness.** Semantic dictionaries and answer disputes are Stretch, not Core.
 
