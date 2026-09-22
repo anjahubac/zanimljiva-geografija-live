@@ -100,7 +100,11 @@ describe("room phase machine", () => {
     const created = harness.store.createRoom("Ana", P1);
 
     expect(created.room.round).toBeNull();
-    expect(JSON.stringify(harness.deliveries)).not.toContain(LETTER);
+    expect(harness.eventsTo(P1, SERVER_EVENTS.roundScheduled)).toHaveLength(0);
+    // The lobby projection carries no letter field at all before scheduling.
+    for (const delivery of harness.deliveries) {
+      expect(delivery.payload).not.toHaveProperty("letter");
+    }
   });
 
   it("schedules only after both players acknowledge, and only once", () => {

@@ -267,6 +267,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
     rooms.set(roomCode, room);
     roomCodeBySocket.set(socketId, roomCode);
+    // Every membership or phase change broadcasts room:state, so the lobby has
+    // one source of truth rather than a screen the socket layer assembles.
+    broadcastRoomState(room);
 
     return { room, resumeToken: player.resumeToken, slot: 1 };
   }
