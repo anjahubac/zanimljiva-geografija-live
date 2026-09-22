@@ -67,7 +67,7 @@ export function ResultsScreen({ you, revealed, results }: Props) {
         : UI_SR.outcomeLoss;
 
   return (
-    <section className="screen screen-results" aria-labelledby="results-title">
+    <section className="screen screen-results screen-wide" aria-labelledby="results-title">
       <h1 id="results-title" className="screen-title">
         {UI_SR.resultsTitle}
       </h1>

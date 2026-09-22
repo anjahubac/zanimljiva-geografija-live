@@ -11,6 +11,7 @@ type Props = {
   fieldError: Partial<Record<Category, string>>;
   locked: boolean;
   busy: boolean;
+  opponentFinished: boolean;
   announcement: string;
   onChange: (category: Category, value: string) => void;
   onBlur: (category: Category) => void;
@@ -33,6 +34,11 @@ function formatRemaining(remainingMs: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+/**
+ * The same sheet the results are scored on: categories across the top, your
+ * line editable, the opponent's line present but blank — the client never
+ * holds their answers before the canonical reveal.
+ */
 export function AnswerScreen({
   letter,
   remainingMs,
@@ -41,13 +47,14 @@ export function AnswerScreen({
   fieldError,
   locked,
   busy,
+  opponentFinished,
   announcement,
   onChange,
   onBlur,
   onFinish,
 }: Props) {
   return (
-    <section className="screen" aria-labelledby="answer-title">
+    <section className="screen screen-wide" aria-labelledby="answer-title">
       <header className="round-header">
         <div>
           <h1 id="answer-title" className="screen-title">
@@ -69,51 +76,102 @@ export function AnswerScreen({
         {announcement}
       </p>
 
-      <form className="answers" onSubmit={(event) => { event.preventDefault(); onFinish(); }}>
-        <ol className="sheet">
-          {CATEGORIES.map((category) => {
-            const status = draftStatus[category];
-            const error = fieldError[category];
-            const describedBy = [`${category}-status`, error ? `${category}-error` : null]
-              .filter(Boolean)
-              .join(" ");
+      <form onSubmit={(event) => { event.preventDefault(); onFinish(); }}>
+        <div className="table-scroll">
+          <table className="sheet-table play-table">
+            <caption className="visually-hidden">{UI_SR.answeringTitle}</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="col-head col-row-head">
+                  {UI_SR.player}
+                </th>
+                {CATEGORIES.map((category) => (
+                  <th scope="col" className="col-head" key={category}>
+                    {CATEGORY_LABELS_SR[category]}
+                  </th>
+                ))}
+                <th scope="col" className="col-head col-total">
+                  {UI_SR.total}
+                </th>
+              </tr>
+            </thead>
 
-            return (
-              <li className="sheet-row" key={category}>
-                <label className="sheet-cat" htmlFor={`answer-${category}`}>
-                  {CATEGORY_LABELS_SR[category]}
-                </label>
+            <tbody>
+              <tr>
+                <th scope="row" className="col-row-head">
+                  {UI_SR.you}
+                </th>
 
-                <div className="sheet-write">
-                  <input
-                    id={`answer-${category}`}
-                    name={category}
-                    value={answers[category]}
-                    maxLength={MAX_ANSWER_LENGTH}
-                    disabled={locked}
-                    autoComplete="off"
-                    autoCapitalize="words"
-                    spellCheck={false}
-                    aria-describedby={describedBy}
-                    aria-invalid={error ? true : undefined}
-                    onChange={(event) => onChange(category, event.target.value)}
-                    onBlur={() => onBlur(category)}
-                  />
-                  {/* The word carries the meaning; the pen colour only seconds it. */}
-                  <span className={`status status-${status}`} id={`${category}-status`}>
-                    {STATUS_TEXT[status]}
+                {CATEGORIES.map((category) => {
+                  const status = draftStatus[category];
+                  const error = fieldError[category];
+                  const describedBy = [`${category}-status`, error ? `${category}-error` : null]
+                    .filter(Boolean)
+                    .join(" ");
+
+                  return (
+                    <td className="cell cell-input" key={category}>
+                      {/* Always a real label. The column header names the field
+                          on a wide screen, so it is hidden there and shown
+                          again once the sheet stacks. */}
+                      <label className="cell-label" htmlFor={`answer-${category}`}>
+                        {CATEGORY_LABELS_SR[category]}
+                      </label>
+                      <input
+                        id={`answer-${category}`}
+                        name={category}
+                        value={answers[category]}
+                        maxLength={MAX_ANSWER_LENGTH}
+                        disabled={locked}
+                        autoComplete="off"
+                        autoCapitalize="words"
+                        spellCheck={false}
+                        aria-describedby={describedBy}
+                        aria-invalid={error ? true : undefined}
+                        onChange={(event) => onChange(category, event.target.value)}
+                        onBlur={() => onBlur(category)}
+                      />
+                      {/* The word carries the meaning; the pen colour seconds it. */}
+                      <span className={`status status-${status}`} id={`${category}-status`}>
+                        {STATUS_TEXT[status]}
+                      </span>
+                      {error ? (
+                        <p className="field-error" id={`${category}-error`}>
+                          {error}
+                        </p>
+                      ) : null}
+                    </td>
+                  );
+                })}
+
+                <td className="cell cell-total cell-pending">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">{UI_SR.notScoredYet}</span>
+                </td>
+              </tr>
+
+              <tr className="row-opponent">
+                <th scope="row" className="col-row-head">
+                  {UI_SR.opponent}
+                  <span className="row-note">
+                    {opponentFinished ? UI_SR.opponentFinished : UI_SR.opponentStillPlaying}
                   </span>
-                </div>
+                </th>
 
-                {error ? (
-                  <p className="field-error" id={`${category}-error`}>
-                    {error}
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
+                {CATEGORIES.map((category) => (
+                  <td className="cell cell-hidden" key={category}>
+                    <span className="visually-hidden">{UI_SR.hiddenUntilReveal}</span>
+                  </td>
+                ))}
+
+                <td className="cell cell-total cell-pending">
+                  <span aria-hidden="true">—</span>
+                  <span className="visually-hidden">{UI_SR.notScoredYet}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <button type="submit" disabled={locked || busy}>
           {UI_SR.finish}

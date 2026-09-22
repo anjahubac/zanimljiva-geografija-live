@@ -29,6 +29,8 @@ export const UI_SR = {
   points: "Poeni",
   total: "Ukupno",
   player: "Igrač",
+  hiddenUntilReveal: "Skriveno do kraja runde",
+  notScoredYet: "Još nema poena",
   round: "Runda",
   pointsFor: "poena",
   valid: "priznato",

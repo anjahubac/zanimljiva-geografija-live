@@ -270,6 +270,7 @@ function renderScreen(args: RenderArgs) {
           // reveal; it never closes the round itself.
           locked={state.finished || args.remainingMs === 0}
           busy={state.busy}
+          opponentFinished={state.opponentFinished}
           announcement={args.announcement}
           onChange={args.onChange}
           onBlur={args.onBlur}

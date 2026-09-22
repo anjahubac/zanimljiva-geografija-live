@@ -117,7 +117,7 @@ body::before {
 
 .app {
   margin: 0 auto;
-  max-width: 44rem;
+  max-width: min(74rem, 100%);
   padding: 2rem 1rem 3rem;
 }
 
@@ -138,6 +138,10 @@ p {
   display: grid;
   gap: 1.25rem;
   position: relative;
+  /* Forms read better narrow; the two sheet screens opt into the full width. */
+  max-width: 44rem;
+  margin-inline: auto;
+  width: 100%;
   padding: 1.75rem 1.5rem 2rem;
   background: var(--paper-sheet);
   border: 1px solid var(--rule-strong);
@@ -158,6 +162,10 @@ p {
   background: var(--margin-line);
   opacity: 0.55;
   pointer-events: none;
+}
+
+.screen-wide {
+  max-width: 100%;
 }
 
 .screen-title {
@@ -377,83 +385,66 @@ button.link {
   color: var(--pen-red);
 }
 
-.sheet {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
+/* The playing sheet is the scoring sheet: same columns, your line editable. */
+.play-table .cell-input {
+  min-width: 8.75rem;
+  padding: 0.5rem 0.55rem 0.55rem;
 }
 
-.sheet-row {
-  display: grid;
-  grid-template-columns: minmax(6rem, 8.5rem) 1fr;
-  align-items: stretch;
-  padding-bottom: 0.4rem;
-  background-image: var(--rule-h);
-  background-repeat: repeat-x;
-  background-position: bottom left;
-}
-
-.sheet-cat {
-  display: flex;
-  align-items: center;
-  padding: 0.6rem 0.9rem 0.6rem 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  background-image: var(--rule-v);
-  background-repeat: repeat-y;
-  background-position: right top;
-}
-
-.sheet-write {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
-  padding-left: 0.9rem;
-}
-
-.sheet-write input {
-  flex: 1 1 10rem;
+.play-table input {
   border-bottom: 0;
-  min-height: 2.9rem;
-  font-size: 1.05rem;
+  min-height: 2.6rem;
+  padding: 0.35rem 0.15rem;
+  font-size: 1.02rem;
 }
 
-.sheet-write input:hover:not(:disabled),
-.sheet-write input:disabled {
+.play-table input:hover:not(:disabled) {
   border-bottom: 0;
+  background: rgb(125 141 176 / 8%);
 }
 
-/* Status is a word first; the pen colour only seconds it. */
-.status {
-  flex: 0 0 auto;
-  font-size: 0.85rem;
+/* On a wide sheet the column header names the field, so the label is hidden
+   here and comes back when the sheet stacks. */
+.play-table .cell-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.play-table .status {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.play-table .field-error {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.row-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: var(--ink-soft);
 }
 
-.status-saved {
-  color: var(--pen-green);
+/* The opponent's line exists on the sheet and stays blank. Their answers are
+   not hidden here — the client never receives them before the reveal. */
+.cell-hidden {
+  min-width: 8.75rem;
+  background-color: rgb(125 141 176 / 7%);
 }
 
-.status-rejected {
-  color: var(--pen-red);
-}
-
-.sheet-row .field-error {
-  grid-column: 1 / -1;
-  padding: 0.15rem 0 0.4rem;
-  font-size: 0.9rem;
-}
-
-.answers {
-  display: grid;
-  gap: 1.5rem;
+.cell-pending {
+  color: var(--ink-soft);
 }
 
 /* ----------------------------------------------------------- the results */
@@ -634,6 +625,75 @@ button.link {
 
 /* -------------------------------------------------------------- narrow */
 
+/* The playing sheet stacks before it would ask anyone to type while scrolling
+   sideways. The results sheet is read-only, so it keeps scrolling instead. */
+@media (max-width: 56rem) {
+  .play-table,
+  .play-table tbody,
+  .play-table tr,
+  .play-table th,
+  .play-table td {
+    display: block;
+  }
+
+  .play-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .play-table tr {
+    margin-bottom: 0.75rem;
+  }
+
+  .play-table .col-row-head {
+    position: static;
+    min-width: 0;
+    padding: 0.5rem 0 0.35rem;
+    background-image: var(--rule-h);
+    background-repeat: repeat-x;
+    background-position: bottom left;
+  }
+
+  .play-table .cell {
+    display: grid;
+    grid-template-columns: minmax(6rem, 8rem) 1fr;
+    align-items: center;
+    gap: 0 0.75rem;
+    min-width: 0;
+    padding: 0.35rem 0 0.4rem;
+    background-image: var(--rule-h);
+    background-repeat: repeat-x;
+    background-position: bottom left;
+  }
+
+  .play-table .cell-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    clip-path: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .play-table .status,
+  .play-table .field-error {
+    grid-column: 2;
+  }
+
+  /* One line of status stands in for the opponent's blank row. */
+  .play-table .row-opponent .cell {
+    display: none;
+  }
+}
+
 @media (max-width: 30rem) {
   .app {
     padding: 1rem 0.65rem 2rem;
@@ -645,21 +705,6 @@ button.link {
 
   .screen::before {
     left: 0.5rem;
-  }
-
-  /* The sheet gives up its column rule before it gives up legibility. */
-  .sheet-row {
-    grid-template-columns: 1fr;
-    padding-bottom: 0.5rem;
-  }
-
-  .sheet-cat {
-    padding: 0.5rem 0 0.1rem;
-    background-image: none;
-  }
-
-  .sheet-write {
-    padding-left: 0;
   }
 
   .round-header {
