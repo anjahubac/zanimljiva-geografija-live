@@ -1,5 +1,5 @@
 import { CATEGORIES } from "@contracts/game.schemas";
-import type { Category, CategoryScore, Letter, Outcome } from "@contracts/game.schemas";
+import type { Category, CategoryScore, Language, Letter, Outcome } from "@contracts/game.schemas";
 import { scoreCategory, scoreJudgedCategory, type JudgedAnswer } from "@domain/score-category";
 
 export type RoundScore = {
@@ -27,8 +27,11 @@ export function scoreRound(
   answers1: Record<Category, string>,
   answers2: Record<Category, string>,
   letter: Letter,
+  alphabet: Language,
 ): RoundScore {
-  return total(CATEGORIES.map((category) => scoreCategory(category, answers1[category], answers2[category], letter)));
+  return total(
+    CATEGORIES.map((category) => scoreCategory(category, answers1[category], answers2[category], letter, alphabet)),
+  );
 }
 
 /** The same pass over answers whose validity was already decided (Week 4, with the AI verdict). */

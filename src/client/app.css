@@ -503,6 +503,8 @@ button.link:hover:not(:disabled) {
 
 .letter strong {
   display: inline-block;
+  /* The round letter keeps its case: Lj, Nj and Dž, not LJ, NJ and DŽ. */
+  text-transform: none;
   font-family: var(--font-hand);
   font-size: 2.25rem;
   line-height: 1;

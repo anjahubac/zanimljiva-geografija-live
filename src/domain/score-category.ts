@@ -1,4 +1,4 @@
-import type { Category, CategoryScore, Letter } from "@contracts/game.schemas";
+import type { Category, CategoryScore, Language, Letter } from "@contracts/game.schemas";
 import { normalizeAnswer } from "@domain/normalize-answer";
 import { isValidAnswer } from "@domain/validate-answer";
 
@@ -39,7 +39,11 @@ export function scoreCategory(
   player1Raw: string,
   player2Raw: string,
   letter: Letter,
+  alphabet: Language,
 ): CategoryScore {
-  const judge = (raw: string): JudgedAnswer => ({ valid: isValidAnswer(raw, letter), key: normalizeAnswer(raw) });
+  const judge = (raw: string): JudgedAnswer => ({
+    valid: isValidAnswer(raw, letter, alphabet),
+    key: normalizeAnswer(raw),
+  });
   return scoreJudgedCategory(category, judge(player1Raw), judge(player2Raw));
 }

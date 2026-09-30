@@ -30,6 +30,10 @@ they have no spec.
 
 ## New features (009 onward)
 
+| # | Feature | Status | Design |
+| --- | --- | --- | --- |
+| [009](009-full-alphabet-letters/spec.md) | Letters from the whole alphabet | Built 2026-09-30, full flow | `Plan.md` §2B.13 |
+
 Use the full flow: `/speckit-specify` → `/speckit-clarify` (optional) →
 `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`.
 A feature that adds anything `Plan.md` does not list needs the owner's decision

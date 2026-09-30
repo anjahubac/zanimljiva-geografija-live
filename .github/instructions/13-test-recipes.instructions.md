@@ -78,11 +78,13 @@ enforces it for the third.
 ## Deterministic letter selection
 
 ```ts
-export type LetterSelector = () => Letter;
-export const randomLetterSelector: LetterSelector = () =>
-  SUPPORTED_LETTERS[randomInt(SUPPORTED_LETTERS.length)]!; // node:crypto
+export type LetterSelector = (alphabet: Language) => Letter;
+export const randomLetterSelector: LetterSelector = (alphabet) => {
+  const letters = ALPHABETS[alphabet];
+  return letters[randomInt(letters.length)]!; // node:crypto
+};
 
-// tests
+// tests: startTestServer({ letter: "S" }) pins it; { selectLetter } sees the room's alphabet
 const fixedLetter = (letter: Letter): LetterSelector => () => letter;
 ```
 
@@ -157,7 +159,7 @@ describe("synchronized start", () => {
     const p1 = await connectClient(ctx.port);
     const p2 = await connectClient(ctx.port);
 
-    const created = await emitAck<{ roomCode: string }>(p1, "room:create", { displayName: "Ana" });
+    const created = await emitAck<{ roomCode: string }>(p1, "room:create", { displayName: "Ana", language: "sr" });
     expect(created.ok).toBe(true);
     const roomCode = created.data.roomCode;
 

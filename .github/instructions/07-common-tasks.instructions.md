@@ -42,9 +42,11 @@ Never implement a canonical scoring rule only in the client.
 4. Re-run every scoring test because equality affects 5-versus-10 points.
 5. Document what the AI checker decides and what the local rule decides, and what happens when the AI is unavailable.
 
-## Add a supported letter
+## Change a letter set
 
-1. Add it to `SUPPORTED_LETTERS` and to the letter rules in `src/server/prompts/category-rules.ts`.
+Both alphabets are complete (`Plan.md` §2B.13), so this should be rare.
+
+1. Change `SERBIAN_LETTERS` or `ENGLISH_LETTERS` (and `ALL_LETTERS`) and, for a new digraph, `SERBIAN_DIGRAPH_OF` in `src/domain/validate-answer.ts` and `LETTER_RULES` in `src/server/prompts/category-rules.ts`.
 2. Check with the live smoke check that the AI finds terms for it in every category; add a case to `scripts/ai-smoke.ts` and `docs/AI_EVALS.md`.
 3. Add spelling/normalization fixtures, including letters with diacritics.
 4. Have the other developer review geography content separately from code correctness.

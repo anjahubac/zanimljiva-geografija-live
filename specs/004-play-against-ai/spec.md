@@ -12,7 +12,7 @@
 
 ### User Story 1 - A solo player gets an opponent (Priority: P1)
 
-A third lobby button (`room:play-ai`) seats a server-side bot in the second
+A third lobby button (`room:play-ai`, carrying the player's language since feature 009) seats a server-side bot in the second
 seat. The bot is ready when seated, so the round is scheduled from the human's
 own `room:client-ready`, through the same `scheduleRound` as every room. The
 bot keeps a random 5–7 answers, finishes at 55–85% of the round, and its sheet

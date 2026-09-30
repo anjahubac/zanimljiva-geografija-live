@@ -15,7 +15,28 @@ export const CATEGORIES = [
 
 /** Derived, never written as a literal: an array bound cannot drift from the set. */
 export const CATEGORY_COUNT = CATEGORIES.length;
-export const SUPPORTED_LETTERS = ["A", "B", "D", "K", "M", "S", "V"] as const;
+/**
+ * Every round letter of either alphabet (`Plan.md` §2B.13). A digraph is one
+ * letter, written with its second character lower case: `Lj`, not `LJ`.
+ */
+export const ALL_LETTERS = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+  "Č", "Ć", "Dž", "Đ", "Lj", "Nj", "Š", "Ž",
+] as const;
+type AnyLetter = (typeof ALL_LETTERS)[number];
+
+/** The 30 letters of the Serbian Latin alphabet, in alphabet order. */
+export const SERBIAN_LETTERS = [
+  "A", "B", "C", "Č", "Ć", "D", "Dž", "Đ", "E", "F", "G", "H", "I", "J", "K",
+  "L", "Lj", "M", "N", "Nj", "O", "P", "R", "S", "Š", "T", "U", "V", "Z", "Ž",
+] as const satisfies readonly AnyLetter[];
+
+/** The 26 letters of the English alphabet. */
+export const ENGLISH_LETTERS = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+] as const satisfies readonly AnyLetter[];
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_ANSWER_LENGTH = 40;
 /**
@@ -47,12 +68,22 @@ export const BOT_DISPLAY_NAME = "AI";
  */
 export const LANGUAGES = ["sr", "en"] as const;
 
+/**
+ * A room draws its letter from the alphabet of the player who opened it
+ * (`Plan.md` §2B.13). Fixed for the room; answers are still accepted in
+ * either language.
+ */
+export const ALPHABETS: Record<(typeof LANGUAGES)[number], readonly AnyLetter[]> = {
+  sr: SERBIAN_LETTERS,
+  en: ENGLISH_LETTERS,
+};
+
 /* -------------------------------------------------------------- primitives */
 
 export const categorySchema = z.enum(CATEGORIES);
 export type Category = z.infer<typeof categorySchema>;
 
-export const letterSchema = z.enum(SUPPORTED_LETTERS);
+export const letterSchema = z.enum(ALL_LETTERS);
 export type Letter = z.infer<typeof letterSchema>;
 
 export const languageSchema = z.enum(LANGUAGES);

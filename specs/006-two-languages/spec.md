@@ -31,3 +31,4 @@ count as the same answer (compared on the recognised Serbian name, feature 003).
 - The server returns stable error codes; only the client translates them.
 - `localStorage` access is fail-safe.
 - Cyrillic input remains out of scope (`Plan.md` §4).
+- Since feature 009 (`Plan.md` §2B.13) the language of the player who opens a room also picks its letter set: the Serbian or the English alphabet. It does not change which answers are accepted.

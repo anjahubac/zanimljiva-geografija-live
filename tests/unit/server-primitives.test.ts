@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ROOM_CODE_ALPHABET,
-  SUPPORTED_LETTERS,
+  ENGLISH_LETTERS,
+  SERBIAN_LETTERS,
   resumeTokenSchema,
   roomCodeSchema,
   roundIdSchema,
@@ -147,19 +148,23 @@ describe("generateResumeToken", () => {
 /* --------------------------------------------------------------- letters */
 
 describe("randomLetterSelector", () => {
-  it("only ever returns a supported letter", () => {
-    for (let index = 0; index < 200; index += 1) {
-      expect(SUPPORTED_LETTERS).toContain(randomLetterSelector());
-    }
+  // 2,000 draws over 30 letters: the chance of missing one is below 1e-27.
+  const draws = (alphabet: "sr" | "en") => new Set(Array.from({ length: 2_000 }, () => randomLetterSelector(alphabet)));
+
+  it("draws every Serbian letter, and only Serbian letters, for a Serbian room", () => {
+    const seen = draws("sr");
+    expect([...seen].sort()).toEqual([...SERBIAN_LETTERS].sort());
+    for (const letter of ["Q", "W", "X", "Y"]) expect(seen.has(letter as never)).toBe(false);
   });
 
-  it("can reach every supported letter", () => {
-    const seen = new Set(Array.from({ length: 500 }, () => randomLetterSelector()));
-    expect(seen.size).toBe(SUPPORTED_LETTERS.length);
+  it("draws every English letter, and only English letters, for an English room", () => {
+    const seen = draws("en");
+    expect([...seen].sort()).toEqual([...ENGLISH_LETTERS].sort());
+    for (const letter of ["Č", "Ć", "Dž", "Đ", "Lj", "Nj", "Š", "Ž"]) expect(seen.has(letter as never)).toBe(false);
   });
 
   it("is an injectable seam a test can pin", () => {
     const fixedLetter: LetterSelector = () => "S";
-    expect(fixedLetter()).toBe("S");
+    expect(fixedLetter("en")).toBe("S");
   });
 });

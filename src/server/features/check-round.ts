@@ -1,5 +1,12 @@
 import { CHECK_JSON_SCHEMA, checkOutputSchema, type CheckItem } from "@contracts/ai-output.schemas";
-import { CATEGORIES, type Category, type Letter, type PlayerSlot, type RejectReason } from "@contracts/game.schemas";
+import {
+  CATEGORIES,
+  type Category,
+  type Language,
+  type Letter,
+  type PlayerSlot,
+  type RejectReason,
+} from "@contracts/game.schemas";
 import { compactFold } from "@domain/fold-letters";
 import { editDistance, resembles } from "@domain/resemblance";
 import { checkAnswerLocally, startsWithLetter } from "@domain/validate-answer";
@@ -40,7 +47,7 @@ export type CheckPlan = {
 };
 
 /** Which answers go to the model, de-duplicated per category. Pure. */
-export function planCheck(letter: Letter, sheets: Sheets): CheckPlan {
+export function planCheck(letter: Letter, alphabet: Language, sheets: Sheets): CheckPlan {
   const items: CheckRoundItem[] = [];
   const itemOf = new Map<string, string>();
   const idByAnswer = new Map<string, string>();
@@ -48,7 +55,7 @@ export function planCheck(letter: Letter, sheets: Sheets): CheckPlan {
   for (const category of CATEGORIES) {
     for (const slot of [1, 2] as const) {
       const written = sheets[slot][category];
-      if (!checkAnswerLocally(written, letter).ok) continue;
+      if (!checkAnswerLocally(written, letter, alphabet).ok) continue;
 
       const dedupe = `${category}:${compactFold(written)}`;
       let id = idByAnswer.get(dedupe);
@@ -82,7 +89,12 @@ function nameToCheck(written: string, item: CheckItem): string | null {
 }
 
 /** Parse -> schema -> semantic validation of the model's reply. Pure; exported for tests. */
-export function validateCheck(text: string, letter: Letter, plan: CheckPlan): Validation<Map<string, AiVerdict>> {
+export function validateCheck(
+  text: string,
+  letter: Letter,
+  alphabet: Language,
+  plan: CheckPlan,
+): Validation<Map<string, AiVerdict>> {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -118,8 +130,9 @@ export function validateCheck(text: string, letter: Letter, plan: CheckPlan): Va
       // The model "corrected" the answer into a term the player did not write.
       notes.overrides! += 1;
       verdicts.set(sent.id, { valid: false, reason: "unrecognized" });
-    } else if (!startsWithLetter(name, letter)) {
-      // The letter is decided by code, never by the model: "Sabac" is Šabac.
+    } else if (!startsWithLetter(name, letter, alphabet)) {
+      // The letter is decided by code, never by the model: "Sabac" is Šabac,
+      // and in a Serbian room "Dzakarta" is Džakarta, not a D word.
       notes.overrides! += 1;
       verdicts.set(sent.id, { valid: false, reason: "wrong_letter" });
     } else {
@@ -135,10 +148,11 @@ export function validateCheck(text: string, letter: Letter, plan: CheckPlan): Va
 
 export async function runCheck(
   letter: Letter,
+  alphabet: Language,
   sheets: Sheets,
   deps: GatewayDeps & { interactionId: string },
 ): Promise<AiResult<CheckVerdicts>> {
-  const plan = planCheck(letter, sheets);
+  const plan = planCheck(letter, alphabet, sheets);
   const toAnswers = (byItem: Map<string, AiVerdict>): CheckVerdicts =>
     new Map([...plan.itemOf].map(([key, id]) => [key, byItem.get(id)!]));
 
@@ -158,7 +172,7 @@ export async function runCheck(
       temperature: 0,
       maxOutputTokens: 2_000,
       budget: BUDGETS["check-round"],
-      validate: (text) => validateCheck(text, letter, plan),
+      validate: (text) => validateCheck(text, letter, alphabet, plan),
     },
     deps,
   );

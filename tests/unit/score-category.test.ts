@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { CATEGORIES } from "@contracts/game.schemas";
-import type { Category, Letter } from "@contracts/game.schemas";
+import type { Category, Language, Letter } from "@contracts/game.schemas";
 import { scoreCategory } from "@domain/score-category";
 import { scoreRound } from "@domain/score-round";
 
 const LETTER: Letter = "S";
+const ALPHABET: Language = "sr";
 
 /** Every row of the `Plan.md` §6 traditional scoring table. */
 const cases = [
@@ -26,7 +27,7 @@ const cases = [
 
 describe("scoreCategory", () => {
   it.each(cases)("scores '$p1' vs '$p2' as $reason", ({ p1, p2, points, reason }) => {
-    expect(scoreCategory("city", p1, p2, LETTER)).toEqual({
+    expect(scoreCategory("city", p1, p2, LETTER, ALPHABET)).toEqual({
       category: "city",
       player1Points: points[0],
       player2Points: points[1],
@@ -36,16 +37,29 @@ describe("scoreCategory", () => {
 
   it("echoes back the category it was asked to score", () => {
     for (const category of CATEGORIES) {
-      expect(scoreCategory(category, "Srbija", "Slovenija", LETTER).category).toBe(category);
+      expect(scoreCategory(category, "Srbija", "Slovenija", LETTER, ALPHABET).category).toBe(category);
     }
   });
 
   it("decides validity before comparison, so two identical invalid answers score zero", () => {
     // Same normalized string, but neither is valid: this is `neither`, not `same_answer`.
-    const score = scoreCategory("river", "Morava", "morava", LETTER);
+    const score = scoreCategory("river", "Morava", "morava", LETTER, ALPHABET);
     expect(score.reason).toBe("neither");
     expect(score.player1Points).toBe(0);
     expect(score.player2Points).toBe(0);
+  });
+
+  it("applies the room's alphabet: Ljubljana is not an L city in a Serbian room", () => {
+    expect(scoreCategory("city", "Ljubljana", "London", "L", "sr")).toMatchObject({
+      player1Points: 0,
+      player2Points: 10,
+      reason: "only_player_2",
+    });
+    expect(scoreCategory("city", "Ljubljana", "London", "L", "en")).toMatchObject({
+      player1Points: 10,
+      player2Points: 10,
+      reason: "both_different",
+    });
   });
 });
 
@@ -59,7 +73,7 @@ const answersOf = (overrides: Partial<Record<Category, string>>): Record<Categor
 
 describe("scoreRound", () => {
   it("returns one score per category, in the locked category order", () => {
-    const result = scoreRound(blankAnswers(), blankAnswers(), LETTER);
+    const result = scoreRound(blankAnswers(), blankAnswers(), LETTER, ALPHABET);
     expect(result.scores).toHaveLength(CATEGORIES.length);
     expect(result.scores.map((score) => score.category)).toEqual([...CATEGORIES]);
   });
@@ -82,7 +96,7 @@ describe("scoreRound", () => {
       animal: "Slon",
     });
 
-    const result = scoreRound(answers1, answers2, LETTER);
+    const result = scoreRound(answers1, answers2, LETTER, ALPHABET);
     expect(result.player1Total).toBe(60);
     expect(result.player2Total).toBe(60);
     expect(result.outcome).toBe("draw");
@@ -93,6 +107,7 @@ describe("scoreRound", () => {
       answersOf({ country: "Srbija", city: "Subotica" }),
       answersOf({ country: "Slovenija" }),
       LETTER,
+      ALPHABET,
     );
     expect(result.player1Total).toBe(20);
     expect(result.player2Total).toBe(10);
@@ -104,6 +119,7 @@ describe("scoreRound", () => {
       answersOf({ country: "Beograd" }),
       answersOf({ country: "Slovenija", river: "Sava" }),
       LETTER,
+      ALPHABET,
     );
     expect(result.player1Total).toBe(0);
     expect(result.player2Total).toBe(20);
@@ -111,7 +127,7 @@ describe("scoreRound", () => {
   });
 
   it("scores an empty board as 0-0 and a draw", () => {
-    const result = scoreRound(blankAnswers(), blankAnswers(), LETTER);
+    const result = scoreRound(blankAnswers(), blankAnswers(), LETTER, ALPHABET);
     expect(result.player1Total).toBe(0);
     expect(result.player2Total).toBe(0);
     expect(result.outcome).toBe("draw");
@@ -122,6 +138,7 @@ describe("scoreRound", () => {
       answersOf({ country: "Srbija", city: "Subotica", river: "Beograd" }),
       answersOf({ country: " srbija ", city: "Smederevo" }),
       LETTER,
+      ALPHABET,
     );
     const byCategory = Object.fromEntries(result.scores.map((score) => [score.category, score]));
     expect(byCategory.country?.reason).toBe("same_answer");
@@ -136,7 +153,7 @@ describe("scoreRound", () => {
   it("does not mutate the answer records it was given", () => {
     const answers1 = answersOf({ country: "Srbija" });
     const answers2 = answersOf({ country: "Slovenija" });
-    scoreRound(answers1, answers2, LETTER);
+    scoreRound(answers1, answers2, LETTER, ALPHABET);
     expect(answers1).toEqual(answersOf({ country: "Srbija" }));
     expect(answers2).toEqual(answersOf({ country: "Slovenija" }));
   });

@@ -24,6 +24,7 @@ describe("drafts, revisions and pre-reveal privacy", () => {
 
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("room was not created");
     roomCode = created.data.roomCode;
@@ -111,6 +112,7 @@ describe("drafts, revisions and pre-reveal privacy", () => {
   it("never sends a resume token to the opponent", async () => {
     const created = await emitAck<{ resumeToken: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("room was not created");
 

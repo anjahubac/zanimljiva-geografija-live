@@ -257,7 +257,7 @@ kategorija").
 ### 2B.3 Play against AI
 
 **Entry.** A third button in the lobby, event `room:play-ai`
-(payload `{ displayName }`, same ack as `room:create`). Without an AI key the
+(payload `{ displayName, language }` since §2B.13, same ack as `room:create`). Without an AI key the
 server answers `AI_UNAVAILABLE` and the lobby shows that message.
 
 **The bot is a server-side player, not a client.** It has `bot: true`, the
@@ -267,13 +267,15 @@ the round is scheduled when the human's loaded screen sends
 `room:client-ready`, through the same `scheduleRound` as every other room.
 
 - When the letter is chosen, the server asks the AI for the bot's sheet (one
-  call, prompt `bot-answers.v1`). The answers are held in the round's private
+  call, prompt `bot-answers.v1`, now `bot-answers.v2`, which is told the room's alphabet (§2B.13)). The answers are held in the round's private
   bot state. They are **never** in a projection or any payload before
   `round:revealed`.
 - **One fixed difficulty:** the bot keeps a random 5–7 of its 8 answers and
   presses Finish at a random moment between 55% and 85% of the round. If its
-  answers arrive after that moment, it finishes on arrival. Randomness is
-  injected, so tests are deterministic.
+  answers arrive after that moment, it finishes on arrival. If the human
+  finishes first, the bot finishes at once (or on arrival of its answers), so
+  results do not wait for the clock. Randomness is injected, so tests are
+  deterministic.
 - The bot's answers go through the **same** checker, in the same request as the
   human's. The bot is not trusted to be right.
 - If the bot's AI call fails, it plays a blank sheet and the results say so
@@ -287,8 +289,8 @@ the round is scheduled when the human's loaded screen sends
 | `src/server/ai/types.ts`, `gateway.ts`, `classify.ts`, `retry-policy.ts`, `model-health.ts`, `telemetry.ts`, `debug-log.ts`, `config.ts`, `gemini-adapter.ts` | Copied as-is. Only the operation list and a `bot-answers` budget were added |
 | `src/domain/fold-letters.ts`, `resemblance.ts`, `hint-leak.ts` | Copied as-is |
 | `src/server/features/check-round.ts`, `prompts/check-round.v2.ts` | Adapted into `check-round.ts` + `check-round.v3`: both players, items keyed by id, de-duplicated, Serbian or English, no "example" field |
-| `src/server/features/hint.ts`, `prompts/hint.v1.ts` | Adapted into `hint.ts` + `hint.v2`: the clue is written in the player's language |
-| `src/server/prompts/category-rules.ts` | Adapted (letter rule for our seven letters) |
+| `src/server/features/hint.ts`, `prompts/hint.v1.ts` | Adapted into `hint.ts` + `hint.v2`: the clue is written in the player's language. Now `hint.v3` (§2B.13) |
+| `src/server/prompts/category-rules.ts` | Adapted (letter rule for our seven letters; per alphabet since §2B.13) |
 | `tests/fakes/fake-adapter.ts`, `fake-gemini.ts`; tests for gateway, classify/retry, model rotation, Gemini adapter, config, debug log | Copied; 101 tests. The parts that tested his Vercel handlers and single-player reducer were left out |
 
 **Not reused:** Vercel functions and `vercel.json`, public HTTP AI endpoints and
@@ -370,6 +372,7 @@ Groq.
 | 8 | Deploy (§2B.7) and run the production checks | Not started |
 | 9 | Leave game on the waiting screen (§2B.10) | Done. `verify` green, 437 tests, 27 files |
 | 10 | AI usage limit per visitor and per day (§2B.11) | Done. `verify` green, 456 tests, 29 files |
+| 11 | Letters from the whole alphabet (§2B.13, `specs/009-full-alphabet-letters`) | Done. `verify` green, 490 tests, 30 files (baseline before the step: 458, 29). Live smoke not run |
 
 **Evals, written before running** (`tests/integration/ai-round.test.ts`, fake AI):
 
@@ -573,6 +576,51 @@ No npm package, no runtime code, no service; `package.json` is unchanged.
   One that adds anything this file does not list still needs the owner's
   decision recorded here first (rule 5).
 
+### 2B.13 Letters from the whole alphabet — accepted (2026-09-30)
+
+**Asked by the owner:** the round letter is no longer limited to
+`A, B, D, K, M, S, V`. A Serbian game draws from the whole Serbian alphabet and
+an English game from the whole English alphabet. The owner decided the open
+questions the same day:
+
+1. **Whose language.** The room's alphabet is the language of the player who
+   opened it: the creator of a friend room, the player facing the AI, or, in a
+   random match, the player who was already waiting in the queue. The client
+   sends its interface language with `room:create`, `room:quick-play` and
+   `room:play-ai`; the server fixes it on the room and it does not change
+   afterwards. Answers are still accepted in Serbian or English (§2B.9).
+2. **Serbian set: Latin script, 30 letters**, digraphs included:
+   A B C Č Ć D Dž Đ E F G H I J K L Lj M N Nj O P R S Š T U V Z Ž.
+   **English set: 26 letters**, A–Z.
+3. **Digraphs are strict in Serbian rounds**, as in the paper game: with the
+   Serbian alphabet, L does not accept a word starting with Lj, N does not
+   accept Nj, and D does not accept Dž. English rounds have no such rule.
+
+Diacritics are still respected (§5 rule 4, "Šabac does not start with S").
+Some letters (Q, X, Đ, Dž, Nj …) leave several categories with few or no
+terms; the owner accepted that. Tracked as Spec Kit feature
+`specs/009-full-alphabet-letters`.
+
+**As built:**
+
+- `ALL_LETTERS`, `SERBIAN_LETTERS`, `ENGLISH_LETTERS` and `ALPHABETS` in
+  `src/contracts/game.schemas.ts` replace `SUPPORTED_LETTERS`; `letterSchema`
+  accepts the 34 letters of both.
+- `room:create`, `room:quick-play` and `room:play-ai` require
+  `language: "sr" | "en"`; a missing or unknown value is `INVALID_PAYLOAD`.
+  `room:join` takes none. The room keeps `alphabet`; the selector draws from it.
+- The letter rule (`startsWithLetter`) takes the alphabet, and every caller
+  passes the room's: the local rule, the checker's recognised name, the bot
+  sheet and the hint term. A hint in an English room may fit on its English
+  name. `check-round.v3` is unchanged; the bot and hint prompts are now
+  `bot-answers.v2` and `hint.v3`, told the alphabet.
+- The letter is shown with its own case (`Lj`, not `LJ`).
+- Not yet checked against the live AI: whether the models find terms for the
+  new letters, and follow the digraph rule. `scripts/ai-smoke.ts` now asks for
+  an English-room bot sheet on W, for the first live run (W4-7).
+- Known effect: answers typed without diacritics fail the local rule on the
+  new letters with them (Č, Ć, Đ, Dž, Š, Ž), as "Sabac" already failed on S.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.
@@ -603,7 +651,7 @@ The Week 3 version proves one stable online round. It is not a general gaming pl
 - Player 1 enters a name, creates a room, and receives a short room code
 - Player 2 enters a name and joins using that code
 - Automatic two-client synchronization after both game screens load
-- Server-selected random letter from exactly `A, B, D, K, M, S, V`
+- Server-selected random letter from exactly `A, B, D, K, M, S, V` _(superseded by §2B.13: the whole Serbian or English alphabet, by the opener's language)_
 - Shared three-second countdown, `startsAt`, and `endsAt`
 - Exactly 150 seconds of answer time
 - Eight categories: Država, Grad, Reka, Planina, More, Životinja, Biljka, Predmet
@@ -658,7 +706,7 @@ stays auditable rather than being quietly rewritten.
 | --- | --- |
 | Categories | `country`, `city`, `river`, `mountain`, `sea`, `animal`, `plant`, `thing` |
 | Serbian labels | Država, Grad, Reka, Planina, More, Životinja, Biljka, Predmet |
-| Supported letters | `A`, `B`, `D`, `K`, `M`, `S`, `V` |
+| Supported letters | `A`, `B`, `D`, `K`, `M`, `S`, `V` — _superseded by §2B.13: 30 Serbian Latin letters or 26 English letters_ |
 | Countdown | 3,000 ms |
 | Answer time | 150,000 ms |
 | Display-name length | 1-24 characters after trimming |
@@ -678,7 +726,7 @@ Player 1 creates room
   -> Player 2 joins
   -> each loaded game screen automatically sends room:client-ready
   -> server receives acknowledgements from both current players
-  -> server selects one supported letter
+  -> server selects one letter from the room's alphabet (§2B.13: the opener's language)
   -> server creates one roundId
   -> startsAt = serverNow + 3 seconds
   -> endsAt = startsAt + configured duration
@@ -722,6 +770,10 @@ An answer is valid when all of these are true:
 2. After normalization it is at least two characters long. A single character
    is the round letter typed back, not an answer.
 3. The normalized answer begins with the selected single-letter round letter, compared case-insensitively.
+   _Since §2B.13 the letter may be a digraph (Lj, Nj, Dž), and in a Serbian room
+   L, N and D do not take a word starting with Lj, Nj or Dž. The rule takes the
+   room's alphabet; the body below is the Week 3 original, and the current one
+   is `startsWithLetter` in `src/domain/validate-answer.ts`._
 
 Use this exact normalization function:
 
@@ -922,7 +974,7 @@ type RoomConfig = {
   roundDurationMs: number;
   countdownMs: number;
   categories: Category[];
-  supportedLetters: string[];
+  supportedLetters: string[]; // superseded by §2B.13: `ALPHABETS[room.alphabet]`
   maxAnswerLength: number;
 };
 
@@ -962,13 +1014,13 @@ Validate at least `RoomConfig`, create/join requests, `room:client-ready`, draft
 
 | Event | Payload | Server responsibility |
 | --- | --- | --- |
-| `room:create` | display name | Create room; bind Player 1; ack the room code and the caller-private resume token |
+| `room:create` | display name, language (§2B.13) | Create room; fix the room's alphabet from the language; bind Player 1; ack the room code and the caller-private resume token |
 | `room:join` | room code, display name | Bind Player 2 only when one slot is available |
 | `room:client-ready` | current room acknowledgement | Start scheduling only after both current clients acknowledge |
 | `round:draft` | round ID, category, value, revision | Validate and privately save latest accepted revision |
 | `round:finish` | round ID | Lock caller; close early only when both are locked |
-| `room:quick-play` / `room:cancel-quick-play` | display name / empty | Random-person queue (§2) |
-| `room:play-ai` | display name | Week 4 (§2B.3): create room, seat caller and the server bot in one step |
+| `room:quick-play` / `room:cancel-quick-play` | display name, language / empty | Random-person queue (§2); the waiting player's language becomes the room's alphabet (§2B.13) |
+| `room:play-ai` | display name, language | Week 4 (§2B.3): create room, seat caller and the server bot in one step; the caller's language is the room's alphabet (§2B.13) |
 | `round:hint` | round ID, category, language | Week 4 (§2B.8): caller-only clue; the term never leaves the server |
 
 `answer:review` and `round:play-again` are Stretch. Do not implement, emit, or

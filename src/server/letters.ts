@@ -1,12 +1,15 @@
 import { randomInt } from "node:crypto";
-import { SUPPORTED_LETTERS } from "@contracts/game.schemas";
-import type { Letter } from "@contracts/game.schemas";
+import { ALPHABETS } from "@contracts/game.schemas";
+import type { Language, Letter } from "@contracts/game.schemas";
 
 /**
- * Injected so a test can pin the round letter. The allowlist is fixed in the
- * contracts module and is never widened here.
+ * Injected so a test can pin the round letter. The room's alphabet decides the
+ * set (`Plan.md` §2B.13); the sets are fixed in the contracts module and never
+ * widened here.
  */
-export type LetterSelector = () => Letter;
+export type LetterSelector = (alphabet: Language) => Letter;
 
-export const randomLetterSelector: LetterSelector = () =>
-  SUPPORTED_LETTERS[randomInt(SUPPORTED_LETTERS.length)]!;
+export const randomLetterSelector: LetterSelector = (alphabet) => {
+  const letters = ALPHABETS[alphabet];
+  return letters[randomInt(letters.length)]!;
+};

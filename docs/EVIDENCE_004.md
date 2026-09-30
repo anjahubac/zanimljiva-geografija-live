@@ -121,6 +121,7 @@ anyone joins removes the room, and its code answers `ROOM_NOT_FOUND`.
 | Browser, scripted AI | 2026-09-30 | uncommitted | `npm run dev`, AI replaced by a scripted stand-in | an AI round (bot, hint, language switch mid-round, results with reasons) and a friend round in two tabs (one SR, one EN); no server or console errors | Week 4 session (`AI_USAGE_LOG.md` 007) |
 | After W4-2 | 2026-09-30 | uncommitted | `npm run verify` | pass — 437 tests, 27 files; the 4 new server tests fail with the new rule disabled | `AI_USAGE_LOG.md` 008 |
 | After W4-3 | 2026-09-30 | uncommitted | `npm run verify` | pass — 456 tests, 29 files; with the limits disabled, the 5 integration cases in `ai-limits.test.ts` fail | `AI_USAGE_LOG.md` 010 |
+| After 009 (whole alphabet) | 2026-09-30 | uncommitted | `npm run verify` | pass — 490 tests, 30 files; baseline before the change 458, 29; three mutation checks failed as expected | `AI_USAGE_LOG.md` 011 |
 | Live AI, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:ai` | **not run** | — |
 | Live AI, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:ai` | **not run** | — |
 | Deployed round | — | — | Render, one round per mode | **not run** | — |

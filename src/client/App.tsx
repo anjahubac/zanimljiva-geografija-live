@@ -197,7 +197,7 @@ export function App({ onLeave }: AppProps) {
 
   const handleCreate = useCallback((displayName: string) => {
     dispatch({ type: "busy", busy: true });
-    void socketRef.current?.createRoom(displayName).then((ack) => {
+    void socketRef.current?.createRoom(displayName, languageRef.current).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (ack.ok) dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
       else dispatch({ type: "error", message: say(ack.error) });
@@ -215,7 +215,7 @@ export function App({ onLeave }: AppProps) {
 
   const handleQuickPlay = useCallback((displayName: string) => {
     dispatch({ type: "busy", busy: true });
-    void socketRef.current?.quickPlay(displayName).then((ack) => {
+    void socketRef.current?.quickPlay(displayName, languageRef.current).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (!ack.ok) {
         dispatch({ type: "error", message: say(ack.error) });
@@ -230,7 +230,7 @@ export function App({ onLeave }: AppProps) {
 
   const handlePlayAi = useCallback((displayName: string) => {
     dispatch({ type: "busy", busy: true });
-    void socketRef.current?.playAi(displayName).then((ack) => {
+    void socketRef.current?.playAi(displayName, languageRef.current).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (ack.ok) dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
       else dispatch({ type: "error", message: say(ack.error) });

@@ -43,6 +43,7 @@ describe("E4 a real disconnect reaches the remaining player's screen", () => {
 
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("room was not created");
     const { roomCode } = created.data;

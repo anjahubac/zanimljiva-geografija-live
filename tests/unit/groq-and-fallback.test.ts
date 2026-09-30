@@ -258,12 +258,12 @@ describe("Gemini and Groq cover for each other", () => {
     const { calls, fetchImpl } = twoProviders(quota, () => groqReply(checkReply));
     const { ai, telemetry } = service(env, fetchImpl);
 
-    const first = await ai.checkRound("S", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
+    const first = await ai.checkRound("S", "sr", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
     expect(first?.get(answerKey(1, "country"))).toEqual({ valid: true, canonical: "srbija" });
     expect(calls).toEqual(["gemini", "groq"]);
     expect(telemetry.records[0]!.attempts.map((attempt) => attempt.provider)).toEqual(["gemini", "groq"]);
 
-    await ai.checkRound("S", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
+    await ai.checkRound("S", "sr", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
     expect(calls).toEqual(["gemini", "groq", "groq"]);
   });
 
@@ -275,7 +275,7 @@ describe("Gemini and Groq cover for each other", () => {
     const { calls, fetchImpl } = twoProviders(geminiOk, () => groqError(503, "down"));
     const { ai } = service({ ...env, AI_PROVIDER_ORDER: "groq,gemini" }, fetchImpl);
 
-    const verdicts = await ai.checkRound("S", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
+    const verdicts = await ai.checkRound("S", "sr", { 1: sheet({ country: "Srbija" }), 2: sheet({}) });
     expect(verdicts?.get(answerKey(1, "country"))).toEqual({ valid: true, canonical: "srbija" });
     // A 5xx is retried once on the same model before moving on (fork policy).
     expect(calls).toEqual(["groq", "groq", "gemini"]);
@@ -287,7 +287,7 @@ describe("Gemini and Groq cover for each other", () => {
       () => groqError(503, "down"),
     );
     const { ai } = service(env, fetchImpl);
-    expect(await ai.checkRound("S", { 1: sheet({ country: "Srbija" }), 2: sheet({}) })).toBeNull();
+    expect(await ai.checkRound("S", "sr", { 1: sheet({ country: "Srbija" }), 2: sheet({}) })).toBeNull();
   });
 });
 

@@ -27,6 +27,7 @@ describe("room lifecycle over the wire", () => {
   async function createRoom(socket: Socket, displayName = "Ana"): Promise<string> {
     const created = await emitAck<{ roomCode: string }>(socket, CLIENT_EVENTS.createRoom, {
       displayName,
+      language: "sr",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error("room was not created");
@@ -118,12 +119,13 @@ describe("room lifecycle over the wire", () => {
   it("rejects a malformed create payload without creating a room", async () => {
     const p1 = await open();
 
-    const blankName = await emitAck(p1, CLIENT_EVENTS.createRoom, { displayName: "   " });
+    const blankName = await emitAck(p1, CLIENT_EVENTS.createRoom, { displayName: "   " , language: "sr"});
     expect(blankName.ok).toBe(false);
     if (!blankName.ok) expect(blankName.error.code).toBe("INVALID_PAYLOAD");
 
     const extraKey = await emitAck(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
       you: 1,
     });
     expect(extraKey.ok).toBe(false);

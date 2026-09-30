@@ -2,6 +2,7 @@ import type { AddressInfo } from "node:net";
 import { serverConfigSchema, type Letter, type ServerConfig } from "@contracts/game.schemas";
 import type { AiService } from "@server/ai/service";
 import { createGameServer, type GameServer } from "@server/index";
+import type { LetterSelector } from "@server/letters";
 import { createTestClock } from "./test-clock";
 
 export type TestContext = {
@@ -19,7 +20,14 @@ export type TestContext = {
  * while Socket.IO keeps its real timers (module 13).
  */
 export async function startTestServer(
-  options: { letter?: Letter; config?: Record<string, unknown>; ai?: AiService; random?: () => number } = {},
+  options: {
+    letter?: Letter;
+    /** Overrides `letter`: sees the room's alphabet, for tests of which alphabet a room gets. */
+    selectLetter?: LetterSelector;
+    config?: Record<string, unknown>;
+    ai?: AiService;
+    random?: () => number;
+  } = {},
 ): Promise<TestContext> {
   const { clock, scheduler, advance, setNow } = createTestClock();
   const config = serverConfigSchema.parse(options.config ?? {});
@@ -29,7 +37,7 @@ export async function startTestServer(
     config,
     clock,
     scheduler,
-    selectLetter: () => letter,
+    selectLetter: options.selectLetter ?? (() => letter),
     ai: options.ai ?? null,
     ...(options.random ? { random: options.random } : {}),
   });

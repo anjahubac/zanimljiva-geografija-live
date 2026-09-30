@@ -23,7 +23,7 @@ the code disagree, the code wins and this file is the one to fix.
 
 | File | Holds |
 | --- | --- |
-| `src/contracts/game.schemas.ts` | Constants (`CATEGORIES`, `SUPPORTED_LETTERS`, `MAX_ANSWER_LENGTH`, `MIN_ANSWER_LENGTH`, `HINTS_PER_ROUND`, `BOT_DISPLAY_NAME`, `LANGUAGES`), category labels in both languages, primitives (room code, display name, `requestedNameSchema`, answer, round id, revision, epoch ms, slot, resume token), `roomPhaseSchema`, reject and score reasons, `serverConfigSchema` |
+| `src/contracts/game.schemas.ts` | Constants (`CATEGORIES`, `ALL_LETTERS`, `SERBIAN_LETTERS`, `ENGLISH_LETTERS`, `ALPHABETS`, `MAX_ANSWER_LENGTH`, `MIN_ANSWER_LENGTH`, `HINTS_PER_ROUND`, `BOT_DISPLAY_NAME`, `LANGUAGES`), category labels in both languages, primitives (room code, display name, `requestedNameSchema`, answer, round id, revision, epoch ms, slot, resume token), `roomPhaseSchema`, reject and score reasons, `serverConfigSchema` |
 | `src/contracts/errors.ts` | The closed `GAME_ERROR_CODES` list, the server's (Serbian) message per code, the `Ack<T>` envelope, `ok()`, `fail()`, `ackSchema()` |
 | `src/contracts/socket.schemas.ts` | Every client request, every ack, every server event payload, and the event-name constants `CLIENT_EVENTS` / `SERVER_EVENTS` |
 | `src/contracts/ai-output.schemas.ts` | What the AI model must return (check, bot answers, hint). Server-only; never sent to a browser |
@@ -49,11 +49,11 @@ events. Adding one is a scope change (`Plan.md` §11) and starts in
 
 | Direction | Event | Payload schema | Ack data |
 | --- | --- | --- | --- |
-| C→S | `room:create` | `createRoomRequestSchema` | `roomAckSchema` (`roomCode`, `you`, caller-private `resumeToken`) |
+| C→S | `room:create` | `createRoomRequestSchema` (`displayName`, `language` — the room's alphabet, §2B.13) | `roomAckSchema` (`roomCode`, `you`, caller-private `resumeToken`) |
 | C→S | `room:join` | `joinRoomRequestSchema` | `roomAckSchema` |
-| C→S | `room:quick-play` | `quickPlayRequestSchema` | `quickPlayAckSchema` (`queued`, or `matched` + room ack fields) |
+| C→S | `room:quick-play` | `quickPlayRequestSchema` (`displayName`, `language`) | `quickPlayAckSchema` (`queued`, or `matched` + room ack fields) |
 | C→S | `room:cancel-quick-play` | `cancelQuickPlayRequestSchema` (empty) | empty |
-| C→S | `room:play-ai` | `playAiRequestSchema` | `roomAckSchema` — Week 4, §2B.3 |
+| C→S | `room:play-ai` | `playAiRequestSchema` (`displayName`, `language`) | `roomAckSchema` — Week 4, §2B.3 |
 | C→S | `room:client-ready` | `clientReadyRequestSchema` | `clientReadyAckSchema` |
 | C→S | `round:draft` | `draftRequestSchema` | `draftAckSchema` |
 | C→S | `round:finish` | `finishRequestSchema` | `finishAckSchema` |

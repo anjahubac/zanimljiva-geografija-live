@@ -27,7 +27,7 @@ npm run lint
 npm run build
 npm start
 npm run verify     # typecheck + lint + test + build — the gate before any handoff
-npm run smoke:ai   # opt-in, Week 4: 4 real AI requests; never part of npm test
+npm run smoke:ai   # opt-in, Week 4: 5 real AI requests; never part of npm test
 ```
 
 The scripts should mean:

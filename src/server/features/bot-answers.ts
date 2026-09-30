@@ -1,10 +1,10 @@
 import { BOT_JSON_SCHEMA, botOutputSchema } from "@contracts/ai-output.schemas";
-import { CATEGORIES, type Category, type Letter } from "@contracts/game.schemas";
+import { CATEGORIES, type Category, type Language, type Letter } from "@contracts/game.schemas";
 import { isValidAnswer } from "@domain/validate-answer";
 import { generate, type GatewayDeps } from "@server/ai/gateway";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiResult, Validation } from "@server/ai/types";
-import { BOT_PROMPT_VERSION, BOT_SYSTEM_INSTRUCTION, buildBotContent } from "@server/prompts/bot-answers.v1";
+import { BOT_PROMPT_VERSION, BOT_SYSTEM_INSTRUCTIONS, buildBotContent } from "@server/prompts/bot-answers.v2";
 
 /**
  * The AI opponent's sheet (`Plan.md` §2B.3). An answer that fails the local
@@ -12,7 +12,11 @@ import { BOT_PROMPT_VERSION, BOT_SYSTEM_INSTRUCTION, buildBotContent } from "@se
  * that field empty. Whether its answers are *real* is decided later by the
  * same checker that judges the human.
  */
-export function validateBotAnswers(text: string, letter: Letter): Validation<Record<Category, string>> {
+export function validateBotAnswers(
+  text: string,
+  letter: Letter,
+  alphabet: Language,
+): Validation<Record<Category, string>> {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -30,7 +34,7 @@ export function validateBotAnswers(text: string, letter: Letter): Validation<Rec
   const sheet = Object.fromEntries(
     CATEGORIES.map((category) => {
       const answer = byCategory.get(category) ?? "";
-      if (answer !== "" && !isValidAnswer(answer, letter)) {
+      if (answer !== "" && !isValidAnswer(answer, letter, alphabet)) {
         blanked += 1;
         return [category, ""];
       }
@@ -43,6 +47,7 @@ export function validateBotAnswers(text: string, letter: Letter): Validation<Rec
 
 export function runBotAnswers(
   letter: Letter,
+  alphabet: Language,
   deps: GatewayDeps & { interactionId: string },
 ): Promise<AiResult<Record<Category, string>>> {
   return generate(
@@ -50,14 +55,14 @@ export function runBotAnswers(
       operation: "bot-answers",
       promptVersion: BOT_PROMPT_VERSION,
       interactionId: deps.interactionId,
-      systemInstruction: BOT_SYSTEM_INSTRUCTION,
-      userContent: buildBotContent(letter),
+      systemInstruction: BOT_SYSTEM_INSTRUCTIONS[alphabet],
+      userContent: buildBotContent(letter, alphabet),
       responseJsonSchema: BOT_JSON_SCHEMA,
       // Some variety, so two games on the same letter do not play identically.
       temperature: 0.9,
       maxOutputTokens: 600,
       budget: BUDGETS["bot-answers"],
-      validate: (text) => validateBotAnswers(text, letter),
+      validate: (text) => validateBotAnswers(text, letter, alphabet),
     },
     deps,
   );

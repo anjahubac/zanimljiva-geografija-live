@@ -16,7 +16,9 @@ No account needed — type a name and choose:
 - **Play against AI** — an AI opponent plays the same round on the server.
 
 The interface is in **Serbian or English** (switch in the header). Answers count
-in either language in every game.
+in either language in every game. The language of the player who opens the
+game also picks the letters: a Serbian game uses the whole Serbian alphabet
+(including Lj, Nj, Dž), an English game A–Z.
 
 ## How it plays
 
@@ -24,8 +26,10 @@ in either language in every game.
    Changed your mind? **Leave game** takes you back to the start, and the code
    stops working.
 2. Player 2 enters a name and joins with that code.
-3. Once both game screens have loaded, the server picks one letter from
-   `A B D K M S V` and schedules a shared 3-second countdown.
+3. Once both game screens have loaded, the server picks one letter from the
+   game's alphabet and schedules a shared 3-second countdown. In a Serbian
+   game Lj, Nj and Dž are letters of their own: "Ljubljana" counts for Lj,
+   not for L.
 4. Both players privately fill eight categories — Država, Grad, Reka, Planina,
    More, Životinja, Biljka, Predmet — for 150 seconds. Stuck? Ask for a
    **hint** (two per round); a hinted cell is marked for both players.
@@ -53,7 +57,7 @@ npm run lint
 npm run build      # dist/client + dist/server
 npm start          # serve the built SPA, /healthz and Socket.IO from one origin
 npm run verify     # typecheck + lint + test + build — the gate before any handoff
-npm run smoke:ai   # opt-in: 4 real AI requests with fixed, pre-written expectations
+npm run smoke:ai   # opt-in: 5 real AI requests with fixed, pre-written expectations
 ```
 
 Copy `.env.example` to `.env` and set `GEMINI_API_KEY` (free, from

@@ -40,7 +40,7 @@ async function twoPlayerRound(ai: FakeAi) {
   ctx = await startTestServer({ letter: "S", ai });
   const p1 = await client();
   const p2 = await client();
-  const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, { displayName: "Ana" });
+  const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, { displayName: "Ana" , language: "sr"});
   if (!created.ok) throw new Error("not created");
   const { roomCode } = created.data;
   await emitAck(p2, CLIENT_EVENTS.joinRoom, { roomCode, displayName: "Marko" });
@@ -83,6 +83,7 @@ describe("A1 — the AI checker decides what counts", () => {
     const scored = await results;
 
     expect(ai.checkCalls).toHaveLength(1);
+    expect(ai.checkCalls[0]).toMatchObject({ letter: "S", alphabet: "sr" });
     expect(scored.verified).toBe(true);
     const p2Country = reveal.player2.find((answer) => answer.category === "country")!;
     expect(p2Country).toMatchObject({ raw: "Srbistan", valid: false, reason: "not_real" });
@@ -172,7 +173,7 @@ describe("A4 — a hint is private and charged only when shown", () => {
       ok: true,
       data: { kind: "clue", category: "river", clue: DEFAULT_CLUE, hintsLeft: HINTS_PER_ROUND - 1 },
     });
-    expect(ai.hintCalls[0]).toEqual({ letter: "S", category: "river", language: "en" });
+    expect(ai.hintCalls[0]).toEqual({ letter: "S", alphabet: "sr", category: "river", language: "en" });
     expect(JSON.stringify(leaked)).not.toContain(DEFAULT_CLUE);
 
     // "No known term" is an answer, not a spent credit.
@@ -210,6 +211,7 @@ async function aiRound(ai: FakeAi, random = () => 0) {
   const human = await client();
   const created = await emitAck<{ roomCode: string; you: number }>(human, CLIENT_EVENTS.playAi, {
     displayName: "Ana",
+    language: "sr",
   });
   if (!created.ok) throw new Error("AI room not created");
   const scheduled = waitFor<RoundScheduled>(human, SERVER_EVENTS.roundScheduled);
@@ -223,7 +225,7 @@ describe("leaving an AI room before the round", () => {
   it("releases the room when the human leaves the waiting screen", async () => {
     ctx = await startTestServer({ letter: "S", ai: fakeAi() });
     const human = await client();
-    const created = await emitAck<{ roomCode: string }>(human, CLIENT_EVENTS.playAi, { displayName: "Ana" });
+    const created = await emitAck<{ roomCode: string }>(human, CLIENT_EVENTS.playAi, { displayName: "Ana" , language: "sr"});
     if (!created.ok) throw new Error("AI room not created");
 
     human.disconnect();
@@ -244,6 +246,7 @@ describe("A5 — playing against the AI", () => {
     human.onAny((_event, payload) => payloads.push(payload));
     const created = await emitAck<{ roomCode: string; you: number }>(human, CLIENT_EVENTS.playAi, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("not created");
     expect(created.data.you).toBe(1);
@@ -258,7 +261,7 @@ describe("A5 — playing against the AI", () => {
     await emitAck(human, CLIENT_EVENTS.clientReady, { roomCode: created.data.roomCode });
     const { roundId } = await scheduled;
     await settle();
-    expect(ai.botCalls).toEqual(["S"]);
+    expect(ai.botCalls).toEqual([{ letter: "S", alphabet: "sr" }]);
 
     // The bot finishes at 55% of the round with random() = 0.
     ctx.advance(ctx.config.countdownMs + Math.floor(ctx.config.roundDurationMs * 0.55));
@@ -295,10 +298,45 @@ describe("A5 — playing against the AI", () => {
     expect(await finished).toEqual({ slot: 2 });
   });
 
+  it("finishes the bot as soon as the human finishes, so results do not wait for the clock", async () => {
+    const ai = fakeAi({ country: "Slovenija" });
+    const { human, roundId } = await aiRound(ai);
+    await settle();
+    await draft(human, roundId, "country", "Srbija");
+
+    const revealed = waitFor<RoundRevealed>(human, SERVER_EVENTS.roundRevealed);
+    const results = waitFor<RoundResults>(human, SERVER_EVENTS.roundResults);
+    // No time passes: well before the bot's own finish at 55% of the round.
+    await emitAck(human, CLIENT_EVENTS.finish, { roundId });
+
+    const reveal = await revealed;
+    expect(reveal.closedReason).toBe("both_finished");
+    // The bot played its real sheet, not a blank one.
+    expect(reveal.player2.filter((answer) => answer.raw !== "")).toHaveLength(5);
+    expect((await results).botFailed).toBe(false);
+    expect(ai.checkCalls).toHaveLength(1);
+  });
+
+  it("finishes the bot on arrival when the human finishes before its answers come", async () => {
+    const ai = fakeAi();
+    const pending = deferred<Record<string, string> | null>();
+    ai.onBot = () => pending.promise as never;
+    const { human, roundId } = await aiRound(ai);
+
+    await emitAck(human, CLIENT_EVENTS.finish, { roundId });
+    await expectNoEvent(human, SERVER_EVENTS.roundResults, 50);
+
+    const revealed = waitFor<RoundRevealed>(human, SERVER_EVENTS.roundRevealed);
+    const results = waitFor<RoundResults>(human, SERVER_EVENTS.roundResults);
+    pending.resolve(Object.fromEntries(CATEGORIES.map((category) => [category, "Sto"])));
+    expect((await revealed).closedReason).toBe("both_finished");
+    expect((await results).botFailed).toBe(false);
+  });
+
   it("refuses a bot room when no AI is configured", async () => {
     ctx = await startTestServer({ letter: "S" });
     const human = await client();
-    const created = await emitAck(human, CLIENT_EVENTS.playAi, { displayName: "Ana" });
+    const created = await emitAck(human, CLIENT_EVENTS.playAi, { displayName: "Ana" , language: "sr"});
     expect(created).toMatchObject({ ok: false, error: { code: "AI_UNAVAILABLE" } });
     await expectNoEvent(human, SERVER_EVENTS.roomState, 50);
   });
@@ -306,7 +344,7 @@ describe("A5 — playing against the AI", () => {
   it("refuses the bot's reserved name for a human", async () => {
     ctx = await startTestServer({ letter: "S", ai: fakeAi() });
     const human = await client();
-    const created = await emitAck(human, CLIENT_EVENTS.createRoom, { displayName: "AI" });
+    const created = await emitAck(human, CLIENT_EVENTS.createRoom, { displayName: "AI" , language: "sr"});
     expect(created).toMatchObject({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   });
 });

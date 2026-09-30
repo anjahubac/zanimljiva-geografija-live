@@ -9,12 +9,12 @@ import type { CheckVerdicts, Sheets } from "@server/features/check-round";
  * a harmless clue — so a test only scripts what it is about.
  */
 export type FakeAi = AiService & {
-  checkCalls: { letter: Letter; sheets: Sheets }[];
-  botCalls: Letter[];
-  hintCalls: { letter: Letter; category: Category; language: Language }[];
-  onCheck: (letter: Letter, sheets: Sheets) => Promise<CheckVerdicts | null>;
-  onBot: (letter: Letter) => Promise<Record<Category, string> | null>;
-  onHint: (letter: Letter, category: Category, language: Language) => Promise<HintResult>;
+  checkCalls: { letter: Letter; alphabet: Language; sheets: Sheets }[];
+  botCalls: { letter: Letter; alphabet: Language }[];
+  hintCalls: { letter: Letter; alphabet: Language; category: Category; language: Language }[];
+  onCheck: (letter: Letter, alphabet: Language, sheets: Sheets) => Promise<CheckVerdicts | null>;
+  onBot: (letter: Letter, alphabet: Language) => Promise<Record<Category, string> | null>;
+  onHint: (letter: Letter, alphabet: Language, category: Category, language: Language) => Promise<HintResult>;
 };
 
 export const DEFAULT_CLUE = "A clue that describes the term without naming it.";
@@ -47,17 +47,17 @@ export function fakeAi(botSheet?: Partial<Record<Category, string>>): FakeAi {
         ...botSheet,
       }) as Record<Category, string>,
     onHint: async () => ({ ok: true, outcome: { kind: "clue", clue: DEFAULT_CLUE } }),
-    checkRound(letter, sheets) {
-      fake.checkCalls.push({ letter, sheets });
-      return fake.onCheck(letter, sheets);
+    checkRound(letter, alphabet, sheets) {
+      fake.checkCalls.push({ letter, alphabet, sheets });
+      return fake.onCheck(letter, alphabet, sheets);
     },
-    botAnswers(letter) {
-      fake.botCalls.push(letter);
-      return fake.onBot(letter);
+    botAnswers(letter, alphabet) {
+      fake.botCalls.push({ letter, alphabet });
+      return fake.onBot(letter, alphabet);
     },
-    hint(letter, category, language) {
-      fake.hintCalls.push({ letter, category, language });
-      return fake.onHint(letter, category, language);
+    hint(letter, alphabet, category, language) {
+      fake.hintCalls.push({ letter, alphabet, category, language });
+      return fake.onHint(letter, alphabet, category, language);
     },
   };
   return fake;

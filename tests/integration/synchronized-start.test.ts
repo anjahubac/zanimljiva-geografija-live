@@ -35,6 +35,7 @@ describe("E1 synchronized start", () => {
 
     const created = await emitAck<{ roomCode: string; you: 1 | 2 }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error("room was not created");
@@ -73,6 +74,7 @@ describe("E1 synchronized start", () => {
 
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error("room was not created");
@@ -91,6 +93,7 @@ describe("E1 synchronized start", () => {
 
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("room was not created");
     const roomCode = created.data.roomCode;

@@ -31,6 +31,7 @@ describe("E3 invalid input never mutates canonical state", () => {
 
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     if (!created.ok) throw new Error("room was not created");
     roomCode = created.data.roomCode;

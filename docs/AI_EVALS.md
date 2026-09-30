@@ -21,12 +21,12 @@ AI_PROVIDER_ORDER=gemini npm run smoke:ai
 AI_PROVIDER_ORDER=groq   npm run smoke:ai
 ```
 
-Each run makes 4 requests of the free daily quota: 1 answer check, 1 AI
-opponent sheet, 2 hints. Add `AI_DEBUG_LOG=1` to print what was sent and what
+Each run makes 5 requests of the free daily quota: 1 answer check, 2 AI
+opponent sheets, 2 hints. Add `AI_DEBUG_LOG=1` to print what was sent and what
 came back. The script is `scripts/ai-smoke.ts`, and it is never part of
 `npm test`.
 
-## Pre-registered expectations — answer check, letter S
+## Pre-registered expectations — answer check, letter S, Serbian alphabet
 
 Written in `scripts/ai-smoke.ts` before the first run. Player 1 writes Serbian;
 player 2 mixes English, mistakes and an injection attempt.
@@ -44,9 +44,11 @@ player 2 mixes English, mistakes and an injection attempt.
 
 Score: agreement out of 16. The script prints it.
 
-Also observed, not scored: the AI opponent's sheet for letter K is 8
-plausible answers, and a river hint for D, in Serbian and in English, does not
-name the river.
+Also observed, not scored: the AI opponent's sheet for letter K (Serbian
+alphabet) is 8 plausible answers; its sheet for letter W in an English room
+(added 2026-09-30, `Plan.md` §2B.13) uses English names where no Serbian name
+fits; and a river hint for D, in Serbian and in English, does not name the
+river and is not a Dž river.
 
 ## Run log
 

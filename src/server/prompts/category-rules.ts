@@ -14,6 +14,18 @@ export const CATEGORY_RULES = `Category rules:
 - plant: any plant, including trees, flowers, fruits, vegetables and herbs. Fungi are not.
 - thing: a concrete physical object. Abstract nouns, places, people, animals and plants are not.`;
 
-/** The letter rule for terms the model itself names (hints and bot answers). */
-export const LETTER_RULE = `A term "starts with the round letter" when its Serbian Latin name does, with diacritics
-respected: Č is not C, Ć is not C, Š is not S, Ž is not Z, Đ is not D.`;
+/**
+ * The letter rule for terms the model itself names (hints and bot answers),
+ * per room alphabet (\`Plan.md\` §2B.13). Code applies the same rule to the
+ * model's output (\`startsWithLetter\`); this text only helps it comply.
+ */
+export const LETTER_RULES = {
+  sr: `The round uses the Serbian alphabet. A term "starts with the round letter" when its Serbian
+Latin name does, with diacritics respected: Č is not C, Ć is not C, Š is not S, Ž is not Z,
+Đ is not D. Lj, Nj and Dž are letters of their own: a name starting with Lj does not start
+with L, one starting with Nj does not start with N, and one starting with Dž does not start
+with D.`,
+  en: `The round uses the English alphabet. A term "starts with the round letter" when its Serbian
+Latin name or its English name does, with diacritics respected: Č is not C, Š is not S,
+Ž is not Z, Đ is not D.`,
+} as const;

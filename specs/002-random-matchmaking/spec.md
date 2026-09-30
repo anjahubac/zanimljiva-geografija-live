@@ -27,5 +27,6 @@ applies unchanged.
 
 ### Edge Cases
 
+- Since feature 009 (`Plan.md` §2B.13) the queue entry keeps the waiting player's language, which becomes the room's alphabet; the arriving player's language is ignored. Tests: `tests/integration/alphabet.test.ts`.
 - The queue is in memory beside the rooms; a restart loses it (accepted, `Plan.md` §13).
 - The rule "an account is never matched with itself" went away with accounts (§2B.1); matching is now "oldest waiting socket first".

@@ -46,4 +46,6 @@ Its constitution, `.specify/memory/constitution.md`, points back to the rules
 above; it does not replace them, and `Plan.md` stays the plan of record.
 Features 001–008 in `specs/` were reconstructed after they were built. New
 features start at 009 and use the full specify → plan → tasks flow.
+
+Current feature: `specs/009-full-alphabet-letters/plan.md` (`Plan.md` §2B.13).
 <!-- SPECKIT END -->

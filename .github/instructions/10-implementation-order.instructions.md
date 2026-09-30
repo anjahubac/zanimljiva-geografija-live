@@ -63,6 +63,8 @@ export function normalizeAnswer(raw: string): string;
 
 // src/domain/validate-answer.ts
 export function isValidAnswer(raw: string, letter: string): boolean;
+// Since Plan.md §2B.13: isValidAnswer(raw, letter, alphabet), and the letter
+// rule is startsWithLetter(text, letter, alphabet) with the Serbian digraphs.
 
 // src/domain/score-category.ts
 export function scoreCategory(

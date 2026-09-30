@@ -11,7 +11,7 @@ import { startsWithLetter } from "@domain/validate-answer";
 import { generate, type GatewayDeps } from "@server/ai/gateway";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiResult, Validation } from "@server/ai/types";
-import { buildHintContent, HINT_PROMPT_VERSION, HINT_SYSTEM_INSTRUCTION } from "@server/prompts/hint.v2";
+import { buildHintContent, HINT_PROMPT_VERSION, HINT_SYSTEM_INSTRUCTIONS } from "@server/prompts/hint.v3";
 
 /**
  * Adapted from the colleague's `hint.ts`. The described term is used only to
@@ -20,7 +20,7 @@ import { buildHintContent, HINT_PROMPT_VERSION, HINT_SYSTEM_INSTRUCTION } from "
  */
 export type HintOutcome = { kind: "clue"; clue: string } | { kind: "no_known_term" };
 
-export function validateHint(text: string, letter: Letter): Validation<HintOutcome> {
+export function validateHint(text: string, letter: Letter, alphabet: Language): Validation<HintOutcome> {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -35,13 +35,19 @@ export function validateHint(text: string, letter: Letter): Validation<HintOutco
   if (output.noKnownTerm) return { ok: true, value: { kind: "no_known_term" } };
 
   const term = output.term.trim();
+  const termEn = output.termEn.trim();
   const clue = output.clue.trim();
-  const names = [term, output.termEn.trim()].filter(Boolean);
+  const names = [term, termEn].filter(Boolean);
+  // The Serbian name must fit in a Serbian room; an English room also takes
+  // the English name, since Q, W, X and Y begin almost no Serbian names (§2B.13).
+  const fitsLetter =
+    startsWithLetter(term, letter, alphabet) ||
+    (alphabet === "en" && termEn !== "" && startsWithLetter(termEn, letter, alphabet));
   const leak = leaksTerm(clue, names);
 
   const valid =
     term !== "" &&
-    startsWithLetter(term, letter) &&
+    fitsLetter &&
     clue.length >= MIN_CLUE_LENGTH &&
     clue.length <= MAX_CLUE_LENGTH &&
     !leak;
@@ -53,6 +59,7 @@ export function validateHint(text: string, letter: Letter): Validation<HintOutco
 
 export function runHint(
   letter: Letter,
+  alphabet: Language,
   category: Category,
   language: Language,
   deps: GatewayDeps & { interactionId: string },
@@ -62,13 +69,13 @@ export function runHint(
       operation: "hint",
       promptVersion: HINT_PROMPT_VERSION,
       interactionId: deps.interactionId,
-      systemInstruction: HINT_SYSTEM_INSTRUCTION,
-      userContent: buildHintContent(letter, category, language),
+      systemInstruction: HINT_SYSTEM_INSTRUCTIONS[alphabet],
+      userContent: buildHintContent(letter, alphabet, category, language),
       responseJsonSchema: HINT_JSON_SCHEMA,
       temperature: 0.2,
       maxOutputTokens: 400,
       budget: BUDGETS.hint,
-      validate: (text) => validateHint(text, letter),
+      validate: (text) => validateHint(text, letter, alphabet),
     },
     deps,
   );

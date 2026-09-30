@@ -4,7 +4,10 @@ import type { z } from "zod";
 import {
   CATEGORIES,
   CATEGORY_LABELS_SR,
-  SUPPORTED_LETTERS,
+  ALL_LETTERS,
+  ALPHABETS,
+  ENGLISH_LETTERS,
+  SERBIAN_LETTERS,
   answerValueSchema,
   categorySchema,
   displayNameSchema,
@@ -31,6 +34,7 @@ import {
   hintRequestSchema,
   joinRoomRequestSchema,
   playAiRequestSchema,
+  quickPlayRequestSchema,
   roomAckSchema,
   roomStateSchema,
   roundResultsSchema,
@@ -69,11 +73,21 @@ describe("primitive schemas", () => {
     expect(categorySchema.safeParse("lake").success).toBe(false);
   });
 
-  it("accepts the seven supported letters and rejects others", () => {
-    expect(SUPPORTED_LETTERS).toHaveLength(7);
-    for (const letter of SUPPORTED_LETTERS) expect(letterSchema.parse(letter)).toBe(letter);
-    expect(letterSchema.safeParse("C").success).toBe(false);
-    expect(letterSchema.safeParse("s").success).toBe(false);
+  it("has a 30-letter Serbian and a 26-letter English alphabet (Plan.md §2B.13)", () => {
+    expect(SERBIAN_LETTERS).toHaveLength(30);
+    expect(ENGLISH_LETTERS).toHaveLength(26);
+    expect(new Set(SERBIAN_LETTERS).size).toBe(30);
+    expect(new Set(ENGLISH_LETTERS).size).toBe(26);
+    expect(ALPHABETS.sr).toBe(SERBIAN_LETTERS);
+    expect(ALPHABETS.en).toBe(ENGLISH_LETTERS);
+    // The schema's set is exactly the union of the two.
+    expect([...ALL_LETTERS].sort()).toEqual([...new Set([...SERBIAN_LETTERS, ...ENGLISH_LETTERS])].sort());
+  });
+
+  it("accepts every letter of either alphabet and rejects others", () => {
+    for (const letter of ALL_LETTERS) expect(letterSchema.parse(letter)).toBe(letter);
+    for (const letter of ["Lj", "Dž", "Q", "Š"]) expect(letterSchema.safeParse(letter).success).toBe(true);
+    for (const letter of ["LJ", "lj", "s", "1", "", "Ö"]) expect(letterSchema.safeParse(letter).success).toBe(false);
   });
 
   it("has a Serbian label for every category", () => {
@@ -118,8 +132,8 @@ const cases: Case[] = [
   {
     name: "createRoomRequest",
     schema: createRoomRequestSchema,
-    valid: { displayName: "Ana" },
-    malformed: { displayName: "" },
+    valid: { displayName: "Ana", language: "sr" },
+    malformed: { displayName: "", language: "sr" },
   },
   {
     name: "joinRoomRequest",
@@ -234,9 +248,9 @@ const cases: Case[] = [
   {
     name: "playAiRequest",
     schema: playAiRequestSchema,
-    valid: { displayName: "Ana" },
+    valid: { displayName: "Ana", language: "en" },
     // The bot's name is reserved: a human cannot pose as the AI opponent.
-    malformed: { displayName: " ai " },
+    malformed: { displayName: " ai ", language: "en" },
   },
   {
     name: "hintRequest",
@@ -268,6 +282,33 @@ describe.each(cases)("$name", ({ schema, valid, malformed }) => {
 });
 
 /* ------------------------------------------------- authority-field smuggling */
+
+describe("the opener's language picks the room's alphabet (Plan.md §2B.13)", () => {
+  const opening = [
+    ["createRoomRequest", createRoomRequestSchema],
+    ["quickPlayRequest", quickPlayRequestSchema],
+    ["playAiRequest", playAiRequestSchema],
+  ] as const;
+
+  it.each(opening)("%s requires sr or en", (_name, schema) => {
+    expect(schema.safeParse({ displayName: "Ana", language: "sr" }).success).toBe(true);
+    expect(schema.safeParse({ displayName: "Ana", language: "en" }).success).toBe(true);
+    expect(schema.safeParse({ displayName: "Ana" }).success).toBe(false);
+    for (const language of ["de", "SR", "", null, 1]) {
+      expect(schema.safeParse({ displayName: "Ana", language }).success).toBe(false);
+    }
+  });
+
+  it.each(opening)("%s still refuses a letter chosen by the client", (_name, schema) => {
+    expect(schema.safeParse({ displayName: "Ana", language: "sr", letter: "Lj" }).success).toBe(false);
+  });
+
+  it("does not let a joiner choose: joinRoomRequest takes no language", () => {
+    expect(joinRoomRequestSchema.safeParse({ roomCode: ROOM_CODE, displayName: "Marko", language: "en" }).success).toBe(
+      false,
+    );
+  });
+});
 
 describe("authority fields cannot be smuggled through a client mutation", () => {
   const forbidden = [

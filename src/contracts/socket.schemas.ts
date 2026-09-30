@@ -30,7 +30,13 @@ import {
  * `score`, `endsAt` or `phase` into a mutation.
  */
 
-export const createRoomRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
+/**
+ * `language` is the opener's interface language. It picks the room's alphabet
+ * (`Plan.md` §2B.13) and nothing else; the server still picks the letter.
+ */
+export const createRoomRequestSchema = z
+  .object({ displayName: requestedNameSchema, language: languageSchema })
+  .strict();
 export type CreateRoomRequest = z.infer<typeof createRoomRequestSchema>;
 
 export const joinRoomRequestSchema = z
@@ -38,12 +44,16 @@ export const joinRoomRequestSchema = z
   .strict();
 export type JoinRoomRequest = z.infer<typeof joinRoomRequestSchema>;
 
-/** Same payload as creating a room: the queue needs only a name to show. */
-export const quickPlayRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
+/** Same payload as creating a room: a name to show, and the alphabet if this player waits first. */
+export const quickPlayRequestSchema = z
+  .object({ displayName: requestedNameSchema, language: languageSchema })
+  .strict();
 export type QuickPlayRequest = z.infer<typeof quickPlayRequestSchema>;
 
 /** Week 4 (§2B.3): a room with the server's AI opponent in the second seat. */
-export const playAiRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
+export const playAiRequestSchema = z
+  .object({ displayName: requestedNameSchema, language: languageSchema })
+  .strict();
 export type PlayAiRequest = z.infer<typeof playAiRequestSchema>;
 
 /** Leaving the queue carries nothing; the caller is resolved from the socket. */

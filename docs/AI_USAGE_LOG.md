@@ -274,3 +274,37 @@ session, not during it.
 - **Not done:** the right `TRUST_PROXY_HOPS` for Render is unknown; it is part
   of W4-9.
 - **Next decision:** the live AI run (W4-7).
+
+## 011 — Letters from the whole alphabet (Claude Code, 2026-09-30)
+
+- **Phase:** Week 4, after W4-3; the first feature through the full Spec Kit
+  flow (`specs/009-full-alphabet-letters`).
+- **Reason:** the owner asked for any letter of the Serbian alphabet in a
+  Serbian game and any English letter in an English game, and decided the
+  open questions the same day (`Plan.md` §2B.13): the opener's language
+  decides; Serbian Latin with Lj, Nj, Dž; digraphs strict in Serbian rooms.
+- **Expected:** letters drawn from 30 or 26; the digraph rule applied
+  everywhere the letter is checked; the opener's language wins in all three
+  modes; no new event, error code or dependency.
+- **Actual (verified in-session):**
+  - Baseline `npm run verify` before the change: 458 tests, 29 files (the
+    tree included an uncommitted bot-finish change).
+  - Contracts: two alphabets replace `SUPPORTED_LETTERS`; `language` required
+    on the three room-opening requests. Domain: `startsWithLetter` takes the
+    alphabet. Room store: `alphabet` on the room, round and queue entry. AI:
+    service methods take the alphabet; `bot-answers.v2` and `hint.v3`
+    replace v1/v2. Client sends its interface language; the letter keeps its
+    case on screen.
+  - New `tests/integration/alphabet.test.ts`; new cases in the validate,
+    scoring, contracts, selector and AI-feature unit tests. Existing tests
+    gained `language: "sr"` / the `"sr"` alphabet argument; no assertion was
+    removed, and two fake-AI assertions now also check the alphabet.
+  - Mutation checks: disabling the digraph rule failed 3 tests; disabling the
+    English-name hint rule failed 2; opening a random match with the arriving
+    player's language failed 2. All restored.
+  - `npm run verify`: **490 tests passed across 30 files**, typecheck, lint
+    and build clean.
+- **Not done:** no live AI run (no key in the session), so whether the models
+  honour the digraph rule and find terms for Q, X, Đ, Nj … is untested. Not
+  clicked through in a browser.
+- **Next decision:** the live AI run (W4-7), now including an English W sheet.

@@ -50,7 +50,7 @@ function createHarness(overrides: Partial<Record<string, unknown>> = {}): Harnes
 
 /** Create, join, both ready: the room is in `countdown` with a scheduled round. */
 function scheduledRound(harness: Harness) {
-  const created = harness.store.createRoom("Ana", P1);
+  const created = harness.store.createRoom("Ana", P1, "sr");
   const roomCode = created.room.roomCode;
   expect(harness.store.joinRoom(roomCode, "Bojan", P2).ok).toBe(true);
   expect(harness.store.markClientReady(roomCode, P1).ok).toBe(true);
@@ -74,7 +74,7 @@ describe("room phase machine", () => {
   it("walks waiting_for_player -> synchronizing -> countdown -> answering -> results", () => {
     const harness = createHarness();
 
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     expect(created.room.phase).toBe("waiting_for_player");
     expect(created.slot).toBe(1);
 
@@ -97,7 +97,7 @@ describe("room phase machine", () => {
 
   it("does not choose a letter or a round while player 1 is alone", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
 
     expect(created.room.round).toBeNull();
     expect(harness.eventsTo(P1, SERVER_EVENTS.roundScheduled)).toHaveLength(0);
@@ -109,7 +109,7 @@ describe("room phase machine", () => {
 
   it("schedules only after both players acknowledge, and only once", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     harness.store.joinRoom(created.room.roomCode, "Bojan", P2);
 
     harness.store.markClientReady(created.room.roomCode, P1);
@@ -162,7 +162,7 @@ describe("joinRoom", () => {
 
   it("rejects a third player without disturbing either existing player", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     harness.store.joinRoom(created.room.roomCode, "Bojan", P2);
     const before = JSON.stringify(created.room);
 
@@ -175,7 +175,7 @@ describe("joinRoom", () => {
 
   it("gives each player a different private resume token", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     const joined = harness.store.joinRoom(created.room.roomCode, "Bojan", P2);
 
     expect(joined.ok).toBe(true);
@@ -193,7 +193,7 @@ describe("markClientReady", () => {
 
   it("rejects a socket that is not a player in that room", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     harness.store.joinRoom(created.room.roomCode, "Bojan", P2);
 
     const result = harness.store.markClientReady(created.room.roomCode, P3);
@@ -214,7 +214,7 @@ describe("markClientReady", () => {
 
   it("rejects an acknowledgement while player 1 is still alone", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
 
     const result = harness.store.markClientReady(created.room.roomCode, P1);
     expect(result.ok).toBe(false);
@@ -348,7 +348,7 @@ describe("applyDraft", () => {
 describe("pre-reveal privacy", () => {
   it("never puts an opponent draft or any resume token in a payload before reveal", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     const joined = harness.store.joinRoom(created.room.roomCode, "Bojan", P2);
     harness.store.markClientReady(created.room.roomCode, P1);
     harness.store.markClientReady(created.room.roomCode, P2);
@@ -607,7 +607,7 @@ describe("disconnection", () => {
 
   it("releases a lobby at once when its only player leaves, so the code stops working", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     const roomCode = created.room.roomCode;
 
     harness.store.markDisconnected(P1);
@@ -622,7 +622,7 @@ describe("disconnection", () => {
 
   it("keeps a synchronizing room while one human stays, and releases it when both have left", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
     const roomCode = created.room.roomCode;
     harness.store.joinRoom(roomCode, "Bojan", P2);
 
@@ -663,7 +663,7 @@ describe("cleanup", () => {
 
   it("drops an abandoned lobby that nobody ever joined", () => {
     const harness = createHarness();
-    const created = harness.store.createRoom("Ana", P1);
+    const created = harness.store.createRoom("Ana", P1, "sr");
 
     harness.advance(harness.config.waitingRoomTtlMs - 1);
     harness.store.cleanup();
@@ -689,24 +689,24 @@ describe("the random-opponent queue", () => {
   it("matches the player who has waited longest", () => {
     const { store } = createHarness();
 
-    expect(store.quickPlay("Ana", P1)).toEqual({ ok: true, data: { status: "queued" } });
+    expect(store.quickPlay("Ana", P1, "sr")).toEqual({ ok: true, data: { status: "queued" } });
     // Asking twice from the same socket is the same answer, not a second entry.
-    expect(store.quickPlay("Ana", P1)).toEqual({ ok: true, data: { status: "queued" } });
+    expect(store.quickPlay("Ana", P1, "sr")).toEqual({ ok: true, data: { status: "queued" } });
     expect(store.queueLength()).toBe(1);
 
-    const second = store.quickPlay("Marko", P2);
+    const second = store.quickPlay("Marko", P2, "sr");
     if (!second.ok || second.data.status !== "matched") throw new Error("not matched");
     expect(second.data.room.players[1]?.socketId).toBe(P1);
     expect(store.queueLength()).toBe(0);
 
-    expect(store.quickPlay("Iva", P3)).toEqual({ ok: true, data: { status: "queued" } });
+    expect(store.quickPlay("Iva", P3, "sr")).toEqual({ ok: true, data: { status: "queued" } });
   });
 
   it("pairs two players into one synchronizing room", () => {
     const { store } = createHarness();
 
-    store.quickPlay("Ana", P1);
-    const matched = store.quickPlay("Marko", P2);
+    store.quickPlay("Ana", P1, "sr");
+    const matched = store.quickPlay("Marko", P2, "sr");
     if (!matched.ok || matched.data.status !== "matched") throw new Error("not matched");
 
     expect(matched.data.slot).toBe(2);
@@ -717,7 +717,7 @@ describe("the random-opponent queue", () => {
   it("leaves the queue empty once a waiting player disconnects", () => {
     const { store } = createHarness();
 
-    store.quickPlay("Ana", P1);
+    store.quickPlay("Ana", P1, "sr");
     expect(store.queueLength()).toBe(1);
 
     store.markDisconnected(P1);

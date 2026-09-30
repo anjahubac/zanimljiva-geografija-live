@@ -46,7 +46,7 @@ async function twoPlayerRound(ai: FakeAi, config: Record<string, unknown>) {
   ctx = await startTestServer({ letter: "S", ai, config });
   const p1 = await client();
   const p2 = await client();
-  const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, { displayName: "Ana" });
+  const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, { displayName: "Ana" , language: "sr"});
   if (!created.ok) throw new Error("not created");
   const { roomCode } = created.data;
   await emitAck(p2, CLIENT_EVENTS.joinRoom, { roomCode, displayName: "Marko" });
@@ -68,13 +68,13 @@ describe("per-visitor AI room limit", () => {
 
     for (let i = 0; i < 2; i += 1) {
       const socket = await client();
-      expect(await emitAck(socket, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({ ok: true });
+      expect(await emitAck(socket, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({ ok: true });
       socket.disconnect();
       await settle();
     }
 
     const third = await client();
-    expect(await emitAck(third, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({
+    expect(await emitAck(third, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({
       ok: false,
       error: { code: "RATE_LIMITED" },
     });
@@ -82,16 +82,16 @@ describe("per-visitor AI room limit", () => {
     expect(ctx.server.store.getRoomBySocket(third.id!)).toBeUndefined();
 
     ctx.advance(VISITOR_WINDOW_MS);
-    expect(await emitAck(third, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({ ok: true });
+    expect(await emitAck(third, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({ ok: true });
   });
 
   it("does not trust a browser's x-forwarded-for when no proxy is configured", async () => {
     // Otherwise forging the header would buy a fresh limit per connection.
     ctx = await startTestServer({ ai: fakeAi(), config: { aiRoomsPerVisitorHour: 1 } });
     const first = await forwardedClient("5.5.5.5");
-    expect(await emitAck(first, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({ ok: true });
+    expect(await emitAck(first, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({ ok: true });
     const forged = await forwardedClient("6.6.6.6");
-    expect(await emitAck(forged, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({
+    expect(await emitAck(forged, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({
       ok: false,
       error: { code: "RATE_LIMITED" },
     });
@@ -100,12 +100,12 @@ describe("per-visitor AI room limit", () => {
   it("behind one trusted proxy, counts each forwarded client separately", async () => {
     ctx = await startTestServer({ ai: fakeAi(), config: { aiRoomsPerVisitorHour: 1, trustProxyHops: 1 } });
     const a = await forwardedClient("5.5.5.5");
-    expect(await emitAck(a, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({ ok: true });
+    expect(await emitAck(a, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({ ok: true });
     const b = await forwardedClient("6.6.6.6");
-    expect(await emitAck(b, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({ ok: true });
+    expect(await emitAck(b, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({ ok: true });
     // A spoofed entry before the proxy's own does not make the same client new.
     const again = await forwardedClient("7.7.7.7, 5.5.5.5");
-    expect(await emitAck(again, CLIENT_EVENTS.playAi, { displayName: "Bot" })).toMatchObject({
+    expect(await emitAck(again, CLIENT_EVENTS.playAi, { displayName: "Bot" , language: "sr"})).toMatchObject({
       ok: false,
       error: { code: "RATE_LIMITED" },
     });
@@ -143,7 +143,7 @@ describe("global daily AI budget", () => {
     expect(ai.checkCalls).toHaveLength(1);
 
     const newcomer = await client();
-    expect(await emitAck(newcomer, CLIENT_EVENTS.playAi, { displayName: "Ana" })).toMatchObject({
+    expect(await emitAck(newcomer, CLIENT_EVENTS.playAi, { displayName: "Ana" , language: "sr"})).toMatchObject({
       ok: false,
       error: { code: "AI_LIMIT" },
     });

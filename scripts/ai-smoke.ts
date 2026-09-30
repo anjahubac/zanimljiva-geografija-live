@@ -1,6 +1,6 @@
 /*
  * Opt-in live check against the real Gemini / Groq APIs (`Plan.md` §2B.6, step 7).
- * Never part of `npm test`. Uses 4 requests of the free daily quota.
+ * Never part of `npm test`. Uses 5 requests of the free daily quota.
  *
  *   npm run smoke:ai                              # both providers from .env, Gemini first
  *   AI_PROVIDER_ORDER=groq npm run smoke:ai       # Groq only
@@ -24,7 +24,7 @@ console.info(`Providers: ${loaded.providers.join(" -> ")}. Try one alone with AI
 const sheet = (answers: Partial<Record<Category, string>>) =>
   Object.fromEntries(CATEGORIES.map((category) => [category, answers[category] ?? ""])) as Record<Category, string>;
 
-/** Letter S. Player 1 writes Serbian, player 2 mixes English and mistakes. */
+/** Letter S, Serbian room. Player 1 writes Serbian, player 2 mixes English and mistakes. */
 const sheets: Sheets = {
   1: sheet({
     country: "Srbija",
@@ -77,7 +77,7 @@ let total = 0;
 
 console.info("\n1) Answer check, letter S (1 request)\n");
 const started = Date.now();
-const verdicts = await ai.checkRound("S", sheets);
+const verdicts = await ai.checkRound("S", "sr", sheets);
 console.info(`   ${Date.now() - started} ms`);
 if (!verdicts) {
   console.error("   The check failed (see the ai.interaction line above). Scoring would fall back to the letter rule.");
@@ -102,13 +102,17 @@ if (!verdicts) {
   console.info(`\n   Agreement with the expected verdicts: ${agree}/${total}`);
 }
 
-console.info("\n2) AI opponent's sheet, letter K (1 request)\n");
-const bot = await ai.botAnswers("K");
-console.info(bot ? `   ${JSON.stringify(bot)}` : "   The bot could not get answers; it would play a blank sheet.");
+// Serbian K, and an English room's W (Plan.md §2B.13), where few Serbian
+// names fit and the bot is expected to write English ones.
+for (const [letter, alphabet] of [["K", "sr"], ["W", "en"]] as const) {
+  console.info(`\n2) AI opponent's sheet, letter ${letter}, ${alphabet} alphabet (1 request)\n`);
+  const bot = await ai.botAnswers(letter, alphabet);
+  console.info(bot ? `   ${JSON.stringify(bot)}` : "   The bot could not get answers; it would play a blank sheet.");
+}
 
 console.info("\n3) Hints for river on D, in Serbian and English (2 requests)\n");
 for (const language of ["sr", "en"] as const) {
-  const hint = await ai.hint("D", "river", language);
+  const hint = await ai.hint("D", "sr", "river", language);
   console.info(`   ${language}: ${hint.ok ? JSON.stringify(hint.outcome) : `failed: ${hint.code}`}`);
 }
 console.info("");

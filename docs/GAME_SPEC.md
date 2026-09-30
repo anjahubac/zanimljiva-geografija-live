@@ -4,6 +4,17 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
+**Amendment 7 — 2026-09-30, at the product owner's request.** The round
+letter is no longer limited to `A, B, D, K, M, S, V` (§5). A room's letter
+comes from the whole alphabet of the player who opened it: the creator of a
+friend room, the player facing the AI, or the player already waiting in the
+random queue. Serbian: the 30 letters of the Latin alphabet, A B C Č Ć D Dž Đ E
+F G H I J K L Lj M N Nj O P R S Š T U V Z Ž. English: the 26 letters A–Z. In a
+Serbian room Lj, Nj and Dž are letters of their own, so L, N and D do not take a
+word starting with them; an English room has no such rule. Diacritics are still
+respected, and answers are still accepted in either language. Recorded in
+`Plan.md` §2B.13 and `specs/009-full-alphabet-letters`.
+
 **Amendment 6 — 2026-09-30, at the product owner's request.** The waiting
 screen has a **Leave game** button in every mode. Before a round is scheduled,
 a room whose last connected human leaves is closed at once, and its code no
@@ -78,7 +89,8 @@ Serbian pen-and-paper game.
 Two people, each on their own computer, play one synchronized round of
 Zanimljiva Geografija in the browser. One player creates a room and shares a
 six-character code; the second player joins with it. Once both game screens
-have loaded, the server picks one random letter and schedules a single shared
+have loaded, the server picks one random letter (since Amendment 7, from the
+whole alphabet of the language of the player who opened the room) and schedules a single shared
 start time and deadline, so neither player can see the letter earlier than the
 other. Each player privately fills in eight geography categories for that letter,
 and the answers are revealed and scored only after both players finish or the
@@ -123,14 +135,16 @@ countdown reaching zero does not itself end the round.
 3. At most one answer per category per player; at most 40 characters.
 4. An answer is **valid** when, after normalization, it is **at least two
    characters** and starts with the round letter. Geographic and semantic
-   correctness is **not** checked.
+   correctness is **not** checked. _(Amendment 5: the AI checker now also
+   judges it. Amendment 7: in a Serbian room, L, N and D do not take a word
+   starting with Lj, Nj or Dž.)_
 5. Answers are invisible to the opponent until the reveal.
 6. **Finished** permanently locks that player's answers and cannot be undone.
 7. Scoring per category: two different valid answers → 10 each; the same valid
    answer → 5 each; only one valid answer → 10 and 0; neither valid → 0 and 0.
 8. The server alone decides identity, phase, timing, validity and points.
 
-Supported letters: `A, B, D, K, M, S, V`.
+Supported letters: `A, B, D, K, M, S, V`. _Superseded by Amendment 7: the whole Serbian or English alphabet._
 Categories: Država, Grad, Reka, Planina, More, Životinja, Biljka, Predmet.
 
 ## 6. Minimum visual requirement
@@ -165,6 +179,14 @@ Cyrillic/Latin equivalence, anti-cheat guarantees, mobile-native apps.
       rejected event leaves canonical state unchanged.
 - [ ] `npm run verify` passes and the output is recorded.
 - [ ] `/healthz`, SPA refresh and a full round work on the deployed URL.
+
+Letters (Amendment 7):
+
+- [ ] A Serbian room's letter is one of the 30 Serbian Latin letters and an
+      English room's one of A–Z, taken from the language of the player who
+      opened the room.
+- [ ] In a Serbian room, "Ljubljana" is rejected for L and accepted for Lj; in
+      an English room it is accepted for L.
 
 Week 4 additions (Amendment 5):
 

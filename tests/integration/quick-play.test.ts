@@ -25,7 +25,7 @@ describe("playing a stranger from the queue", () => {
   }
 
   const queue = (socket: Socket, displayName: string) =>
-    emitAck<QuickPlayAck>(socket, CLIENT_EVENTS.quickPlay, { displayName });
+    emitAck<QuickPlayAck>(socket, CLIENT_EVENTS.quickPlay, { displayName, language: "sr" });
 
   it("holds the first player and matches the second into one room", async () => {
     const p1 = await open();
@@ -110,6 +110,7 @@ describe("playing a stranger from the queue", () => {
     const p1 = await open();
     const created = await emitAck<{ roomCode: string }>(p1, CLIENT_EVENTS.createRoom, {
       displayName: "Ana",
+      language: "sr",
     });
     expect(created.ok).toBe(true);
 
@@ -121,7 +122,7 @@ describe("playing a stranger from the queue", () => {
 
   it("rejects a malformed queue request without changing the queue", async () => {
     const p1 = await open();
-    const bad = await emitAck(p1, CLIENT_EVENTS.quickPlay, { displayName: "Ana", admin: true });
+    const bad = await emitAck(p1, CLIENT_EVENTS.quickPlay, { displayName: "Ana", language: "sr", admin: true });
     expect(bad.ok).toBe(false);
     if (bad.ok) throw new Error("should have been refused");
     expect(bad.error.code).toBe("INVALID_PAYLOAD");

@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import { type Ack, ackSchema, gameError, gameErrorSchema } from "@contracts/errors";
+import type { Language } from "@contracts/game.schemas";
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
@@ -15,13 +16,16 @@ import {
   roundRevealedSchema,
   roundScheduledSchema,
   type ClientReadyAck,
+  type CreateRoomRequest,
   type DraftAck,
   type DraftRequest,
   type FinishAck,
   type HintAck,
   type HintRequest,
+  type PlayAiRequest,
   type PlayerFinished,
   type QuickPlayAck,
+  type QuickPlayRequest,
   type RoomAck,
   type RoomState,
   type RoundResults,
@@ -39,11 +43,12 @@ import type { z } from "zod";
  */
 export type GameSocket = {
   readonly socket: Socket;
-  createRoom(displayName: string): Promise<Ack<RoomAck>>;
+  /** `language` is the interface language; it picks the room's alphabet (§2B.13). */
+  createRoom(displayName: string, language: Language): Promise<Ack<RoomAck>>;
   joinRoom(roomCode: string, displayName: string): Promise<Ack<RoomAck>>;
-  quickPlay(displayName: string): Promise<Ack<QuickPlayAck>>;
+  quickPlay(displayName: string, language: Language): Promise<Ack<QuickPlayAck>>;
   cancelQuickPlay(): Promise<Ack<ClientReadyAck>>;
-  playAi(displayName: string): Promise<Ack<RoomAck>>;
+  playAi(displayName: string, language: Language): Promise<Ack<RoomAck>>;
   requestHint(input: HintRequest): Promise<Ack<HintAck>>;
   clientReady(roomCode: string): Promise<Ack<ClientReadyAck>>;
   sendDraft(input: DraftRequest): Promise<Ack<DraftAck>>;
@@ -89,15 +94,16 @@ export function createGameSocket(url?: string): GameSocket {
 
   return {
     socket,
-    createRoom: (displayName) =>
-      emitAck(CLIENT_EVENTS.createRoom, { displayName }, roomAckSchema),
+    createRoom: (displayName, language) =>
+      emitAck(CLIENT_EVENTS.createRoom, { displayName, language } satisfies CreateRoomRequest, roomAckSchema),
     joinRoom: (roomCode, displayName) =>
       emitAck(CLIENT_EVENTS.joinRoom, { roomCode, displayName }, roomAckSchema),
-    quickPlay: (displayName) =>
-      emitAck(CLIENT_EVENTS.quickPlay, { displayName }, quickPlayAckSchema),
+    quickPlay: (displayName, language) =>
+      emitAck(CLIENT_EVENTS.quickPlay, { displayName, language } satisfies QuickPlayRequest, quickPlayAckSchema),
     cancelQuickPlay: () =>
       emitAck(CLIENT_EVENTS.cancelQuickPlay, {}, clientReadyAckSchema),
-    playAi: (displayName) => emitAck(CLIENT_EVENTS.playAi, { displayName }, roomAckSchema),
+    playAi: (displayName, language) =>
+      emitAck(CLIENT_EVENTS.playAi, { displayName, language } satisfies PlayAiRequest, roomAckSchema),
     requestHint: (input) => emitAck(CLIENT_EVENTS.hint, input, hintAckSchema),
     clientReady: (roomCode) =>
       emitAck(CLIENT_EVENTS.clientReady, { roomCode }, clientReadyAckSchema),

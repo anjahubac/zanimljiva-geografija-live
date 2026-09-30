@@ -20,10 +20,11 @@ export type HintResult = { ok: true; outcome: HintOutcome } | { ok: false; code:
 
 export type AiService = {
   /** Null when the check could not be completed; the round falls back to the local rule. */
-  checkRound(letter: Letter, sheets: Sheets): Promise<CheckVerdicts | null>;
+  checkRound(letter: Letter, alphabet: Language, sheets: Sheets): Promise<CheckVerdicts | null>;
   /** Null when the bot could not get answers; it then plays a blank sheet. */
-  botAnswers(letter: Letter): Promise<Record<Category, string> | null>;
-  hint(letter: Letter, category: Category, language: Language): Promise<HintResult>;
+  botAnswers(letter: Letter, alphabet: Language): Promise<Record<Category, string> | null>;
+  /** `alphabet` is the room's letter set (§2B.13); `language` is the clue's language. */
+  hint(letter: Letter, alphabet: Language, category: Category, language: Language): Promise<HintResult>;
 };
 
 export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<Pick<GatewayDeps, "telemetry">>): AiService {
@@ -34,16 +35,16 @@ export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<P
   });
 
   return {
-    async checkRound(letter, sheets) {
-      const result = await runCheck(letter, sheets, gateway()).catch(() => null);
+    async checkRound(letter, alphabet, sheets) {
+      const result = await runCheck(letter, alphabet, sheets, gateway()).catch(() => null);
       return result?.ok ? result.value : null;
     },
-    async botAnswers(letter) {
-      const result = await runBotAnswers(letter, gateway()).catch(() => null);
+    async botAnswers(letter, alphabet) {
+      const result = await runBotAnswers(letter, alphabet, gateway()).catch(() => null);
       return result?.ok ? result.value : null;
     },
-    async hint(letter, category, language) {
-      const result = await runHint(letter, category, language, gateway()).catch(() => null);
+    async hint(letter, alphabet, category, language) {
+      const result = await runHint(letter, alphabet, category, language, gateway()).catch(() => null);
       if (!result) return { ok: false, code: "transport" };
       return result.ok ? { ok: true, outcome: result.value } : { ok: false, code: result.code };
     },

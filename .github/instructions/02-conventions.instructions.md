@@ -56,7 +56,7 @@ applyTo: "**/*"
 - Blankness, format validity, AI validity, and equality are distinct concepts. Two AI-accepted answers are the same answer when the `compactFold` of their recognised Serbian names match, so `Serbia` equals `Srbija`; answers the AI did not judge compare by normalized text.
 - Answers are accepted in Serbian or English in every game, whatever the interface language (`Plan.md` §2B.9).
 - Never score raw strings before normalization and validity checks.
-- The supported-letter allowlist is fixed at `A, B, D, K, M, S, V` in config. Do not widen it in code.
+- The letter sets are fixed in `src/contracts/game.schemas.ts`: `SERBIAN_LETTERS` (30, with Lj, Nj, Dž) and `ENGLISH_LETTERS` (26). A room draws from the one its opener's language picks (`Plan.md` §2B.13). Every letter check goes through `startsWithLetter(text, letter, alphabet)`, which applies the Serbian digraph rule; never compare prefixes inline.
 
 ## React conventions
 

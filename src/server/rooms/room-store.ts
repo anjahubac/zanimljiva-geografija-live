@@ -4,6 +4,7 @@ import {
   HINTS_PER_ROUND,
   type Category,
   type ClosedReason,
+  type Language,
   type Letter,
   type PlayerSlot,
   type RejectReason,
@@ -82,6 +83,8 @@ type BotTurn = {
 type Round = {
   roundId: string;
   letter: Letter;
+  /** The room's alphabet, copied so round code needs no room lookup (§2B.13). */
+  alphabet: Language;
   startsAt: number;
   endsAt: number;
   closed: boolean;
@@ -96,6 +99,8 @@ type Round = {
 export type Room = {
   roomCode: string;
   phase: RoomPhase;
+  /** The opener's language, fixed for the room; the letter comes from it (§2B.13). */
+  alphabet: Language;
   createdAt: number;
   /** Sparse until player 2 joins; never grows past two entries. */
   players: Partial<Record<PlayerSlot, Player>>;
@@ -140,12 +145,14 @@ export type QuickPlayResult =
   | { status: "matched"; room: Room; resumeToken: string; slot: PlayerSlot };
 
 export type RoomStore = {
-  createRoom(displayName: string, socketId: string): CreateRoomResult;
+  /** `alphabet` is the opener's language; the room's letters come from it (§2B.13). */
+  createRoom(displayName: string, socketId: string, alphabet: Language): CreateRoomResult;
   joinRoom(roomCode: string, displayName: string, socketId: string): Ack<JoinRoomResult>;
-  quickPlay(displayName: string, socketId: string): Ack<QuickPlayResult>;
+  /** On a match, the waiting player's language becomes the room's alphabet. */
+  quickPlay(displayName: string, socketId: string, alphabet: Language): Ack<QuickPlayResult>;
   cancelQuickPlay(socketId: string): void;
   /** `visitor` is the client address the limits count against; the socket id when absent. */
-  createAiRoom(displayName: string, socketId: string, visitor?: string): Ack<CreateRoomResult>;
+  createAiRoom(displayName: string, socketId: string, alphabet: Language, visitor?: string): Ack<CreateRoomResult>;
   queueLength(): number;
   markClientReady(roomCode: string, socketId: string): Ack<{ accepted: true }>;
   applyDraft(input: DraftRequest, socketId: string): Ack<DraftAck>;
@@ -186,17 +193,17 @@ const blankSheet = (): Record<Category, string> =>
 /** Every AI call, of any operation, counts toward today's budget (§2B.11). */
 function countedAi(ai: AiService, limits: UsageLimits, clock: Clock): AiService {
   return {
-    checkRound(letter, sheets) {
+    checkRound(letter, alphabet, sheets) {
       limits.countCall(clock.now());
-      return ai.checkRound(letter, sheets);
+      return ai.checkRound(letter, alphabet, sheets);
     },
-    botAnswers(letter) {
+    botAnswers(letter, alphabet) {
       limits.countCall(clock.now());
-      return ai.botAnswers(letter);
+      return ai.botAnswers(letter, alphabet);
     },
-    hint(letter, category, language) {
+    hint(letter, alphabet, category, language) {
       limits.countCall(clock.now());
-      return ai.hint(letter, category, language);
+      return ai.hint(letter, alphabet, category, language);
     },
   };
 }
@@ -211,7 +218,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const roomCodeBySocket = new Map<string, string>();
   const roomCodeByRound = new Map<string, string>();
   /** Players waiting for a random opponent, oldest first. */
-  const waiting: { socketId: string; displayName: string }[] = [];
+  const waiting: { socketId: string; displayName: string; alphabet: Language }[] = [];
 
   /* ------------------------------------------------------------ helpers */
 
@@ -301,7 +308,8 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
     room.round = {
       roundId,
-      letter: selectLetter(),
+      letter: selectLetter(room.alphabet),
+      alphabet: room.alphabet,
       startsAt,
       endsAt,
       closed: false,
@@ -369,7 +377,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       else finishBot(room, round);
     });
 
-    void (ai ? ai.botAnswers(round.letter) : Promise.resolve(null)).then((answers) => {
+    void (ai ? ai.botAnswers(round.letter, round.alphabet) : Promise.resolve(null)).then((answers) => {
       if (!isOpen(room, round.roundId)) return;
       turn.answers = answers;
       turn.status = answers ? "ready" : "failed";
@@ -411,14 +419,30 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     if (playersOf(room).every((each) => each.finished)) closeRound(round.roundId, "both_finished");
   }
 
+  /**
+   * The human finished first: the bot stops waiting for its own moment and
+   * finishes now, or on arrival if its answers are still being written, so
+   * results come without running out the clock. Its sheet was fixed when the
+   * letter was chosen, so finishing early gives it nothing.
+   */
+  function hurryBot(room: Room, round: Round): void {
+    const turn = round.bot;
+    if (!turn || !room.players[2]?.bot || room.players[2].finished) return;
+    turn.cancelFinish?.();
+    turn.cancelFinish = null;
+    if (turn.status === "thinking") turn.finishWhenReady = true;
+    else finishBot(room, round);
+  }
+
   /* ---------------------------------------------------------- mutations */
 
-  function createRoom(displayName: string, socketId: string): CreateRoomResult {
+  function createRoom(displayName: string, socketId: string, alphabet: Language): CreateRoomResult {
     const roomCode = nextRoomCode();
     const player = createPlayer(1, displayName, socketId);
     const room: Room = {
       roomCode,
       phase: "waiting_for_player",
+      alphabet,
       createdAt: clock.now(),
       players: { 1: player },
       round: null,
@@ -455,7 +479,12 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
    * once, so the round is scheduled by the human's own `room:client-ready`,
    * exactly as in a two-human room: there is still one way to start a round.
    */
-  function createAiRoom(displayName: string, socketId: string, visitor = socketId): Ack<CreateRoomResult> {
+  function createAiRoom(
+    displayName: string,
+    socketId: string,
+    alphabet: Language,
+    visitor = socketId,
+  ): Ack<CreateRoomResult> {
     if (!ai) return fail("AI_UNAVAILABLE");
     if (getRoomBySocket(socketId)) return fail("WRONG_PHASE");
     const limited = limits?.check("aiRoom", visitor, clock.now());
@@ -463,7 +492,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     limits?.charge("aiRoom", visitor, clock.now());
     cancelQuickPlay(socketId);
 
-    const created = createRoom(displayName, socketId);
+    const created = createRoom(displayName, socketId, alphabet);
     created.room.players[2] = createPlayer(2, BOT_DISPLAY_NAME, null, true);
     created.room.phase = "synchronizing";
     broadcastRoomState(created.room);
@@ -476,7 +505,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
    * matched pair travels exactly the path a room made from a code travels —
    * there is no second way to start a round.
    */
-  function quickPlay(displayName: string, socketId: string): Ack<QuickPlayResult> {
+  function quickPlay(displayName: string, socketId: string, alphabet: Language): Ack<QuickPlayResult> {
     if (getRoomBySocket(socketId)) return fail("WRONG_PHASE");
     // Asking twice is not an error; it is the same answer.
     if (waiting.some((entry) => entry.socketId === socketId)) return ok({ status: "queued" });
@@ -484,11 +513,12 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     // The longest-waiting player is matched first.
     const partner = waiting.shift();
     if (!partner) {
-      waiting.push({ socketId, displayName });
+      waiting.push({ socketId, displayName, alphabet });
       return ok({ status: "queued" });
     }
 
-    const created = createRoom(partner.displayName, partner.socketId);
+    // The waiting player opened the game, so their language decides (§2B.13).
+    const created = createRoom(partner.displayName, partner.socketId, partner.alphabet);
     const joined = joinRoom(created.room.roomCode, displayName, socketId);
     if (!joined.ok) {
       // Leave nothing behind: the partner's room would sit empty and
@@ -601,6 +631,8 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
     if (playersOf(room).every((each) => each.finished)) {
       closeRound(roundId, "both_finished");
+    } else {
+      hurryBot(room, round);
     }
 
     return ok({ finished: true as const });
@@ -636,7 +668,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     limits?.charge("hint", visitor, now);
 
     player.hintPending = true;
-    const result = await ai.hint(round.letter, input.category, input.language);
+    const result = await ai.hint(round.letter, round.alphabet, input.category, input.language);
     player.hintPending = false;
 
     // The round ended while the AI was thinking: nothing is shown or charged.
@@ -714,7 +746,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       completeRound(room, round, reason, null),
     );
     void ai
-      .checkRound(round.letter, sheets)
+      .checkRound(round.letter, round.alphabet, sheets)
       .catch(() => null)
       .then((verdicts) => completeRound(room, round, reason, verdicts));
   }
@@ -738,7 +770,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       for (const category of CATEGORIES) {
         const raw = player.lockedAnswers![category];
         const normalized = normalizeAnswer(raw);
-        const local = checkAnswerLocally(raw, round.letter);
+        const local = checkAnswerLocally(raw, round.letter, round.alphabet);
         let valid = local.ok;
         let rejected: RejectReason | null = local.ok || local.reason === "empty" ? null : local.reason;
         let key = normalized;

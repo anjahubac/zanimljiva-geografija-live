@@ -119,7 +119,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
           if (!player) return fail("NOT_IN_ROOM");
           return ok(roomAckSchema.parse({ roomCode: existing.roomCode, you: player.slot, resumeToken: player.resumeToken }));
         }
-        const created = store.createRoom(input.displayName, socket.id);
+        const created = store.createRoom(input.displayName, socket.id, input.language);
         return ok(
           roomAckSchema.parse({
             roomCode: created.room.roomCode,
@@ -147,7 +147,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
 
     socket.on(CLIENT_EVENTS.quickPlay, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.quickPlay, quickPlayRequestSchema, raw, ack, (input) => {
-        const result = store.quickPlay(input.displayName, socket.id);
+        const result = store.quickPlay(input.displayName, socket.id, input.language);
         if (!result.ok) return result;
 
         return ok(
@@ -167,7 +167,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
 
     socket.on(CLIENT_EVENTS.playAi, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.playAi, playAiRequestSchema, raw, ack, (input) => {
-        const created = store.createAiRoom(input.displayName, socket.id, visitor);
+        const created = store.createAiRoom(input.displayName, socket.id, input.language, visitor);
         if (!created.ok) return created;
         return ok(
           roomAckSchema.parse({
