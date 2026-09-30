@@ -520,7 +520,14 @@ button.link:hover:not(:disabled) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem 1.5rem;
-  padding-bottom: 0.6rem;
+  /* Pinned, so the letter and the clock stay in view while you scroll down
+     the sheet. The paper colour hides the rows passing underneath. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-top: -0.5rem;
+  padding-block: 0.5rem 0.6rem;
+  background-color: var(--paper-sheet);
   background-image: var(--rule-h);
   background-repeat: repeat-x;
   background-position: bottom left;
@@ -530,8 +537,16 @@ button.link:hover:not(:disabled) {
   margin: 0;
 }
 
+/* The clock is a stamped box, not a line of text, so it reads as the one
+   thing on the sheet that changes on its own. The digits stay their size;
+   the frame, and the red once time is short, carry the emphasis. */
 .timer {
   margin: 0;
+  padding: 0.4rem 0.8rem 0.45rem;
+  border: 2px solid var(--ink);
+  border-radius: 10px 14px 9px 13px / 13px 9px 14px 10px;
+  background: var(--paper-sheet);
+  text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: 1.5rem;
   font-weight: 700;
@@ -541,6 +556,7 @@ button.link:hover:not(:disabled) {
 
 .timer-label {
   display: block;
+  margin-bottom: 0.2rem;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -548,8 +564,35 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
+/* The last 15 seconds. The tint keeps --pen-red above 6:1 in both themes. */
 .timer-low {
+  border-color: var(--pen-red);
+  background: color-mix(in srgb, var(--pen-red) 9%, var(--paper-sheet));
   color: var(--pen-red);
+}
+
+.timer-low .timer-label {
+  color: var(--pen-red);
+}
+
+/* One nudge as time runs short, never a repeating blink. */
+@media (prefers-reduced-motion: no-preference) {
+  .timer-low {
+    animation: timer-nudge 480ms cubic-bezier(0.36, 0, 0.2, 1) 1;
+  }
+}
+
+@keyframes timer-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: rotate(-4deg);
+  }
+  65% {
+    transform: rotate(3deg);
+  }
 }
 
 /* The playing sheet is the scoring sheet: same columns, your line editable. */
@@ -602,10 +645,56 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
-/* Hints (§2B.8): a quiet link under each field, and the clue in its place. */
+/* Hints (§2B.8): a quiet link under each field, and the clue in its place.
+   The allowance sits beside the clock in the header, in the green pen that
+   marks every hint, with one dot per hint left. */
+.round-status {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
 .hints-left {
-  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.4rem 0.75rem 0.45rem;
+  border: 2px solid var(--pen-green);
+  border-radius: 13px 9px 12px 10px / 10px 13px 9px 14px;
+  background: color-mix(in srgb, var(--pen-green) 8%, var(--paper-sheet));
   font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--pen-green);
+}
+
+.hints-left strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.hint-pips {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.hint-pip {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.hint-pip-full {
+  background: currentColor;
+}
+
+/* All spent: the box steps back, so it no longer invites a click. */
+.hints-left-none {
+  border-style: dashed;
+  border-color: var(--rule-strong);
+  background: var(--paper-sheet);
   color: var(--ink-soft);
 }
 

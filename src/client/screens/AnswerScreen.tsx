@@ -1,4 +1,4 @@
-import { CATEGORIES, MAX_ANSWER_LENGTH } from "@contracts/game.schemas";
+import { CATEGORIES, HINTS_PER_ROUND, MAX_ANSWER_LENGTH } from "@contracts/game.schemas";
 import type { Category } from "@contracts/game.schemas";
 import { useI18n } from "@client/i18n";
 import type { DraftStatus, HintView } from "@client/state/useGameState";
@@ -84,12 +84,29 @@ export function AnswerScreen({
             {t.letterIs} <strong>{letter}</strong>
           </p>
         </div>
-        {/* Reads once per second, so it is hidden from assistive technology;
-            the live region below announces milestones instead. */}
-        <p className={`timer${remainingMs <= LOW_TIME_MS ? " timer-low" : ""}`} aria-hidden="true">
-          <span className="timer-label">{t.timeLeft}</span>
-          {formatRemaining(remainingMs)}
-        </p>
+        {/* Everything that runs down during the round sits together here, in
+            the pinned header, so it stays in view while you write. */}
+        <div className="round-status">
+          {onHint ? (
+            <p className={`hints-left${hintsLeft === 0 ? " hints-left-none" : ""}`}>
+              <span>
+                {t.hintsLeft}: <strong>{hintsLeft}</strong>
+              </span>
+              {/* The count is in the text; the dots only second it. */}
+              <span className="hint-pips" aria-hidden="true">
+                {Array.from({ length: HINTS_PER_ROUND }, (_, index) => (
+                  <span className={`hint-pip${index < hintsLeft ? " hint-pip-full" : ""}`} key={index} />
+                ))}
+              </span>
+            </p>
+          ) : null}
+          {/* Reads once per second, so it is hidden from assistive technology;
+              the live region below announces milestones instead. */}
+          <p className={`timer${remainingMs <= LOW_TIME_MS ? " timer-low" : ""}`} aria-hidden="true">
+            <span className="timer-label">{t.timeLeft}</span>
+            {formatRemaining(remainingMs)}
+          </p>
+        </div>
       </header>
 
       {/* The sheet is now one player's page, so the opponent's progress is
@@ -105,12 +122,6 @@ export function AnswerScreen({
             ? t.opponentFinished
             : t.opponentStillPlaying}
       </p>
-
-      {onHint ? (
-        <p className="hints-left">
-          {t.hintsLeft}: <strong>{hintsLeft}</strong>
-        </p>
-      ) : null}
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}
