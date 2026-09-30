@@ -10,7 +10,9 @@ import { AnswerScreen } from "@client/screens/AnswerScreen";
 import { SearchingScreen } from "@client/screens/SearchingScreen";
 import { WaitingForOpponentScreen } from "@client/screens/WaitingForOpponentScreen";
 import { ResultsScreen } from "@client/screens/ResultsScreen";
-import { UI_SR } from "@client/strings";
+import { JudgingScreen } from "@client/screens/JudgingScreen";
+import { useI18n } from "@client/i18n";
+import type { GameError } from "@contracts/errors";
 
 const DRAFT_DEBOUNCE_MS = 300;
 const TICK_MS = 250;
@@ -18,14 +20,24 @@ const TICK_MS = 250;
 const ANNOUNCED_SECONDS = new Set([60, 30, 10, 5, 4, 3, 2, 1, 0]);
 
 type AppProps = {
-  /** The signed-in player's name, or null for a guest. */
-  accountName?: string | null;
-  /** Leave the finished room and start over from the lobby. */
+  /** Leave the room (still waiting, or finished) and start over from the lobby. */
   onLeave: () => void;
 };
 
-export function App({ accountName = null, onLeave }: AppProps) {
+export function App({ onLeave }: AppProps) {
+  const { t, language } = useI18n();
   const [state, dispatch] = useGameState();
+
+  /**
+   * The server's error text is Serbian; the player reads the one for their
+   * language, looked up by the stable code. A ref, so switching language
+   * does not re-open the socket.
+   */
+  const tRef = useRef(t);
+  tRef.current = t;
+  const languageRef = useRef(language);
+  languageRef.current = language;
+  const say = useCallback((error: GameError) => tRef.current.errors[error.code] ?? error.message, []);
   const [now, setNow] = useState(() => Date.now());
   const [announcement, setAnnouncement] = useState("");
 
@@ -47,7 +59,9 @@ export function App({ accountName = null, onLeave }: AppProps) {
     const gameSocket = createGameSocket();
     socketRef.current = gameSocket;
 
-    gameSocket.onConnectionChange((connected) => dispatch({ type: "connection", connected }));
+    gameSocket.onConnectionChange((connected) =>
+      dispatch({ type: "connection", connected, message: tRef.current.connectionLost }),
+    );
     gameSocket.onRoomState((payload) => dispatch({ type: "room-state", payload }));
     gameSocket.onRoundScheduled((payload) =>
       dispatch({ type: "round-scheduled", payload, receivedAt: Date.now() }),
@@ -55,7 +69,7 @@ export function App({ accountName = null, onLeave }: AppProps) {
     gameSocket.onPlayerFinished((payload) => dispatch({ type: "player-finished", payload }));
     gameSocket.onRoundRevealed((payload) => dispatch({ type: "revealed", payload }));
     gameSocket.onRoundResults((payload) => dispatch({ type: "results", payload }));
-    gameSocket.onGameError((payload) => dispatch({ type: "error", message: payload.message }));
+    gameSocket.onGameError((payload) => dispatch({ type: "error", message: say(payload) }));
 
     const timers = debounceRef.current;
     return () => {
@@ -64,7 +78,7 @@ export function App({ accountName = null, onLeave }: AppProps) {
       gameSocket.disconnect();
       socketRef.current = null;
     };
-  }, [dispatch]);
+  }, [dispatch, say]);
 
   /* --------------------------------------------- automatic client-ready */
 
@@ -75,9 +89,9 @@ export function App({ accountName = null, onLeave }: AppProps) {
 
     readySentForRef.current = roomCode;
     void socketRef.current?.clientReady(roomCode).then((ack) => {
-      if (!ack.ok) dispatch({ type: "error", message: ack.error.message });
+      if (!ack.ok) dispatch({ type: "error", message: say(ack.error) });
     });
-  }, [state.room?.roomCode, state.room?.phase, dispatch]);
+  }, [state.room?.roomCode, state.room?.phase, dispatch, say]);
 
   /* ------------------------------------------------ presentation clock */
 
@@ -97,14 +111,15 @@ export function App({ accountName = null, onLeave }: AppProps) {
   const remainingSeconds = Math.ceil(remainingMs / 1000);
   useEffect(() => {
     if (phase === "answering" && ANNOUNCED_SECONDS.has(remainingSeconds)) {
-      setAnnouncement(`${UI_SR.timeLeft}: ${remainingSeconds} s`);
+      setAnnouncement(`${tRef.current.timeLeft}: ${remainingSeconds} s`);
     }
   }, [phase, remainingSeconds]);
 
   useEffect(() => {
     if (!phase) return;
-    if (phase === "answering") setAnnouncement(UI_SR.answeringTitle);
-    if (phase === "results") setAnnouncement(UI_SR.resultsTitle);
+    if (phase === "answering") setAnnouncement(tRef.current.answeringTitle);
+    if (phase === "judging") setAnnouncement(tRef.current.judgingTitle);
+    if (phase === "results") setAnnouncement(tRef.current.resultsTitle);
   }, [phase]);
 
   /* -------------------------------------------------------- draft flow */
@@ -122,10 +137,10 @@ export function App({ accountName = null, onLeave }: AppProps) {
       if (ack.ok) {
         dispatch({ type: "draft-accepted", category, revision: ack.data.acceptedRevision });
       } else {
-        dispatch({ type: "draft-rejected", category, message: ack.error.message });
+        dispatch({ type: "draft-rejected", category, message: say(ack.error) });
       }
     });
-  }, [dispatch]);
+  }, [dispatch, say]);
 
   const flush = useCallback(
     (category: Category) => {
@@ -173,10 +188,10 @@ export function App({ accountName = null, onLeave }: AppProps) {
         dispatch({ type: "finish-accepted" });
       } else {
         dispatch({ type: "busy", busy: false });
-        dispatch({ type: "error", message: ack.error.message });
+        dispatch({ type: "error", message: say(ack.error) });
       }
     });
-  }, [flush, dispatch]);
+  }, [flush, dispatch, say]);
 
   /* ----------------------------------------------------------- screens */
 
@@ -185,25 +200,25 @@ export function App({ accountName = null, onLeave }: AppProps) {
     void socketRef.current?.createRoom(displayName).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (ack.ok) dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
-      else dispatch({ type: "error", message: ack.error.message });
+      else dispatch({ type: "error", message: say(ack.error) });
     });
-  }, [dispatch]);
+  }, [dispatch, say]);
 
   const handleJoin = useCallback((roomCode: string, displayName: string) => {
     dispatch({ type: "busy", busy: true });
     void socketRef.current?.joinRoom(roomCode, displayName).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (ack.ok) dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
-      else dispatch({ type: "error", message: ack.error.message });
+      else dispatch({ type: "error", message: say(ack.error) });
     });
-  }, [dispatch]);
+  }, [dispatch, say]);
 
   const handleQuickPlay = useCallback((displayName: string) => {
     dispatch({ type: "busy", busy: true });
     void socketRef.current?.quickPlay(displayName).then((ack) => {
       dispatch({ type: "busy", busy: false });
       if (!ack.ok) {
-        dispatch({ type: "error", message: ack.error.message });
+        dispatch({ type: "error", message: say(ack.error) });
         return;
       }
       // A match that already existed arrives as room:state too; the queued
@@ -211,7 +226,28 @@ export function App({ accountName = null, onLeave }: AppProps) {
       if (ack.data.status === "queued") dispatch({ type: "entry", entry: "searching" });
       else dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
     });
-  }, [dispatch]);
+  }, [dispatch, say]);
+
+  const handlePlayAi = useCallback((displayName: string) => {
+    dispatch({ type: "busy", busy: true });
+    void socketRef.current?.playAi(displayName).then((ack) => {
+      dispatch({ type: "busy", busy: false });
+      if (ack.ok) dispatch({ type: "joined", roomCode: ack.data.roomCode, you: ack.data.you });
+      else dispatch({ type: "error", message: say(ack.error) });
+    });
+  }, [dispatch, say]);
+
+  const handleHint = useCallback((category: Category) => {
+    const roundId = roundIdRef.current;
+    const gameSocket = socketRef.current;
+    if (!roundId || !gameSocket) return;
+
+    dispatch({ type: "hint-requested", category });
+    void gameSocket.requestHint({ roundId, category, language: languageRef.current }).then((ack) => {
+      if (ack.ok) dispatch({ type: "hint-received", payload: ack.data });
+      else dispatch({ type: "hint-failed", category, message: say(ack.error) });
+    });
+  }, [dispatch, say]);
 
   const handleCancelSearch = useCallback(() => {
     dispatch({ type: "busy", busy: true });
@@ -231,10 +267,11 @@ export function App({ accountName = null, onLeave }: AppProps) {
         msToStart,
         remainingMs,
         announcement,
-        accountName,
         onCreate: handleCreate,
         onJoin: handleJoin,
         onQuickPlay: handleQuickPlay,
+        onPlayAi: handlePlayAi,
+        onHint: handleHint,
         onCancelSearch: handleCancelSearch,
         onLeave,
         onChange: handleChange,
@@ -246,7 +283,7 @@ export function App({ accountName = null, onLeave }: AppProps) {
 
       {!state.connected && state.roomCode ? (
         <p className="banner" role="alert">
-          {UI_SR.connectionLost}
+          {t.connectionLost}
         </p>
       ) : null}
     </main>
@@ -259,10 +296,11 @@ type RenderArgs = {
   msToStart: number;
   remainingMs: number;
   announcement: string;
-  accountName: string | null;
   onCreate: (displayName: string) => void;
   onJoin: (roomCode: string, displayName: string) => void;
   onQuickPlay: (displayName: string) => void;
+  onPlayAi: (displayName: string) => void;
+  onHint: (category: Category) => void;
   onCancelSearch: () => void;
   onLeave: () => void;
   onChange: (category: Category, value: string) => void;
@@ -281,7 +319,6 @@ function renderScreen(args: RenderArgs) {
         <JoinScreen
           busy={state.busy}
           errorMessage={state.errorMessage}
-          accountName={args.accountName}
           onJoin={args.onJoin}
           onBack={args.onBack}
         />
@@ -291,7 +328,7 @@ function renderScreen(args: RenderArgs) {
       return <SearchingScreen busy={state.busy} onCancel={args.onCancelSearch} />;
 
     case "waiting":
-      return state.room ? <WaitingScreen room={state.room} /> : null;
+      return state.room ? <WaitingScreen room={state.room} onLeave={args.onLeave} /> : null;
 
     case "countdown":
       return (
@@ -315,7 +352,11 @@ function renderScreen(args: RenderArgs) {
           busy={state.busy}
           opponentFinished={state.opponentFinished}
           opponentConnected={state.opponentConnected}
+          opponentIsBot={state.opponentIsBot}
           announcement={args.announcement}
+          hintsLeft={state.hintsLeft}
+          hints={state.hints}
+          onHint={args.onHint}
           onChange={args.onChange}
           onBlur={args.onBlur}
           onFinish={args.onFinish}
@@ -327,9 +368,13 @@ function renderScreen(args: RenderArgs) {
         <WaitingForOpponentScreen
           opponentFinished={state.opponentFinished}
           opponentConnected={state.opponentConnected}
+          opponentIsBot={state.opponentIsBot}
           remainingMs={args.remainingMs}
         />
       );
+
+    case "judging":
+      return <JudgingScreen />;
 
     case "results":
       return state.revealed && state.results && state.you ? (
@@ -337,10 +382,11 @@ function renderScreen(args: RenderArgs) {
           you={state.you}
           revealed={state.revealed}
           results={state.results}
+          opponentIsBot={state.opponentIsBot}
           onLeave={args.onLeave}
         />
       ) : (
-        <p aria-live="polite">{UI_SR.resultsTitle}…</p>
+        <JudgingScreen />
       );
 
     case "lobby":
@@ -349,9 +395,9 @@ function renderScreen(args: RenderArgs) {
         <LobbyScreen
           busy={state.busy}
           errorMessage={state.errorMessage}
-          accountName={args.accountName}
           onCreate={args.onCreate}
           onQuickPlay={args.onQuickPlay}
+          onPlayAi={args.onPlayAi}
           onSwitchToJoin={args.onSwitchToJoin}
         />
       );

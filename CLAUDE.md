@@ -10,15 +10,19 @@ context; read them before writing code.
 3. `Plan.md` — locked product scope, rules, state machine, schedule.
 
 If you are implementing, your driver file is
-`.github/instructions/10-implementation-order.instructions.md`. Work its steps
-in order, one at a time, and run each step's exit command before moving on.
+`.github/instructions/10-implementation-order.instructions.md`. Steps 0–11 are
+the Week 3 build; all are done except Step 11's deployment, which is now Week 4
+step W4-9. New work follows its **Week 4** section and `Plan.md` §2B. Work one step at a time, and run each step's exit command before
+moving on.
 
 ## The five rules that matter most
 
 1. The **server** owns identity, phase, letter, timestamps, validity and score.
    A browser payload is never authoritative.
-2. A round is scheduled only after **both** clients send `room:client-ready`,
-   and both receive an identical `roundId`, letter, `startsAt` and `endsAt`.
+2. A round is scheduled only after **both seats** are ready, and both receive
+   an identical `roundId`, letter, `startsAt` and `endsAt`. A human seat is
+   ready only through its own `room:client-ready`; the AI opponent's seat is
+   ready by the server when it is seated (`Plan.md` §2B.3).
 3. An opponent's answers must be **absent** from every payload before the
    canonical reveal — not present and hidden in the UI.
 4. Reveal and scoring happen **exactly once**, through one idempotent

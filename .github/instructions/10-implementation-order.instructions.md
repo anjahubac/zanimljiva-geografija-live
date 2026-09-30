@@ -171,6 +171,9 @@ Client rules that are easy to get wrong:
 - Show a pending / saved / rejected indicator for every draft.
 - The opponent's answers must be absent from client state before reveal — not
   present and hidden by CSS.
+- Leaving a room (the waiting screen's Leave game, the results sheet's way
+  back) remounts `App` so the socket drops. Do not add a leave event
+  (`Plan.md` §2B.10).
 
 **Exit:** two browser profiles complete a full local round; `npm run verify` passes.
 
@@ -194,6 +197,34 @@ Complete the failure matrix in `Plan.md` §13, deploy one instance to a
 WebSocket-capable host, verify `/healthz`, SPA refresh, WSS upgrade, and a full
 two-computer round. Capture evidence without exposing tokens or in-round answers.
 
+## Week 4 — steps after the Week 3 build
+
+Steps 0–11 above are the Week 3 build. All are done except Step 11's
+deployment and two-computer round, which moved to W4-9 below. Week 4 work (`Plan.md` §2B) follows the
+same working agreement, and its step list with results is `Plan.md` §2B.6.
+Before starting a Week 4 step:
+
+1. Read `Plan.md` §2B and the section for the feature you touch (2B.2 checker,
+   2B.3 AI opponent, 2B.5 providers, 2B.8 hints, 2B.9 languages, 2B.10 leaving).
+2. Write the eval first: a fake-AI integration case next to A1–A6 in
+   `tests/integration/ai-round.test.ts` for game behavior, or a new expected
+   verdict in `scripts/ai-smoke.ts` / `docs/AI_EVALS.md` for model behavior.
+3. Every test uses the fakes in `tests/fakes/`; no test calls a real provider.
+
+Remaining Week 4 steps, in order:
+
+- **W4-7:** add keys and run `npm run smoke:ai` once per provider; record the
+  agreement in `docs/AI_EVALS.md`. **Exit:** both rows in its run log filled.
+- **W4-8:** one controlled change against that baseline, written first in
+  `docs/EVIDENCE_004.md` §5. **Exit:** the same 16 cases re-run; A1–A6 pass.
+- **W4-9:** deploy to Render (§2B.7), then play one round per mode, the
+  friend round on two physical computers. Set `TRUST_PROXY_HOPS` for Render
+  and confirm two visitors on different networks get separate AI limits
+  (§2B.11). **Exit:** module 09's production checks, including one
+  `verified: true` round.
+
+The AI usage limit (§2B.11) was accepted and built on 2026-09-30.
+
 ## Accessibility and UX floor (applies from Step 8)
 
 Not decoration — these are acceptance criteria:
@@ -204,8 +235,9 @@ Not decoration — these are acceptance criteria:
 - Errors appear as text next to the relevant control, not only as a toast.
 - Text contrast at least 4.5:1; never colour alone to convey valid/invalid.
 - Works at 1280×720 and at a 360 px-wide viewport without horizontal scrolling.
-- Serbian category labels come from `CATEGORY_LABELS_SR`; no hard-coded strings
-  scattered through components.
+- Category labels come from `CATEGORY_LABELS` for the current language, and
+  every other string from `src/client/strings.ts` in both Serbian and English;
+  no hard-coded strings scattered through components.
 
 ## Definition of done for every step
 

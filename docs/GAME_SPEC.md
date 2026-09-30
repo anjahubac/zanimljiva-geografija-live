@@ -4,7 +4,32 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
-**Amendment 3 — 2026-09-22, at the product owner's request.** Real accounts,
+**Amendment 6 — 2026-09-30, at the product owner's request.** The waiting
+screen has a **Leave game** button in every mode. Before a round is scheduled,
+a room whose last connected human leaves is closed at once, and its code no
+longer lets anyone join. Once a round is scheduled, leaving does not end it:
+the round runs to its deadline, as before. Recorded in `docs/EVIDENCE_004.md`
+(W4-2) and `Plan.md` §2B.10.
+
+**Amendment 5 — 2026-09-30, Week 4, at the product owner's request.** This
+amendment supersedes Amendment 3 and parts of §5 and §7; `Plan.md` §2B holds
+the full design. (a) **Accounts are removed.** Every player is a guest who
+types a display name. (b) **Three ways to play:** a friend by room code, a
+random person from a first-come queue, or an **AI opponent** seated by the
+server. (c) **Validity (§5 rule 4) is now AI-checked.** An answer must still
+pass the local rule (at least two characters, right letter), and then an AI
+checker (Google Gemini, with Groq as fallback) must accept it as a real term of
+its category. If the AI is unavailable or takes more than 20 seconds, the local
+rule alone decides and the results say so. Scoring (§5 rule 7) is unchanged.
+(d) **Hints:** two per player per round; a hinted category is marked for both
+players at the reveal. (e) **Serbian and English:** the interface is in either
+language, and answers count in either. (f) A **judging** phase sits between the
+end of answering and the results. In §7, accounts are excluded again, while
+matchmaking, AI hints and AI judging are no longer excluded. Recorded in
+`docs/EVIDENCE_004.md` (W4-1).
+
+**Amendment 3 — 2026-09-22, at the product owner's request.** _Superseded by
+Amendment 5 (accounts removed on 2026-09-30); kept as written for the history._ Real accounts,
 profiles and persistent personal history are now included as an extension to
 Core. Players register with their email address, a display name and a password,
 or continue as guests. The email address is the identity, matched case- and
@@ -68,6 +93,11 @@ each of the eight categories, and by choosing answers your opponent did not.
 (one per category), and a **Finished** button. No mouse is required and there
 are no timed reflex actions.
 
+_Week 4 (Amendments 5, 6):_ the start screen also offers three modes (a friend,
+a random person, the AI); the sheet has a **hint** button per category (two
+hints per round); the header has a Serbian/English switch; the waiting screen
+has **Leave game**. All are ordinary buttons, reachable by keyboard.
+
 ## 4. Core loop and round-completion condition
 
 ```text
@@ -107,7 +137,7 @@ Categories: Država, Grad, Reka, Planina, More, Životinja, Biljka, Predmet.
 
 Readable, keyboard-accessible HTML with labelled inputs, a visible countdown, a
 clear phase indicator (waiting / countdown / answering / waiting for opponent /
-results), a per-field saved-or-pending indicator, and a results table showing
+checking answers (Week 4) / results), a per-field saved-or-pending indicator, and a results table showing
 both answers, validity and points side by side. Light styling only. Animation,
 theming and artwork are explicitly not required.
 
@@ -136,6 +166,20 @@ Cyrillic/Latin equivalence, anti-cheat guarantees, mobile-native apps.
 - [ ] `npm run verify` passes and the output is recorded.
 - [ ] `/healthz`, SPA refresh and a full round work on the deployed URL.
 
+Week 4 additions (Amendment 5):
+
+- [ ] An invented answer that passes the letter rule is rejected by the AI
+      checker, with its reason shown; `Serbia` and `Srbija` score as the same
+      answer.
+- [ ] When the AI is unavailable or exceeds 20 seconds, the round is still
+      scored, by the letter rule, and the results say so.
+- [ ] The AI opponent's answers are absent from every payload before the
+      reveal (automated absence assertion).
+- [ ] A hint never contains its term; a hinted category is marked for both
+      players at the reveal.
+- [ ] Every screen reads correctly in Serbian and in English.
+- [ ] The live AI check is run and recorded in `docs/AI_EVALS.md`.
+
 ## 9. Instructor approval
 
 > **NOT YET OBTAINED — blocking for submission, not for implementation.**
@@ -160,3 +204,12 @@ reveal, and decides timing. That is one Node process with Socket.IO and in-memor
 rooms: no database, no accounts, no second service, one replica. This is the
 minimum infrastructure that makes the stated game possible, and every component
 of it appears in the fairness argument above.
+
+_Week 4 (Amendment 5):_ the server now also calls an external AI (Google
+Gemini, with Groq as fallback) to check answers, play the AI opponent and write
+hints. This is still not a second service of ours: no database, no queue, no
+second process. The AI is called only by the server, with the key kept in the
+server environment, and the game never depends on it: if it fails, the round
+is scored by the letter rule. The same backend is what makes this possible;
+answers could not be sent to an AI from the browser without exposing the key
+and the opponent's answers.

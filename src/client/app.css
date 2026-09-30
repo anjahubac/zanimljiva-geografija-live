@@ -602,6 +602,28 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
+/* Hints (§2B.8): a quiet link under each field, and the clue in its place. */
+.hints-left {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.hint-button {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.hint-text {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--pen-green);
+  max-width: 14rem;
+}
+
 /* A departed opponent. The sentence carries the meaning on its own; the pen
    colour is a second channel, never the only one. --pen-red is 7.1:1 on the
    white sheet and 7.8:1 at night, both clear of the 4.5:1 floor. */
@@ -734,6 +756,13 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
+/* A cell answered with a hint (§2B.8): shown to both players, in green pen
+   like a teacher's margin note. The words carry the meaning on their own. */
+.verdict-hinted {
+  color: var(--pen-green);
+  font-style: italic;
+}
+
 /* The diagonal the paper game strikes through an unanswered cell. The words
    "bez odgovora" stay in the DOM for assistive technology. */
 .cell-empty::after {
@@ -835,6 +864,13 @@ button.link:hover:not(:disabled) {
   margin: 0;
 }
 
+/* The waiting screen's way out: the button, and under it what leaving costs. */
+.waiting-actions {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
 /* --------------------------------------------------- the two ways to play */
 
 .paths {
@@ -856,12 +892,7 @@ button.link:hover:not(:disabled) {
   color: var(--ink-soft);
 }
 
-.playing-as {
-  margin: 0 0 0.5rem;
-  color: var(--ink-soft);
-}
-
-/* ------------------------------------------------ accounts and profiles */
+/* ------------------------------------------------ page header controls */
 
 /* The site header. Product name on the left, the few global actions on the
    right, both aligned to the same column as the page content below — the bar
@@ -908,22 +939,13 @@ button.link:hover:not(:disabled) {
   white-space: nowrap;
 }
 
-.nav-who {
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-/* A phone has room for the actions only. The name and the "Tema" label leave
-   the screen but stay in the page, so a screen reader still announces them. */
+/* A phone has room for the controls only. Their labels leave the screen but
+   stay in the page, so a screen reader still announces them. */
 @media (max-width: 30rem) {
   .site-nav {
     gap: 0 1rem;
   }
 
-  .nav-who,
   .theme-toggle label {
     position: absolute;
     width: 1px;
@@ -978,108 +1000,6 @@ button.link:hover:not(:disabled) {
 
 .theme-toggle select:hover {
   border-bottom-color: var(--ink-soft);
-}
-
-.field-hint {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-}
-
-.profile-name {
-  margin: 0 0 1rem;
-  font-family: var(--font-hand);
-  font-size: clamp(1.5rem, 1.2rem + 1.6vw, 2.1rem);
-  line-height: 1.1;
-}
-
-.profile-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  margin: 0 0 1.5rem;
-}
-
-.profile-stats div {
-  min-width: 5rem;
-}
-
-.profile-stats dt {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.profile-stats dd {
-  margin: 0.15rem 0 0;
-  font-family: var(--font-hand);
-  font-size: 1.9rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.section-title {
-  margin: 0 0 0.75rem;
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
-}
-
-.history {
-  margin: 0 0 1.5rem;
-  padding: 0;
-  list-style: none;
-}
-
-.history-game + .history-game {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  background-image: var(--rule-h-faint);
-  background-repeat: repeat-x;
-  background-position: top left;
-}
-
-.history-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 1rem;
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-
-.history-letter {
-  font-family: var(--font-hand);
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--ink);
-}
-
-/* The word carries the result; the colour only seconds it. */
-.history-outcome {
-  margin-left: auto;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.outcome-win {
-  color: var(--pen-green);
-}
-
-.outcome-loss {
-  color: var(--pen-red);
-}
-
-.pager {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
 }
 
 /* The playing sheet and the scoring sheet are one sheet, at every width: the

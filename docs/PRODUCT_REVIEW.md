@@ -71,6 +71,10 @@ columns simultaneously; horizontal scrolling stays inside the table.
    `waiting_for_player` and completed rooms. If a player disconnects in
    `synchronizing`, that room has no active-round deadline and no applicable TTL.
    Add a synchronization timeout and explicit cancellation behavior.
+   _Partly addressed 2026-09-30 (`EVIDENCE_004.md` W4-2):_ the waiting screen has **Leave game**,
+   and a pre-round room with no connected human left is removed at once. A room
+   where one human stays in `synchronizing` still has no timeout of its own,
+   but that player can now leave.
 4. **Bound acknowledgement waits and display round errors.** The client socket
    adapter has no acknowledgement timeout. A connection loss can leave pending
    actions unresolved. Global errors are stored, but answering/waiting screens

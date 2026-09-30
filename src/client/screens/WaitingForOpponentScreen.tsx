@@ -1,30 +1,38 @@
-import { UI_SR } from "@client/strings";
+import { useI18n } from "@client/i18n";
 
-type Props = { opponentFinished: boolean; opponentConnected: boolean; remainingMs: number };
+type Props = {
+  opponentFinished: boolean;
+  opponentConnected: boolean;
+  opponentIsBot?: boolean;
+  remainingMs: number;
+};
 
 export function WaitingForOpponentScreen({
   opponentFinished,
   opponentConnected,
+  opponentIsBot = false,
   remainingMs,
 }: Props) {
+  const { t } = useI18n();
   const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
 
   return (
     <section className="screen" aria-labelledby="locked-title">
-      <h1 className="screen-title" id="locked-title">{UI_SR.finishedTitle}</h1>
-      <p aria-live="polite">{UI_SR.waitingForOpponentFinish}</p>
+      <h1 className="screen-title" id="locked-title">{t.finishedTitle}</h1>
+      <p aria-live="polite">{t.waitingForOpponentFinish}</p>
       <p
         className={opponentConnected ? undefined : "opponent-note opponent-note-gone"}
         aria-live="polite"
       >
+        {opponentIsBot ? `${t.aiOpponent}: ` : ""}
         {!opponentConnected
-          ? UI_SR.opponentLeft
+          ? t.opponentLeft
           : opponentFinished
-            ? UI_SR.opponentFinished
-            : UI_SR.opponentStillPlaying}
+            ? t.opponentFinished
+            : t.opponentStillPlaying}
       </p>
       <p aria-hidden="true">
-        {UI_SR.timeLeft}: {seconds} s
+        {t.timeLeft}: {seconds} s
       </p>
     </section>
   );

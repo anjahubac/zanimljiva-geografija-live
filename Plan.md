@@ -8,10 +8,21 @@
 - Deployment: one public browser URL backed by one real-time Node.js service
 - Plan status: Core gameplay implemented; baseline/evidence and deployed two-computer acceptance remain incomplete. See the 2026-09-22 review in `docs/PRODUCT_REVIEW.md`.
 - Primary objective: deliver the smallest reliable synchronized round and the evidence required for Week 3
+- **Week 4 revision (2026-09-30): see §2B.** Accounts are removed; a Gemini
+  answer checker, a third way to play (against an AI opponent), hints, and a
+  Serbian/English interface are added. Where §2B contradicts an older section,
+  §2B wins, and the older text is marked. A **Leave game** button on the
+  waiting screen followed the same day (§2B.10). Week 4 evidence is in
+  `docs/EVIDENCE_004.md`. An AI usage limit per visitor and per day was
+  accepted and built the same day (§2B.11).
 
 ## 2. How the source documents are used
 
 ### Product-owner expansion — 2026-09-22
+
+> **Superseded in part by §2B (2026-09-30):** email accounts, profiles, saved
+> history and the SQLite store are removed. Friend rooms and random matchmaking
+> stay exactly as described under "Two ways into a room".
 
 The owner explicitly requested real cross-device accounts, player profiles,
 persistent answer/points history, and a wider game sheet. These supersede the
@@ -134,6 +145,406 @@ The supplied documents have different roles:
 
 If two higher-priority sources conflict, pause and resolve the conflict in `GAME_SPEC.md` before implementing it.
 
+## 2B. Week 4 revision — no accounts, Gemini checker, AI opponent, hints, two languages (2026-09-30)
+
+**Status: implemented locally on 2026-09-30. Not yet committed, pushed or deployed.**
+`npm run verify` passes (437 tests, 27 files, after §2B.10). Not yet run against the real Gemini or Groq APIs,
+because no key was available in the session; see §2B.6 step 7.
+
+The owner's decisions, recorded before any code changes:
+
+1. **Gameplay stays as it is on `main` at `8306d97`.** Same sheet, categories,
+   letters, 150-second round, synchronized start, private drafts, Finish,
+   deadline, one idempotent close, traditional 10/5/0 scoring.
+2. **Login and signup are removed.** Every mode is guest play with a display
+   name typed on the start screen.
+3. **Three ways to play**, none needing an account:
+   - **Play a friend** — create a room, share the code (unchanged).
+   - **Play a random person** — the first-come queue (unchanged).
+   - **Play against AI** — new; a server-side AI opponent takes the second seat.
+4. **An AI answer checker** decides whether an answer really is a country,
+   city, river... Answers that only pass the letter rule no longer score.
+5. **Hints** — a stuck player can ask the AI for a clue (§2B.8).
+6. **Two languages** — Serbian and English interface; answers are accepted in
+   either language and the checker judges both (§2B.9).
+7. **The AI providers are Google Gemini and Groq, free tiers, each the other's
+   fallback** (§2B.5). Gemini was chosen for its free API calls; Groq was
+   added so that either can stand in when the other fails.
+
+A colleague's fork (`Cevizara1/zanimljiva-geografija-live`, commit `28ee792`)
+rebuilt the game as single-player on Vercel with a Gemini checker. The
+single-player/Vercel direction is **not** adopted, because it removes the two
+multiplayer modes. Its AI layer is well built and provider-neutral, and is
+reused as listed in §2B.4.
+
+### 2B.1 Remove accounts — done
+
+Deleted with their tests: `src/server/accounts/*`, `src/contracts/account.schemas.ts`,
+`src/client/accounts/*`, `AccountScreen.tsx`, `ProfileScreen.tsx`, the SQLite
+file under `data/`, and their CSS. The socket layer no longer reads a session
+cookie; the display name always comes from the validated payload. The
+same-origin check on the socket handshake, which lived in the account module,
+was kept and moved to `src/server/index.ts`. Matchmaking is "oldest waiting
+socket first". No persistent disk is needed any more, which is what makes free
+hosting possible (§2B.7).
+
+### 2B.2 AI answer checker
+
+**Where it runs.** Only on the server, only inside the close path. The browser
+never calls the AI and never sees the key.
+
+**Two steps, in order:**
+
+1. **Local rule (unchanged, free, deterministic).** Length ≥ 2 after
+   normalization and the right starting letter (§7). Blank or failing answers
+   are invalid and are never sent to the AI.
+2. **AI verdict.** Every answer that passed step 1 — from both players — goes
+   into **one request per round**. Identical answers in the same category
+   (after `compactFold`) are sent once. The model returns, per item:
+   `verdict` (`accepted` | `rejected`), `reason` (`not_real`, `wrong_category`,
+   `historical`, `unrecognized`, or empty), and the recognised name in Serbian
+   and in English.
+
+An answer is **valid** only if step 1 passes **and** the AI accepts it **and**
+the recognised name resembles what the player wrote (the model may not "correct"
+`Kxqwe` into `Kenija`) **and** that name starts with the round letter. The
+letter is decided by code, never by the model, so `Sabac` recognised as
+`Šabac` is rejected for S.
+
+**Scoring does not change.** §6's table is applied to the new validity. For
+"same answer" (5/5), two accepted answers are compared by the `compactFold` of
+the recognised **Serbian** name. So `Cacak` and `Čačak` are the same city, and
+`Serbia` and `Srbija` are the same country.
+
+**Close path.** `closeRound` stays the single, idempotent entry point:
+
+```text
+closeRound(roundId, reason)
+  1. Return unless this is the current open round.
+  2. Mark closed.
+  3. Cancel timers (start, deadline, bot finish).
+  4. Lock both sheets.
+  -- no AI configured: completeRound(local rule) immediately, as in Week 3 --
+  5. phase = "judging"; ask the checker; start a JUDGE_TIMEOUT_MS (20 s) timer.
+completeRound (runs exactly once: whichever of checker / timeout comes first)
+  6. Validity = local rule + AI verdicts (or local rule only, verified = false).
+  7. phase = "results"; emit one round:revealed and one round:results.
+```
+
+The gateway gives the checker at most 18 s across all retries and fallback
+models. The room's own 20 s timer uses the injected scheduler, so it cannot be
+defeated by a misbehaving AI service, and tests drive it deterministically.
+
+**Failure is never a stuck game.** Timeout, quota, bad JSON, schema mismatch,
+refusal or a missing key all fall back to the local rule. The results screen
+then says the round was scored on the starting letter only. When the AI did
+check, each rejected cell shows its reason (e.g. "ne postoji", "pogrešna
+kategorija").
+
+**Safety.**
+
+- Answers are untrusted data: control characters stripped, JSON-encoded in the
+  user message, and the system prompt says never to follow instructions inside
+  them. The 40-character cap already limits payloads.
+- The reply is validated three times: JSON parse → zod schema → semantic rules
+  (exactly the item ids sent, each once). Anything else counts as a failure.
+- The key lives only in the server environment; telemetry logs counts and
+  outcomes, never answers or the key.
+- An opponent's answers reach the AI only after both sheets are locked, and
+  reach the other player only in `round:revealed`.
+
+### 2B.3 Play against AI
+
+**Entry.** A third button in the lobby, event `room:play-ai`
+(payload `{ displayName }`, same ack as `room:create`). Without an AI key the
+server answers `AI_UNAVAILABLE` and the lobby shows that message.
+
+**The bot is a server-side player, not a client.** It has `bot: true`, the
+reserved name `AI` (a human cannot pick it), no socket, `connected: true`, and
+`clientReady: true` from the moment it is seated. So rule 2 holds unchanged:
+the round is scheduled when the human's loaded screen sends
+`room:client-ready`, through the same `scheduleRound` as every other room.
+
+- When the letter is chosen, the server asks the AI for the bot's sheet (one
+  call, prompt `bot-answers.v1`). The answers are held in the round's private
+  bot state. They are **never** in a projection or any payload before
+  `round:revealed`.
+- **One fixed difficulty:** the bot keeps a random 5–7 of its 8 answers and
+  presses Finish at a random moment between 55% and 85% of the round. If its
+  answers arrive after that moment, it finishes on arrival. Randomness is
+  injected, so tests are deterministic.
+- The bot's answers go through the **same** checker, in the same request as the
+  human's. The bot is not trusted to be right.
+- If the bot's AI call fails, it plays a blank sheet and the results say so
+  (`botFailed`). The human's round is unaffected.
+- The bot never enters the random-person queue and never uses hints.
+
+### 2B.4 What was reused from the colleague's fork
+
+| Fork file | Use |
+| --- | --- |
+| `src/server/ai/types.ts`, `gateway.ts`, `classify.ts`, `retry-policy.ts`, `model-health.ts`, `telemetry.ts`, `debug-log.ts`, `config.ts`, `gemini-adapter.ts` | Copied as-is. Only the operation list and a `bot-answers` budget were added |
+| `src/domain/fold-letters.ts`, `resemblance.ts`, `hint-leak.ts` | Copied as-is |
+| `src/server/features/check-round.ts`, `prompts/check-round.v2.ts` | Adapted into `check-round.ts` + `check-round.v3`: both players, items keyed by id, de-duplicated, Serbian or English, no "example" field |
+| `src/server/features/hint.ts`, `prompts/hint.v1.ts` | Adapted into `hint.ts` + `hint.v2`: the clue is written in the player's language |
+| `src/server/prompts/category-rules.ts` | Adapted (letter rule for our seven letters) |
+| `tests/fakes/fake-adapter.ts`, `fake-gemini.ts`; tests for gateway, classify/retry, model rotation, Gemini adapter, config, debug log | Copied; 101 tests. The parts that tested his Vercel handlers and single-player reducer were left out |
+
+**Not reused:** Vercel functions and `vercel.json`, public HTTP AI endpoints and
+their rate limiter. _Correction 2026-09-30:_ this originally said our AI "is
+called only from inside a round, so there is no endpoint to abuse". That is not
+quite true: every `room:play-ai` round costs AI calls, and the per-socket rate
+limit resets on reconnect, so a script can spend the shared free quota. See
+§2B.11. the single-player reducer and screens, the Spec Kit
+scaffolding, and the Cyrillic → Latin normalization (Cyrillic input stays out
+of scope, §4).
+
+**New here:** `src/server/ai/service.ts` (the one interface the room store
+uses), `features/bot-answers.ts` + `prompts/bot-answers.v1.ts`, the judging
+stage, the bot seat, hints in a two-player round, and both languages.
+
+### 2B.5 AI providers — Google Gemini and Groq, each the other's fallback
+
+Owner's decisions (2026-09-30): Gemini, for its free API calls, and then Groq
+as well, so that either can stand in when the other fails. Both adapters are
+plain `fetch`, so there is no SDK and no new dependency.
+
+**How the fallback works.** Both providers' models go into the gateway's one
+model chain, **interleaved**, first-choice provider first:
+
+```text
+gemini-3.5-flash-lite -> openai/gpt-oss-120b -> gemini-3.1-flash-lite -> openai/gpt-oss-20b -> gemini-3.6-flash
+```
+
+So the attempt after any failure — a timeout, a 5xx, a spent daily quota — goes
+to the other provider, within the same request's time budget. The gateway's
+model-health memory then skips failing or exhausted models on later requests,
+so a provider that is down or out of quota costs at most one failed attempt,
+not one per round. A routing adapter (`src/server/ai/providers.ts`) sends each
+model to its provider: ids starting `gemini-` go to Gemini, everything else to
+Groq.
+
+- **Either key alone works.** With both, `AI_PROVIDER_ORDER=gemini,groq`
+  (default) or `groq,gemini` picks the first choice. Listing one name uses
+  only that provider, which is how each is tested alone.
+- **Groq specifics.** Strict JSON-schema output (`strict: true`) on
+  `openai/gpt-oss-120b` / `gpt-oss-20b`, with low reasoning effort and
+  reasoning left out of the reply. Array length bounds are removed from the
+  schema sent to Groq (strict mode does not document them); zod still checks
+  them. A 429 is a daily limit when `x-ratelimit-remaining-requests` is `0` or
+  the message names RPD/TPD; the model is then skipped until Groq's own
+  `x-ratelimit-reset-requests`. Otherwise it is the per-minute window and
+  `retry-after` is honoured. A 498 (flex capacity) counts as temporary.
+- **Privacy.** On Gemini's free tier, Google may use prompts and replies to
+  improve its products, with human review; Serbia is not in the
+  EEA/UK/Switzerland exception. Groq does not keep inference data by default,
+  and its Zero Data Retention setting also disables its 30-day abuse log.
+  Players are told in the lobby that answers and hint requests go to Google
+  Gemini and Groq, and not to enter personal data. Only answers, the letter and
+  category names are ever sent.
+- **Cost safety.** Gemini key in a Google project **without billing**; Groq's
+  free plan needs no card. An exhausted quota can never cost money.
+- **Quota.** Gemini: a free daily quota per model. Groq free plan: about 30
+  requests/min, 1,000 requests/day and 8,000 tokens/min per model. A round uses
+  1 check request, plus 1 bot request in AI mode, plus 1 per hint asked.
+- **Env:** `GEMINI_API_KEY`, `GROQ_API_KEY` (either enables AI), optional
+  `GEMINI_MODEL_CHAIN`, `GROQ_MODEL_CHAIN`, `AI_PROVIDER_ORDER`,
+  `GEMINI_THINKING_LEVEL`, `AI_DEBUG_LOG` (local only).
+- **No key** is a supported mode: the local rule scores every round, and
+  "Play against AI" and hints answer `AI_UNAVAILABLE`.
+
+### 2B.6 Implementation order and results
+
+| Step | Work | Result (2026-09-30, local) |
+| --- | --- | --- |
+| 1 | Remove accounts (§2B.1) | Done. `verify` green, 256 tests |
+| 2 | Port the fork's AI layer + its tests | Done. 101 ported tests pass unchanged |
+| 3 | Checker, bot and hint features, prompts, output schemas | Done. `tests/unit/ai-features.test.ts` |
+| 4 | Judging stage, bot seat, hints in the room store; `room:play-ai`, `round:hint` | Done. Evals A1–A6 below |
+| 5 | Client: three-mode lobby, hints on the sheet, judging screen, reasons and hint marks on results, SR/EN | Done. `tests/unit/client-ai.test.ts`; played in a browser against a scripted AI |
+| 6 | Docs: this section, `.env.example`, `.github` modules 09/12 and the always-on guardrails | Done |
+| 6b | Groq adapter and Gemini ⇄ Groq fallback (§2B.5) | Done. `tests/unit/groq-and-fallback.test.ts`: Gemini quota spent → Groq answers, and Gemini is skipped next round; Groq down → Gemini answers; both down → letter rule |
+| 7 | **Live eval against real Gemini and Groq:** `npm run smoke:ai` (once per provider, with `AI_PROVIDER_ORDER=gemini` / `=groq`) — 16 fixed answers (Serbian, English, invented, wrong category, injection) with expected verdicts written first, plus bot answers and hints in both languages | **Not run yet** — needs the owner's key in `.env`. Record the agreement score in `docs/AI_EVALS.md` |
+| 8 | Deploy (§2B.7) and run the production checks | Not started |
+| 9 | Leave game on the waiting screen (§2B.10) | Done. `verify` green, 437 tests, 27 files |
+| 10 | AI usage limit per visitor and per day (§2B.11) | Done. `verify` green, 456 tests, 29 files |
+
+**Evals, written before running** (`tests/integration/ai-round.test.ts`, fake AI):
+
+| ID | Scenario | Expected | Result |
+| --- | --- | --- | --- |
+| A1 | Both players answer; the AI rejects an invented answer | That cell invalid with its reason; wrong-letter answers never sent; same term → 5/5; exactly one AI call | Pass |
+| A2 | Finish races the deadline while the checker is pending | Phase `judging`; one AI call, one reveal, one result | Pass |
+| A3 | Checker returns nothing / never answers | Local-rule result, `verified: false`; the 20 s room timeout fires | Pass |
+| A4 | Hint asked, then round closes while another is pending | Clue only to the caller; no-known-term costs nothing; hinted cell marked at reveal; a hint racing the close is `ROUND_STALE` and not charged | Pass |
+| A5 | Play vs AI | Scheduled from the human's ready alone; bot answers absent from every payload until reveal; bot keeps 5 with `random = 0`; judged in the same request | Pass |
+| A6 | Bot's AI call fails | Bot plays blank, `botFailed: true`; the human's round scores normally | Pass |
+
+A mutation check confirmed the evals can fail: making the bot keep all 8
+answers failed A5, and charging an extra hint failed A4.
+
+### 2B.7 Hosting for free
+
+**Recommended: Render free web service**, one Node process, region Frankfurt.
+
+- Supports WebSockets, so Socket.IO works with no change.
+- 750 free instance hours per month, enough to run one service all month.
+- After 15 minutes with no HTTP or WebSocket traffic it sleeps. The next visitor
+  waits about a minute while it wakes. An active game is traffic, so a game in
+  progress never sleeps it; sleeping only loses rooms nobody is using.
+- No persistent disk on the free plan. That's fine now, because accounts and
+  SQLite are removed (§2B.1) and rooms were always in memory.
+- Settings: build `npm ci && npm run build`, start `npm start`, health check
+  path `/healthz`, env `NODE_ENV=production`, `GEMINI_API_KEY` and
+  `GROQ_API_KEY` (as secrets), plus the timing variables from `.env.example`.
+  One instance.
+
+**AI cost:** $0 — Gemini free tier from a Google project with no billing
+account, and Groq's free plan, which needs no card.
+
+**Not suitable:** Vercel and other request-only/serverless hosts (no
+long-lived WebSockets — the reason the fork had to drop multiplayer); Fly.io
+(no free tier for new accounts). Alternatives worth checking only if Render
+doesn't work out: Koyeb (free tier terms have changed recently — confirm at
+signup) and Oracle Cloud Always Free VM (always on, but needs a card and you
+manage the server yourself).
+
+### 2B.8 Hints
+
+- Each player has **`HINTS_PER_ROUND` = 2** hints per round, at most one per
+  category, and one pending at a time. Available in all three modes; the bot
+  never uses them.
+- Event `round:hint` `{ roundId, category, language }`. The server checks it
+  like a draft (right round, answering phase, before `endsAt`, not finished),
+  then asks the AI, then checks again — the round may have closed meanwhile.
+- The AI picks a well-known term for the letter and category and returns a
+  one- or two-sentence clue in the player's language. **The term never leaves
+  the server.** A clue that contains the term, or any 4 consecutive letters of
+  it, in Serbian or English, is discarded (fork rule, `hint-leak.ts`).
+- **A credit is spent only when a clue is shown.** A failed or discarded hint,
+  "no known term", or a hint that finishes after the round closed costs
+  nothing.
+- Hints do not change points. For fairness, a hinted category is marked for
+  **both** players at reveal (`hinted: true`), even if left blank.
+- Errors: `AI_UNAVAILABLE`, `AI_LIMIT` (daily quota or budget spent),
+  `HINT_LIMIT`, `RATE_LIMITED` (the visitor's hourly hints, §2B.11).
+
+### 2B.9 Two languages
+
+- Header switch **Srpski / English**, remembered per browser (`localStorage`,
+  fail-safe). The default is Serbian for South Slavic browser languages and
+  English otherwise.
+- Every string, category label and error message exists in both
+  (`src/client/strings.ts`). The server keeps stable error codes; the client
+  shows the text in the player's language.
+- **Answers are accepted in Serbian or English in every game, whatever the
+  interface language.** The two players may use different languages. The
+  letter rule applies to the answer as written.
+- Hints are written in the requesting player's language.
+
+### 2B.10 Leaving the waiting screen
+
+**Asked by the owner (2026-09-30):** a way out of the screen where you wait
+for a friend.
+
+**Decision: a labelled "Leave game" button (_Napusti partiju_), not a back
+arrow.** "Back" suggests an undoable step to the previous screen. This action
+is not undoable: it releases the room, so the code already sent to a friend
+stops working. A named button says what happens. On a friend room a one-line
+note under it says so; an AI room has no code, so no note.
+
+- **Where it shows:** the waiting screen, in `waiting_for_player` and
+  `synchronizing`, for all three modes. The random-person queue already had
+  _Odustani od traženja_. It is not offered mid-round: a round in progress
+  plays to its deadline (§13), and leaving then is closing the tab.
+- **No new event.** The button uses the same path as _Nazad na početak_ on
+  the results sheet (SC-8): the client remounts, which drops the socket, and
+  the server's disconnect handler runs.
+- **One server rule added to `markDisconnected`:** before a round is scheduled
+  (`waiting_for_player` or `synchronizing`), a room with **no connected human
+  left** is closed and removed at once. Without it, a host who left kept the
+  room alive for `WAITING_ROOM_TTL_MS` (30 min), a friend could still join it
+  and would wait forever on the synchronizing screen. A bot does not keep a
+  room alive. When one of two humans leaves during `synchronizing`, the room
+  stays: the other sees them go offline and can leave too.
+- **Tests:** `tests/unit/room-store.test.ts` (lobby released, code
+  `ROOM_NOT_FOUND`; synchronizing room kept while one human stays, released
+  when both leave), `tests/integration/room-lifecycle.test.ts` (over the wire),
+  `tests/integration/ai-round.test.ts` (AI room released), and render tests in
+  `tests/unit/client-ai.test.ts`. With the server rule disabled, the four
+  server tests fail.
+
+### 2B.11 AI usage limit — accepted and built (2026-09-30)
+
+**The gap.** Nothing bounds how much AI one visitor can spend. The event rate
+limit (60 events per second, per socket) resets when the socket reconnects. A
+script that loops _play AI → ready → disconnect_ spends one bot-answers call
+and one checker call per loop. Nothing breaks when the quota runs out: every
+game falls back to the letter rule, and hints and AI rooms say
+`AI_LIMIT`/`AI_UNAVAILABLE`. But it takes the AI away from everyone for the
+rest of the day.
+
+**What one game costs, at most:**
+
+| Mode | Checker | Bot sheet | Hints | Total |
+| --- | ---: | ---: | ---: | ---: |
+| Friend or random person | 1 | 0 | up to 4 (2 per player) | **5** |
+| Against AI | 1 | 1 | up to 2 | **4** |
+
+Retries inside the gateway can add attempts to the same call.
+
+**What the free quota allows.** Groq's free plan: about 1,000 requests a day
+and 30 a minute **per model**; the default chain has two Groq models, so about
+2,000 a day (figures from the Week 4 session, not re-checked). Gemini's free
+limits vary by model and were not measured, so the plan does not count on
+them. Designing against Groq alone, about **400 worst-case games a day** fit.
+
+**Decision (owner accepted the proposal as written, 2026-09-30): limit per
+visitor first, since that needs no exact quota figure.**
+
+1. **Per visitor (IP address), per hour:** at most **10 AI rooms** and
+   **20 hints**. A real player cannot reach that; a script stops there. The
+   server must read the client IP from the host's proxy header
+   (`x-forwarded-for` on Render) and trust only the host's proxy.
+2. **A global daily budget as a safety net:** after **1,500 AI calls** in a UTC
+   day (75% of Groq's ~2,000), stop offering new AI rooms and hints, but
+   **keep checking rounds already played**, since the checker is what makes
+   scoring fair. Priority: checker > bot sheet > hints.
+3. Both limits in `serverConfigSchema` with the defaults above, so they can be
+   changed on the host without a code change. Rejections reuse existing codes
+   (`RATE_LIMITED` for per-visitor, `AI_LIMIT` for the daily budget), so no new
+   error code is needed.
+
+**As built** (`src/server/usage-limits.ts`, wired in the room store):
+
+- The per-visitor window is one hour from the visitor's first counted action.
+  An AI room is charged when it is created; a hint is charged just before the
+  AI is asked, so a hint refused by the round's own rules (`HINT_LIMIT`,
+  `TOO_LATE`, …) costs nothing.
+- Every AI call — checker, bot sheet, hint — counts toward the daily budget,
+  which resets at UTC midnight. When it is spent, `room:play-ai` and
+  `round:hint` answer `AI_LIMIT`; the checker is never refused, and a bot
+  already seated still gets its sheet.
+- The visitor is the socket's peer address, or, with `TRUST_PROXY_HOPS` = N,
+  the Nth `x-forwarded-for` entry from the right. Entries further left are
+  whatever the browser sent and are ignored. The default is 0 (header
+  ignored), which is safe but wrong behind a proxy: every visitor would share
+  the proxy's address and one limit. The server warns at startup in production
+  when it is 0. **W4-9 must set it for Render and confirm it** from two
+  different networks.
+- Settings: `AI_ROOMS_PER_VISITOR_HOUR` (10), `HINTS_PER_VISITOR_HOUR` (20),
+  `AI_DAILY_CALL_BUDGET` (1500), `TRUST_PROXY_HOPS` (0).
+- Counts live in memory: a restart resets them, the same accepted limitation
+  as rooms. Players behind one address (a household, a school network) share
+  one per-visitor limit.
+- Tests: `tests/unit/usage-limits.test.ts`,
+  `tests/integration/ai-limits.test.ts` (a play-AI-then-disconnect loop stops
+  at the limit; a forged `x-forwarded-for` buys nothing; hints refused before
+  the AI are not charged; the checker still runs after the budget is spent).
+  With the limits disabled, all the integration cases fail.
+- The figures can be tuned after the first live week from the telemetry
+  counts already logged.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.
@@ -186,20 +597,22 @@ the product-owner expansion in §2**, which adds email accounts, profiles and
 saved history. They are kept, struck through, so the original Core boundary
 stays auditable rather than being quietly rewritten.
 
-- ~~Accounts, passwords, profiles, or social login~~ — email accounts, profiles
-  and saved history are now in scope per §2. Social login (Google) remains out.
-- More than two players, spectators, public matchmaking, or public room lists
-- ~~Database, permanent history, or persistent leaderboard~~ — a single SQLite
-  file on a persistent disk is now in scope per §2. A leaderboard is not.
+- Accounts, passwords, profiles, or social login — briefly in scope per §2
+  (2026-09-22), **out again per §2B (2026-09-30)**.
+- More than two players, spectators, ~~public matchmaking~~, or public room lists —
+  a first-come random-person queue is in scope per §2 and §2B (no ratings, no
+  public room list)
+- Database, permanent history, or persistent leaderboard — the SQLite store is
+  removed with accounts per §2B.
 - Chat, voice, reactions, invitations beyond sharing the room code
 - Multiple backend instances or horizontal scaling
-- Semantic verification that an entry is a real country, city, river, mountain, plant, or animal
+- ~~Semantic verification that an entry is a real country, city, river, mountain, plant, or animal~~ — done by the AI checker per §2B.2
 - Curated answer dictionary or live geography lookup
 - Live web lookup or external geography API
 - Perfect anti-cheat protection
 - Tournament mode or category editor
 - Native mobile application
-- AI hints or AI answer judging during Week 3
+- ~~AI hints~~ — in scope per §2B.8, as are AI answer judging and an AI opponent
 - Cyrillic input and Cyrillic/Latin equivalence
 - Custom music or copied branding/assets
 
@@ -207,7 +620,7 @@ stays auditable rather than being quietly rewritten.
 
 - Play Again or multiple rounds in one room
 - Refresh/reconnect/resume support
-- Manual or AI review of semantic correctness
+- Manual review of semantic correctness (AI review moved into scope, §2B.2)
 - Curated answer dictionary
 - Animations and extra visual polish
 
@@ -324,6 +737,10 @@ Examples for letter `S`:
 
 The results screen must show: **Answers are checked only for the selected starting letter in this Week 3 version. Players are responsible for semantic correctness.** Semantic dictionaries and answer disputes are Stretch, not Core.
 
+> **Week 4 (§2B.2):** the rule above becomes step 1 of validity. Step 2 is the
+> AI verdict. The notice above is shown only when the AI check was unavailable
+> for that round.
+
 ## 8. Room state machine
 
 ```text
@@ -344,6 +761,9 @@ ANSWERING
 both finish       server deadline
    \                 /
         v
+JUDGING            (Week 4, §2B.2: AI check, max 20 s, then local-rule fallback)
+        |
+        v
 RESULTS
         |
         | room cleanup after five minutes
@@ -352,6 +772,9 @@ CLOSED
 ```
 
 `connected`, `clientReady`, `finished`, and `draftRevision` are per-player properties, not room phases.
+
+Before a round is scheduled, a room whose last connected human leaves goes
+straight to `CLOSED` and is removed; its code stops working at once (§2B.10).
 
 ### Critical invariants
 
@@ -395,11 +818,15 @@ This same-origin topology removes unnecessary CORS and multi-service deployment 
 ├── docs/
 │   ├── GAME_SPEC.md
 │   ├── BUILD_PROMPT_V1.md
-│   ├── BUILD_PROMPT_FINAL.md
 │   ├── CONTEXT_MANIFEST.md
 │   ├── EVALS.md
+│   ├── AI_EVALS.md          (Week 4: live AI checks)
 │   ├── EVIDENCE_003.md
+│   ├── EVIDENCE_004.md      (Week 4 evidence)
+│   ├── PRODUCT_REVIEW.md
 │   └── AI_USAGE_LOG.md
+├── scripts/
+│   └── ai-smoke.ts          (Week 4: opt-in live AI check)
 ├── src/
 │   ├── client/
 │   │   ├── components/
@@ -407,20 +834,28 @@ This same-origin topology removes unnecessary CORS and multi-service deployment 
 │   │   ├── socket/
 │   │   └── state/
 │   ├── server/
+│   │   ├── ai/              (Week 4: gateway, Gemini/Groq adapters, service.ts)
+│   │   ├── features/        (Week 4: check-round, bot-answers, hint)
+│   │   ├── prompts/         (Week 4: versioned prompts)
 │   │   ├── rooms/
 │   │   ├── socket/
+│   │   ├── usage-limits.ts  (Week 4: AI usage limits, §2B.11)
 │   │   └── index.ts
 │   ├── domain/
 │   │   ├── normalize-answer.ts
 │   │   ├── validate-answer.ts
-│   │   └── score-category.ts
+│   │   ├── score-category.ts
+│   │   └── fold-letters.ts, resemblance.ts, hint-leak.ts   (Week 4)
 │   └── contracts/
 │       ├── game.schemas.ts
-│       └── socket.schemas.ts
+│       ├── errors.ts
+│       ├── socket.schemas.ts
+│       └── ai-output.schemas.ts   (Week 4)
 └── tests/
     ├── unit/
     ├── integration/
-    └── helpers/
+    ├── helpers/
+    └── fakes/               (Week 4: fake AI and adapters)
 ```
 
 ### Layer ownership
@@ -448,6 +883,7 @@ type RoomPhase =
   | "synchronizing"
   | "countdown"
   | "answering"
+  | "judging" // Week 4, §2B.2
   | "results"
   | "closed";
 
@@ -503,6 +939,9 @@ Validate at least `RoomConfig`, create/join requests, `room:client-ready`, draft
 | `room:client-ready` | current room acknowledgement | Start scheduling only after both current clients acknowledge |
 | `round:draft` | round ID, category, value, revision | Validate and privately save latest accepted revision |
 | `round:finish` | round ID | Lock caller; close early only when both are locked |
+| `room:quick-play` / `room:cancel-quick-play` | display name / empty | Random-person queue (§2) |
+| `room:play-ai` | display name | Week 4 (§2B.3): create room, seat caller and the server bot in one step |
+| `round:hint` | round ID, category, language | Week 4 (§2B.8): caller-only clue; the term never leaves the server |
 
 `answer:review` and `round:play-again` are Stretch. Do not implement, emit, or
 declare them in Core schemas. Adding them is a scope change, not a refactor.
@@ -571,6 +1010,7 @@ This finish/deadline race is a mandatory integration test.
 | Duplicate Finish | Return current lock state; never double-score |
 | Finish races deadline | Close, reveal, and score exactly once |
 | One player disconnects | Timer continues; retain accepted drafts; show connection status |
+| Last human leaves before the round (Leave game, or tab closed) | Room closed and removed at once; its code answers `ROOM_NOT_FOUND` (§2B.10) |
 | Server restarts | In-memory room is lost; show session-ended/rejoin message |
 
 Full reconnect recovery is optional. Restart durability is explicitly out of scope.
@@ -654,7 +1094,7 @@ Include baseline claim, selected problem, hypothesis, controlled change, same ev
 
 For each meaningful AI call record phase, reason, expected result, actual result, and next decision. Do not record private chain-of-thought, secrets, tokens, private URLs, or sensitive payloads.
 
-Session 004 artifacts such as `TOOL_CONTRACT.md`, AI hints, tool allowlists, fake providers, and `EVIDENCE_004.md` are intentionally deferred.
+Session 004 artifacts such as `TOOL_CONTRACT.md`, AI hints, tool allowlists, fake providers, and `EVIDENCE_004.md` are intentionally deferred. _Update 2026-09-30:_ Week 4 brought AI hints, fake providers and `docs/EVIDENCE_004.md` into scope (§2B); `TOOL_CONTRACT.md` and tool allowlists are still not used, because the AI here calls no tools.
 
 ### Week 3 AI and pair-work guardrails
 
@@ -864,6 +1304,8 @@ Exit: a fresh production room works end to end.
 
 Do not choose a request-only serverless runtime for the active room server. Server restarts losing rooms and lack of horizontal scaling are accepted, documented MVP limitations.
 
+Week 4 target host and AI provider, both free: see §2B.7.
+
 ## 20. Risk register and cuts
 
 | Risk | Impact | Mitigation |
@@ -907,6 +1349,19 @@ The Week 3 build is done only when:
 - Week 3 documents, recoverable baseline, one controlled change, repeated evals, real outputs, contributions, and AI usage are recorded.
 - Known limitations and excluded features are explicit.
 - No secret, private token, or opponent draft is exposed in source, logs, client projections, prompts, screenshots, or evidence.
+
+The Week 4 revision (§2B) is done only when, in addition:
+
+- A1–A6 pass with the fake AI, and the live smoke check has been run against
+  Gemini and Groq with the agreement recorded in `docs/AI_EVALS.md`.
+- Every AI failure (no key, timeout, quota, bad reply) ends in a scored round,
+  marked unverified, never a stuck one.
+- An opponent's answers reach the AI only after both sheets lock, and reach
+  the other player only in `round:revealed`; the AI key is never in the
+  browser, a log or the repository.
+- The deployed game plays one round in each mode, with `verified: true` on at
+  least one.
+- `docs/EVIDENCE_004.md` records the before/after runs and the open findings.
 
 ## 22. Immediate next steps
 

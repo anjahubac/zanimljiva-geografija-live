@@ -23,6 +23,7 @@ Every behavior change needs a meaningful success case and rejection or edge case
 - Advance fake time rather than using real waits.
 - Give every test isolated room state and close all sockets/timers afterward.
 - Avoid network calls, production credentials, shared mutable fixtures, and random test order dependencies.
+- Never call a real AI provider from a test. Use `tests/fakes/fake-ai.ts` for game behavior and `tests/fakes/fake-adapter.ts` / `fake-gemini.ts` for the gateway. Inject `random` for the AI opponent's choices.
 
 ## Minimum scoring tests
 
@@ -69,6 +70,20 @@ Define E1-E4 expectations in `docs/EVALS.md` before execution. Preserve the base
 - E3: invalid third-player or malformed-input path leaves state unchanged
 - E4: first genuine baseline regression
 
+Week 4 adds two kinds of eval, both written before the code:
+
+- **A1–A6** (`tests/integration/ai-round.test.ts`, fake AI): how the game
+  handles the AI — one checker call per round, the 20 s fallback, the AI
+  opponent's answers absent before reveal, hint charging. Scenarios in
+  `Plan.md` §2B.6.
+- **The live smoke check** (`npm run smoke:ai`, real providers, opt-in, never
+  in `npm test`): whether the AI's verdicts agree with the pre-written
+  expectations. Results go in `docs/AI_EVALS.md`; a disagreement is data, not a
+  failing build.
+
+Week 4 evidence (runs, controlled change, open findings) goes in
+`docs/EVIDENCE_004.md`.
+
 At least one baseline eval must expose a real issue. Do not seed a fake bug. Record the exact command, result, date, relevant commit/state identifier, and evidence location.
 
 ## Verification commands
@@ -87,3 +102,5 @@ Report every skipped or unavailable command and why. A successful local test doe
 ## Manual production smoke test
 
 Use two physical computers and separate browser sessions. Verify create/join, automatic synchronization, one shared countdown/letter/deadline, private drafts, early finish, timeout, single reveal, all scoring patterns feasible in the answer set, safe errors, and documented disconnect behavior.
+
+Week 4 adds: one round in each mode (friend, random person, AI opponent); at least one round with `verified: true` and a rejected answer showing its reason; a hint in each language; Leave game from the waiting screen; and, with the AI keys removed, a round that is still scored and marked unverified.

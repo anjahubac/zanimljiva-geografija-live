@@ -6,9 +6,10 @@ import {
   THEME_CHOICES,
   type ThemeChoice,
 } from "@client/theme";
-import { AUTH_SR } from "@client/strings";
+import { useI18n } from "@client/i18n";
 
 export function ThemeToggle() {
+  const { t } = useI18n();
   const [choice, setChoice] = useState<ThemeChoice>(() => readStoredTheme());
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function ThemeToggle() {
 
   return (
     <div className="theme-toggle">
-      <label htmlFor="theme-choice">{AUTH_SR.theme}</label>
+      <label htmlFor="theme-choice">{t.theme}</label>
       <select
         id="theme-choice"
         name="theme"
@@ -30,7 +31,7 @@ export function ThemeToggle() {
       >
         {THEME_CHOICES.map((value) => (
           <option value={value} key={value}>
-            {AUTH_SR.themes[value]}
+            {t.themes[value]}
           </option>
         ))}
       </select>

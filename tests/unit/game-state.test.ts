@@ -16,8 +16,8 @@ const roomState = (overrides: Partial<RoomState> = {}): RoomState => ({
   phase: "answering",
   you: 1,
   players: [
-    { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
-    { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false },
+    { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false, bot: false },
+    { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false, bot: false },
   ],
   ...overrides,
 });
@@ -144,12 +144,16 @@ describe("gameReducer", () => {
         raw: category === "city" ? "Subotica" : "",
         normalized: category === "city" ? "subotica" : "",
         valid: category === "city",
+        reason: null,
+        hinted: false,
       })),
       player2: CATEGORIES.map((category) => ({
         category,
         raw: category === "city" ? "Smederevo" : "",
         normalized: category === "city" ? "smederevo" : "",
         valid: category === "city",
+        reason: null,
+        hinted: false,
       })),
     };
     const results: RoundResults = {
@@ -163,6 +167,8 @@ describe("gameReducer", () => {
       player1Total: 10,
       player2Total: 10,
       outcome: "draw",
+      verified: true,
+      botFailed: false,
     };
 
     const state = reduceAll([
@@ -224,8 +230,8 @@ describe("the reducer keeps the opponent's connection, not only their finish", (
   const withOpponent = (connected: boolean, finished = false): RoomState =>
     roomState({
       players: [
-        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
-        { slot: 2, displayName: "Marko", connected, clientReady: true, finished },
+        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false, bot: false },
+        { slot: 2, displayName: "Marko", connected, clientReady: true, finished, bot: false },
       ],
     });
 
@@ -259,8 +265,8 @@ describe("the reducer keeps the opponent's connection, not only their finish", (
       payload: roomState({
         you: 2,
         players: [
-          { slot: 1, displayName: "Ana", connected: false, clientReady: true, finished: false },
-          { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false },
+          { slot: 1, displayName: "Ana", connected: false, clientReady: true, finished: false, bot: false },
+          { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false, bot: false },
         ],
       }),
     });
@@ -270,7 +276,7 @@ describe("the reducer keeps the opponent's connection, not only their finish", (
   it("keeps the last known value when a payload carries no opponent yet", () => {
     const alone = roomState({
       players: [
-        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
+        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false, bot: false },
       ],
     });
     const state = gameReducer(initialGameState, { type: "room-state", payload: alone });

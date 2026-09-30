@@ -58,6 +58,7 @@ describe("room lifecycle over the wire", () => {
       connected: true,
       clientReady: false,
       finished: false,
+      bot: false,
     });
   });
 
@@ -144,6 +145,22 @@ describe("room lifecycle over the wire", () => {
 
     expect(afterDisconnect.players.find((player) => player.slot === 2)?.connected).toBe(false);
     expect(ctx.server.store.getRoomByCode(roomCode)).toBeDefined();
+  });
+
+  it("frees the code as soon as the host leaves the waiting screen", async () => {
+    const p1 = await open();
+    const p2 = await open();
+    const roomCode = await createRoom(p1);
+
+    // Leave remounts the client, which drops the socket: that is the whole
+    // protocol, with no extra event.
+    p1.disconnect();
+    await settle();
+    expect(ctx.server.store.getRoomByCode(roomCode)).toBeUndefined();
+
+    const result = await emitAck(p2, CLIENT_EVENTS.joinRoom, { roomCode, displayName: "Marko" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("ROOM_NOT_FOUND");
   });
 
   it("reaps an abandoned lobby, after which its code is no longer joinable", async () => {

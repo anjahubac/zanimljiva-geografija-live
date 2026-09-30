@@ -9,6 +9,8 @@ applyTo: "**/*"
 
 Normal implementation and automated tests run locally without a database, authentication provider, third-party geography API, queue, cache, analytics service, or AI provider. Do not invent credentials or call external systems to complete local code or documentation work.
 
+**Week 4 exception (`Plan.md` §2B):** the server may call **Google Gemini** and **Groq** (each the other's fallback) for the answer checker, the AI opponent and hints — only from the server, only through `src/server/ai/service.ts`, with the keys in `GEMINI_API_KEY` / `GROQ_API_KEY` (never in the browser, source, logs or tests). Every test uses a fake (`tests/fakes/fake-ai.ts`, `tests/fakes/fake-adapter.ts`); only the opt-in `npm run smoke:ai` reaches the real API. With no key the game still runs on the local letter rule.
+
 The only required Week 3 external operation is the explicitly requested deployment of the game to a WebSocket-capable host.
 
 ## Approved production topology
@@ -45,6 +47,7 @@ After deployment, verify:
 - Both-finish and deadline flows work.
 - Reveal occurs once and traditional scoring is correct.
 - Disconnect/restart behavior matches the documented limitation.
+- Week 4: one round per mode (friend, random person, AI opponent); at least one round comes back `verified: true`; a hint works; and with the keys removed from the host, a round is still scored and marked unverified. Record the results in `docs/EVIDENCE_004.md`.
 
 Capture screenshots and command/status output without exposing private tokens, credentials, or hidden in-round answers.
 
@@ -58,4 +61,4 @@ Capture screenshots and command/status output without exposing private tokens, c
 
 ## Future services
 
-Redis/shared rooms, a database, user accounts, persistent leaderboards, matchmaking, content APIs, analytics, and AI providers are out of Week 3 scope. Adding any of them requires a product decision, architecture update, security review, new failure tests, and explicit user authorization.
+Redis/shared rooms, a database, user accounts, persistent leaderboards, content APIs, analytics, and AI providers other than Gemini and Groq are out of scope. Adding any of them requires a product decision, architecture update, security review, new failure tests, and explicit user authorization.

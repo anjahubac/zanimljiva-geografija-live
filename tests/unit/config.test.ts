@@ -15,6 +15,10 @@ describe("serverConfigSchema", () => {
       countdownMs: 3_000,
       completedRoomTtlMs: 300_000,
       waitingRoomTtlMs: 1_800_000,
+      aiRoomsPerVisitorHour: 10,
+      hintsPerVisitorHour: 20,
+      aiDailyCallBudget: 1_500,
+      trustProxyHops: 0,
     });
   });
 
@@ -43,6 +47,11 @@ describe("serverConfigSchema", () => {
     ["a countdown over 30s", { countdownMs: "30001" }],
     ["a completed-room TTL under 10s", { completedRoomTtlMs: "9999" }],
     ["a waiting-room TTL under 1min", { waitingRoomTtlMs: "59999" }],
+    ["zero AI rooms per visitor", { aiRoomsPerVisitorHour: "0" }],
+    ["zero hints per visitor", { hintsPerVisitorHour: "0" }],
+    ["a zero daily AI budget", { aiDailyCallBudget: "0" }],
+    ["a negative proxy hop count", { trustProxyHops: "-1" }],
+    ["more than 5 proxy hops", { trustProxyHops: "6" }],
   ];
 
   it.each(invalid)("rejects %s", (_name, patch) => {
@@ -67,6 +76,10 @@ describe("loadConfig", () => {
       countdownMs: 3_000,
       completedRoomTtlMs: 300_000,
       waitingRoomTtlMs: 1_800_000,
+      aiRoomsPerVisitorHour: 10,
+      hintsPerVisitorHour: 20,
+      aiDailyCallBudget: 1_500,
+      trustProxyHops: 0,
     });
   });
 
@@ -79,6 +92,10 @@ describe("loadConfig", () => {
         COUNTDOWN_MS: "5000",
         COMPLETED_ROOM_TTL_MS: "60000",
         WAITING_ROOM_TTL_MS: "120000",
+        AI_ROOMS_PER_VISITOR_HOUR: "4",
+        HINTS_PER_VISITOR_HOUR: "8",
+        AI_DAILY_CALL_BUDGET: "900",
+        TRUST_PROXY_HOPS: "1",
       }),
     ).toEqual({
       port: 8080,
@@ -87,6 +104,10 @@ describe("loadConfig", () => {
       countdownMs: 5_000,
       completedRoomTtlMs: 60_000,
       waitingRoomTtlMs: 120_000,
+      aiRoomsPerVisitorHour: 4,
+      hintsPerVisitorHour: 8,
+      aiDailyCallBudget: 900,
+      trustProxyHops: 1,
     });
   });
 
@@ -94,11 +115,15 @@ describe("loadConfig", () => {
     const config = loadConfig({ PATH: "/usr/bin", SOME_SECRET: "hunter2", PORT: "4000" });
     expect(config.port).toBe(4000);
     expect(Object.keys(config).sort()).toEqual([
+      "aiDailyCallBudget",
+      "aiRoomsPerVisitorHour",
       "completedRoomTtlMs",
       "countdownMs",
+      "hintsPerVisitorHour",
       "nodeEnv",
       "port",
       "roundDurationMs",
+      "trustProxyHops",
       "waitingRoomTtlMs",
     ]);
   });

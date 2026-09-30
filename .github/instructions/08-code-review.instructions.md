@@ -26,6 +26,7 @@ applyTo: "**/*"
 - Validity precedes comparison; normalized equal answers score 5/5 and different valid answers score 10/10.
 - The client cannot forge identity, phase, time, validity, or score.
 - A third player cannot enter a full room.
+- AI changes (`Plan.md` §2B): every AI failure — no key, timeout, quota, bad JSON, schema or semantic mismatch — ends in a scored round marked unverified; `completeRound` runs exactly once whichever of checker and 20 s timeout comes first; the letter is enforced by code, not the model; a hint is charged only when a clue is shown.
 
 ## Mandatory privacy and security gates
 
@@ -36,6 +37,7 @@ applyTo: "**/*"
 - String and event-size bounds exist.
 - Client-visible errors contain no stack, filesystem path, secret, internal token, or hidden data.
 - Production uses HTTPS/WSS and an explicit origin policy when not same-origin.
+- AI: keys only in the server environment; no answer, prompt, reply or key in logs; the opponent's and the AI opponent's answers absent before reveal; model replies validated by `ai-output.schemas.ts` before use; hint terms never leave the server; tests use fakes, never a real provider.
 
 ## Required evidence
 
@@ -64,7 +66,9 @@ Medium/high-risk changes require explicit tests and a compatibility or limitatio
 - Duplicate finish/deadline handling that can emit twice.
 - Unvalidated socket payloads cast directly to TypeScript types.
 - Unknown geography answers treated as certainly valid or invalid without the documented policy.
-- Database, auth, chat, matchmaking, AI, or extra services added without an approved scope change.
+- Database, auth, chat, or extra services added without an approved scope change; AI providers other than Gemini and Groq, or AI features beyond `Plan.md` §2B.
+- A new path that spends AI calls with no bound (`Plan.md` §2B.11).
+- A released prompt version edited in place instead of versioned.
 - Secrets, tokens, private answers, or full payloads in source/logs/evidence.
 - Claims that checks passed without actual command output.
 

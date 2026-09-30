@@ -1,6 +1,7 @@
 import { useReducer } from "react";
-import { CATEGORIES, type Category, type PlayerSlot } from "@contracts/game.schemas";
+import { CATEGORIES, HINTS_PER_ROUND, type Category, type PlayerSlot } from "@contracts/game.schemas";
 import type {
+  HintAck,
   PlayerFinished,
   RoomState,
   RoundResults,
@@ -11,6 +12,13 @@ import type {
 /** Per-field synchronization status, shown next to every input. */
 export type DraftStatus = "empty" | "pending" | "saved" | "rejected";
 
+/** What the sheet shows under one category after asking for a hint (§2B.8). */
+export type HintView =
+  | { status: "loading" }
+  | { status: "clue"; clue: string }
+  | { status: "none" }
+  | { status: "error"; message: string };
+
 export type Screen =
   | "lobby"
   | "join"
@@ -19,6 +27,7 @@ export type Screen =
   | "countdown"
   | "answering"
   | "waiting_for_opponent"
+  | "judging"
   | "results";
 
 export type GameState = {
@@ -36,6 +45,11 @@ export type GameState = {
   revisions: Record<Category, number>;
   finished: boolean;
   opponentFinished: boolean;
+  /** The opponent is the server's AI (§2B.3). */
+  opponentIsBot: boolean;
+  /** Hints left this round; the server is the authority, this mirrors its acks. */
+  hintsLeft: number;
+  hints: Partial<Record<Category, HintView>>;
   /** The opponent's socket is still attached. False once they refresh, close
    *  the tab or drop; the round itself continues either way (`Plan.md` §13). */
   opponentConnected: boolean;
@@ -48,7 +62,7 @@ export type GameState = {
 };
 
 export type GameAction =
-  | { type: "connection"; connected: boolean }
+  | { type: "connection"; connected: boolean; message?: string }
   | { type: "entry"; entry: "lobby" | "join" | "searching" }
   | { type: "joined"; roomCode: string; you: PlayerSlot }
   | { type: "room-state"; payload: RoomState }
@@ -61,6 +75,9 @@ export type GameAction =
   | { type: "draft-accepted"; category: Category; revision: number }
   | { type: "draft-rejected"; category: Category; message: string }
   | { type: "finish-accepted" }
+  | { type: "hint-requested"; category: Category }
+  | { type: "hint-received"; payload: HintAck }
+  | { type: "hint-failed"; category: Category; message: string }
   | { type: "busy"; busy: boolean }
   | { type: "error"; message: string | null };
 
@@ -80,6 +97,9 @@ export const initialGameState: GameState = {
   revisions: emptyByCategory(0),
   finished: false,
   opponentFinished: false,
+  opponentIsBot: false,
+  hintsLeft: HINTS_PER_ROUND,
+  hints: {},
   // Assume present until the server says otherwise, so an empty room never
   // reads as an opponent who left.
   opponentConnected: true,
@@ -102,7 +122,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         connected: action.connected,
-        errorMessage: action.connected ? state.errorMessage : "Veza sa serverom je prekinuta.",
+        errorMessage: action.connected
+          ? state.errorMessage
+          : (action.message ?? "Veza sa serverom je prekinuta."),
       };
 
     case "entry":
@@ -127,6 +149,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         opponentConnected:
           action.payload.players.find((player) => player.slot !== action.payload.you)?.connected ??
           state.opponentConnected,
+        opponentIsBot:
+          action.payload.players.find((player) => player.slot !== action.payload.you)?.bot ??
+          state.opponentIsBot,
       };
 
     case "round-scheduled":
@@ -138,6 +163,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         clockOffsetMs: action.payload.serverNow - action.receivedAt,
         revealed: null,
         results: null,
+        hintsLeft: HINTS_PER_ROUND,
+        hints: {},
       };
 
     case "player-finished":
@@ -188,6 +215,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // Only an accepted acknowledgement locks the form, never an optimistic click.
       return { ...state, finished: true, busy: false };
 
+    case "hint-requested":
+      return { ...state, hints: { ...state.hints, [action.category]: { status: "loading" } } };
+
+    case "hint-received":
+      return {
+        ...state,
+        hintsLeft: action.payload.hintsLeft,
+        hints: {
+          ...state.hints,
+          [action.payload.category]:
+            action.payload.kind === "clue" ? { status: "clue", clue: action.payload.clue } : { status: "none" },
+        },
+      };
+
+    case "hint-failed":
+      return { ...state, hints: { ...state.hints, [action.category]: { status: "error", message: action.message } } };
+
     case "busy":
       return { ...state, busy: action.busy };
 
@@ -211,6 +255,8 @@ export function selectScreen(state: GameState): Screen {
       return "countdown";
     case "answering":
       return state.finished ? "waiting_for_opponent" : "answering";
+    case "judging":
+      return "judging";
     case "results":
     case "closed":
       return "results";

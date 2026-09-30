@@ -1,6 +1,5 @@
-import { createServer, type Server as HttpServer } from "node:http";
+import { createServer, type IncomingMessage, type Server as HttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { mkdirSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server as SocketServer } from "socket.io";
@@ -10,10 +9,10 @@ import { systemClock, systemScheduler } from "@server/clock";
 import { loadConfig } from "@server/config";
 import type { LetterSelector } from "@server/letters";
 import { randomLetterSelector } from "@server/letters";
+import { createAiServiceFromEnv, type AiService } from "@server/ai/service";
 import { createRoomStore, type RoomStore } from "@server/rooms/room-store";
 import { registerHandlers } from "@server/socket/register-handlers";
-import { createAccountStore, type AccountStore } from "@server/accounts/account-store";
-import { createAccountHttp, sameOrigin } from "@server/accounts/account-http";
+import { createUsageLimits } from "@server/usage-limits";
 
 const CLIENT_DIR = join(process.cwd(), "dist", "client");
 const CLEANUP_INTERVAL_MS = 60_000;
@@ -42,12 +41,28 @@ async function serveStatic(urlPath: string): Promise<{ body: Buffer; type: strin
   }
 }
 
+/**
+ * A browser on another site must not open a socket to this game with the
+ * player's connection (cross-site WebSocket hijacking). Non-browser clients
+ * send no Origin and are allowed.
+ */
+export function sameOrigin(req: IncomingMessage): boolean {
+  try {
+    const origin = new URL(req.headers.origin ?? "");
+    return (origin.protocol === "http:" || origin.protocol === "https:") && origin.host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
 export type GameServerDeps = {
   config: ServerConfig;
   clock?: Clock;
   scheduler?: Scheduler;
   selectLetter?: LetterSelector;
-  accounts?: AccountStore;
+  /** The AI checker, bot and hints; absent means the local letter rule only (§2B). */
+  ai?: AiService | null;
+  random?: () => number;
 };
 
 export type GameServer = {
@@ -69,11 +84,9 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     scheduler = systemScheduler,
     selectLetter = randomLetterSelector,
   } = deps;
-  const accountHttp = deps.accounts ? createAccountHttp(deps.accounts, config.nodeEnv === "production") : null;
 
   const httpServer = createServer((req, res) => {
     void (async () => {
-      if (accountHttp && await accountHttp(req, res)) return;
       if (req.url === "/healthz") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ status: "ok" }));
@@ -114,14 +127,16 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     scheduler,
     selectLetter,
     config,
-    saveHistory: deps.accounts?.saveRound,
+    ai: deps.ai ?? null,
+    limits: createUsageLimits(config),
+    ...(deps.random ? { random: deps.random } : {}),
     // The store addresses a recipient; only this line knows about sockets.
     deliver: ({ socketId, event, payload }) => {
       io.to(socketId).emit(event, payload);
     },
   });
 
-  registerHandlers(io, store, deps.accounts);
+  registerHandlers(io, store, { trustProxyHops: config.trustProxyHops });
 
   return {
     httpServer,
@@ -141,10 +156,18 @@ export function createGameServer(deps: GameServerDeps): GameServer {
 const entryPoint = process.argv[1] ? resolve(process.argv[1]) : "";
 if (entryPoint === fileURLToPath(import.meta.url)) {
   const config = loadConfig(process.env);
-  // One persistent disk, one process. Never keep this directory in git.
-  mkdirSync("data", { recursive: true, mode: 0o700 });
-  const accounts = createAccountStore("data/players.sqlite");
-  const server = createGameServer({ config, accounts });
+  const ai = createAiServiceFromEnv(process.env);
+  // Which providers are on, never a key.
+  console.info(
+    ai
+      ? `AI checker, opponent and hints: on (${ai.providers.join(" -> ")})`
+      : "AI: off — set GEMINI_API_KEY and/or GROQ_API_KEY to enable it",
+  );
+  if (ai && config.nodeEnv === "production" && config.trustProxyHops === 0) {
+    // Behind a host proxy every visitor would share the proxy's address, and so one AI limit (§2B.11).
+    console.warn("[limits] TRUST_PROXY_HOPS is 0: behind a host proxy, all visitors share one AI usage limit");
+  }
+  const server = createGameServer({ config, ai: ai?.service ?? null });
 
   const cleanupTimer = setInterval(() => server.store.cleanup(), CLEANUP_INTERVAL_MS);
   cleanupTimer.unref();

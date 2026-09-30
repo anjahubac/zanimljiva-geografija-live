@@ -51,9 +51,10 @@ applyTo: "**/*"
 ## Answer conventions
 
 - Preserve the raw answer for post-round display only after reveal.
-- Derive a normalized answer for comparison. Core has no dictionary: validity is "non-empty after normalization and starts with the round letter", nothing more.
+- Derive a normalized answer for comparison. Validity has two steps (`Plan.md` §2B.2): (1) the local rule — at least `MIN_ANSWER_LENGTH` (2) characters after normalization and starts with the round letter; (2) the AI checker's verdict, which must accept the term for its category, and whose recognised name must resemble what was written and start with the round letter (checked in code, never by the model). When the AI is unavailable, step 1 alone decides and the result carries `verified: false`. There is no dictionary.
 - The baseline normalization pipeline is exactly: Unicode **NFKC**, trim, collapse internal whitespace, lowercase with `toLocaleLowerCase("sr-Latn")`. The single implementation lives in `src/domain/normalize-answer.ts`; never re-implement it inline. (`Plan.md` §7 holds the authoritative function body.)
-- Blankness, format validity, and equality are distinct concepts. Semantic/geographic correctness is explicitly not checked in Core.
+- Blankness, format validity, AI validity, and equality are distinct concepts. Two AI-accepted answers are the same answer when the `compactFold` of their recognised Serbian names match, so `Serbia` equals `Srbija`; answers the AI did not judge compare by normalized text.
+- Answers are accepted in Serbian or English in every game, whatever the interface language (`Plan.md` §2B.9).
 - Never score raw strings before normalization and validity checks.
 - The supported-letter allowlist is fixed at `A, B, D, K, M, S, V` in config. Do not widen it in code.
 

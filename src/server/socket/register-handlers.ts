@@ -9,15 +9,16 @@ import {
   createRoomRequestSchema,
   draftRequestSchema,
   finishRequestSchema,
+  hintRequestSchema,
   joinRoomRequestSchema,
+  playAiRequestSchema,
   roomAckSchema,
   quickPlayRequestSchema,
   quickPlayAckSchema,
   cancelQuickPlayRequestSchema,
 } from "@contracts/socket.schemas";
 import type { RoomStore } from "@server/rooms/room-store";
-import type { AccountStore } from "@server/accounts/account-store";
-import { sessionToken } from "@server/accounts/account-http";
+import { visitorAddress } from "@server/usage-limits";
 
 /**
  * Flood protection for one socket. Wall-clock time is correct here: this is a
@@ -54,16 +55,23 @@ function createRateLimiter() {
  * no timing and no scoring decision: it parses, resolves the caller from the
  * socket (never from the payload), delegates, and acknowledges.
  */
-export function registerHandlers(io: Server, store: RoomStore, accounts?: AccountStore): void {
+export function registerHandlers(io: Server, store: RoomStore, options: { trustProxyHops: number }): void {
   const limiter = createRateLimiter();
 
   io.on("connection", (socket: Socket) => {
+    // Who the AI usage limits count against (§2B.11); read once, from the transport, never the payload.
+    const visitor = visitorAddress(
+      socket.handshake.headers["x-forwarded-for"],
+      socket.handshake.address,
+      options.trustProxyHops,
+    );
+
     const handle = <S extends z.ZodTypeAny, T>(
       event: string,
       schema: S,
       raw: unknown,
       ack: unknown,
-      run: (input: z.infer<S>) => Ack<T>,
+      run: (input: z.infer<S>) => Ack<T> | Promise<Ack<T>>,
     ): void => {
       const respond = (response: Ack<T>): void => {
         if (typeof ack === "function") {
@@ -88,28 +96,30 @@ export function registerHandlers(io: Server, store: RoomStore, accounts?: Accoun
         return;
       }
 
-      try {
-        respond(run(parsed.data as z.infer<S>));
-      } catch (error) {
+      const failed = (error: unknown): void => {
         // Event name and error type only. A message or stack could carry an
         // answer, a token, or a path (module 05).
         console.error(`handler failed: event=${event} error=${(error as Error)?.name ?? "unknown"}`);
         respond(fail("INTERNAL"));
+      };
+
+      try {
+        // Only a hint awaits the AI; every other handler answers synchronously.
+        void Promise.resolve(run(parsed.data as z.infer<S>)).then(respond, failed);
+      } catch (error) {
+        failed(error);
       }
     };
 
     socket.on(CLIENT_EVENTS.createRoom, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.createRoom, createRoomRequestSchema, raw, ack, (input) => {
-        const token = sessionToken(socket.request.headers.cookie);
-        const account = accounts?.getSession(token);
-        if (token && !account) return fail("NOT_IN_ROOM");
         const existing = store.getRoomBySocket(socket.id);
         if (existing) {
           const player = Object.values(existing.players).find((each) => each.socketId === socket.id);
           if (!player) return fail("NOT_IN_ROOM");
           return ok(roomAckSchema.parse({ roomCode: existing.roomCode, you: player.slot, resumeToken: player.resumeToken }));
         }
-        const created = store.createRoom(account?.displayName ?? input.displayName, socket.id, account?.id);
+        const created = store.createRoom(input.displayName, socket.id);
         return ok(
           roomAckSchema.parse({
             roomCode: created.room.roomCode,
@@ -123,10 +133,7 @@ export function registerHandlers(io: Server, store: RoomStore, accounts?: Accoun
     socket.on(CLIENT_EVENTS.joinRoom, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.joinRoom, joinRoomRequestSchema, raw, ack, (input) => {
         if (store.getRoomBySocket(socket.id)) return fail("WRONG_PHASE");
-        const token = sessionToken(socket.request.headers.cookie);
-        const account = accounts?.getSession(token);
-        if (token && !account) return fail("NOT_IN_ROOM");
-        const joined = store.joinRoom(input.roomCode, account?.displayName ?? input.displayName, socket.id, account?.id);
+        const joined = store.joinRoom(input.roomCode, input.displayName, socket.id);
         if (!joined.ok) return joined;
         return ok(
           roomAckSchema.parse({
@@ -140,15 +147,7 @@ export function registerHandlers(io: Server, store: RoomStore, accounts?: Accoun
 
     socket.on(CLIENT_EVENTS.quickPlay, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.quickPlay, quickPlayRequestSchema, raw, ack, (input) => {
-        const token = sessionToken(socket.request.headers.cookie);
-        const account = accounts?.getSession(token);
-        if (token && !account) return fail("NOT_IN_ROOM");
-
-        const result = store.quickPlay(
-          account?.displayName ?? input.displayName,
-          socket.id,
-          account?.id,
-        );
+        const result = store.quickPlay(input.displayName, socket.id);
         if (!result.ok) return result;
 
         return ok(
@@ -162,6 +161,20 @@ export function registerHandlers(io: Server, store: RoomStore, accounts?: Accoun
                   resumeToken: result.data.resumeToken,
                 },
           ),
+        );
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.playAi, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.playAi, playAiRequestSchema, raw, ack, (input) => {
+        const created = store.createAiRoom(input.displayName, socket.id, visitor);
+        if (!created.ok) return created;
+        return ok(
+          roomAckSchema.parse({
+            roomCode: created.data.room.roomCode,
+            you: created.data.slot,
+            resumeToken: created.data.resumeToken,
+          }),
         );
       });
     });
@@ -191,6 +204,10 @@ export function registerHandlers(io: Server, store: RoomStore, accounts?: Accoun
       handle(CLIENT_EVENTS.finish, finishRequestSchema, raw, ack, (input) =>
         store.finish(input.roundId, socket.id),
       );
+    });
+
+    socket.on(CLIENT_EVENTS.hint, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.hint, hintRequestSchema, raw, ack, (input) => store.requestHint(input, socket.id, visitor));
     });
 
     socket.on("disconnect", () => {

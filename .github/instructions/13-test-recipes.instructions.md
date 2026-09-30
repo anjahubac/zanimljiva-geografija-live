@@ -255,11 +255,26 @@ The build is not done until each file exists and passes.
 | `tests/unit/score-category.test.ts` | all five reasons, the table above, totals and winner/draw |
 | `tests/unit/contracts.test.ts` | each schema accepts a valid example and rejects a malformed one **and** an extra-key one |
 | `tests/unit/config.test.ts` | invalid env exits with a clear error, valid env parses with defaults |
-| `tests/integration/room-lifecycle.test.ts` | create, join, third player rejected, TTL cleanup |
+| `tests/integration/room-lifecycle.test.ts` | create, join, third player rejected, TTL cleanup, host leaving a lobby frees its code |
 | `tests/integration/synchronized-start.test.ts` | E1 |
 | `tests/integration/drafts-privacy.test.ts` | revision ordering, stale rejection, opponent-absence assertions |
 | `tests/integration/close-and-score.test.ts` | E2, both-finish, deadline, duplicate finish, single reveal |
 | `tests/integration/rejections.test.ts` | E3, every error code, no-mutation after rejection |
+| `tests/integration/opponent-left.test.ts` | E4: a real disconnect reaches the remaining player's screen |
+| `tests/integration/quick-play.test.ts` | random-person queue: matching, cancel, disconnect while queued |
+| `tests/integration/ai-round.test.ts` | Week 4 evals A1–A6 with a fake AI; leaving an AI room |
+| `tests/unit/room-store.test.ts` | phase machine, drafts, finish, close, cleanup, queue, leaving before a round |
+| `tests/unit/server-primitives.test.ts` | clock, scheduler, ids |
+| `tests/unit/game-state.test.ts`, `answer-sheet.test.ts` | client reducer and rendered sheet; no opponent answer before reveal |
+| `tests/unit/client-ai.test.ts` | both languages complete; hints, judging, reasons and waiting screen rendered |
+| `tests/unit/theme.test.ts` | theme switch |
+| `tests/unit/ai-features.test.ts` | checker, bot and hint features against a fake gateway |
+| `tests/unit/gateway.test.ts`, `classify-and-retry.test.ts`, `model-rotation.test.ts` | AI gateway: retries, model chain, quota handling (ported) |
+| `tests/unit/gemini-adapter.test.ts`, `groq-and-fallback.test.ts` | provider adapters and Gemini ⇄ Groq fallback |
+| `tests/unit/ai-config.test.ts`, `debug-log.test.ts` | AI env parsing, the key only in the `apiKey` field; debug log only when asked for and never in production |
+
+No test in this list reaches a real AI provider. `npm run smoke:ai` is the
+only path that does, and it is not a test.
 
 ## Coverage and honesty gates
 

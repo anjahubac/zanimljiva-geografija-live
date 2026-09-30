@@ -1,36 +1,46 @@
 # Zanimljiva Geografija Live
 
-A two-player, two-computer online round of the Serbian pen-and-paper game
-*Zanimljiva geografija*. One player creates a room, the other joins with a
-six-character code, and the server deals both of them the same random letter at
-the same moment — so neither gets a head start.
+A two-player online round of the Serbian pen-and-paper game
+*Zanimljiva geografija*. The server deals both players the same random letter
+at the same moment — so neither gets a head start — and an AI (Google Gemini,
+with Groq as a backup) checks that every answer is a real term of its category.
 
-Built for Week 3 of the Serbian AI Bootcamp.
+Built for Weeks 3–4 of the Serbian AI Bootcamp.
 
-## Status
+## Three ways to play
 
-Scaffold and required documents are in place. Gameplay is not implemented yet.
-Progress follows the numbered steps in
-[.github/instructions/10-implementation-order.instructions.md](.github/instructions/10-implementation-order.instructions.md).
+No account needed — type a name and choose:
+
+- **Play a friend** — create a room and share its six-character code.
+- **Play a random person** — get matched with whoever is waiting.
+- **Play against AI** — an AI opponent plays the same round on the server.
+
+The interface is in **Serbian or English** (switch in the header). Answers count
+in either language in every game.
 
 ## How it plays
 
 1. Player 1 enters a name and creates a room; a six-character code appears.
+   Changed your mind? **Leave game** takes you back to the start, and the code
+   stops working.
 2. Player 2 enters a name and joins with that code.
 3. Once both game screens have loaded, the server picks one letter from
    `A B D K M S V` and schedules a shared 3-second countdown.
-4. Both players privately fill six categories — Država, Grad, Reka, Planina,
-   Biljka, Životinja — for 90 seconds.
+4. Both players privately fill eight categories — Država, Grad, Reka, Planina,
+   More, Životinja, Biljka, Predmet — for 150 seconds. Stuck? Ask for a
+   **hint** (two per round); a hinted cell is marked for both players.
 5. The round ends when both press **Finished** or the server deadline passes.
-6. Answers are revealed together and scored: two different valid answers 10 each,
-   the same answer 5 each, only one valid answer 10 and 0, neither 0 and 0.
+6. The AI checks the answers (a few seconds), then they are revealed together
+   and scored: two different valid answers 10 each, the same answer 5 each,
+   only one valid answer 10 and 0, neither 0 and 0. Each rejected answer shows
+   why (doesn't exist, wrong category, wrong letter…).
 
-Answers are checked only for the starting letter. Players are responsible for
-semantic correctness.
+If the AI is unavailable, the round is scored on the starting letter only, and
+the results say so. The game never waits on the AI for more than 20 seconds.
 
 ## Requirements
 
-Node.js 20 or 22, npm.
+Node.js 22.13 or newer, npm. For the AI features, a free Gemini and/or Groq API key.
 
 ## Commands
 
@@ -43,9 +53,17 @@ npm run lint
 npm run build      # dist/client + dist/server
 npm start          # serve the built SPA, /healthz and Socket.IO from one origin
 npm run verify     # typecheck + lint + test + build — the gate before any handoff
+npm run smoke:ai   # opt-in: 4 real AI requests with fixed, pre-written expectations
 ```
 
-Copy `.env.example` to `.env` for local overrides. Never commit `.env`.
+Copy `.env.example` to `.env` and set `GEMINI_API_KEY` (free, from
+[Google AI Studio](https://aistudio.google.com/apikey), in a project **without
+billing**) and/or `GROQ_API_KEY` (free, from
+[console.groq.com/keys](https://console.groq.com/keys)). With both, each covers
+for the other when it fails or runs out of free quota. Never commit `.env`.
+Without any key the game still runs, with the letter rule only. Note that on
+Gemini's free tier Google may use the requests to improve its products; the
+lobby tells players this.
 
 ## Documentation
 
@@ -54,6 +72,11 @@ Copy `.env.example` to `.env` for local overrides. Never commit `.env`.
 | [docs/GAME_SPEC.md](docs/GAME_SPEC.md) | Authoritative game behavior (frozen) |
 | [Plan.md](Plan.md) | Architecture, sequencing, ownership, risks |
 | [docs/EVALS.md](docs/EVALS.md) | Evaluations, written before the code |
+| [docs/AI_EVALS.md](docs/AI_EVALS.md) | Live checks of the AI against real Gemini and Groq |
+| [docs/EVIDENCE_003.md](docs/EVIDENCE_003.md) | Week 3: scope changes, baseline, the controlled change |
+| [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
+| [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
+| [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |
 | [docs/CONTEXT_MANIFEST.md](docs/CONTEXT_MANIFEST.md) | What context was used, and what was excluded |
 | [docs/AI_USAGE_LOG.md](docs/AI_USAGE_LOG.md) | Every meaningful AI call |
 | [AGENTS.md](AGENTS.md) | Entry point for coding agents |
@@ -61,5 +84,8 @@ Copy `.env.example` to `.env` for local overrides. Never commit `.env`.
 ## Known limitations
 
 Rooms live in memory in a single process: a server restart ends active rooms.
-There is no reconnect after a refresh, no replay in the same room, and no
-semantic checking of answers. These are deliberate Week 3 scope decisions.
+There is no reconnect after a refresh and no replay in the same room. Once a
+round has started there is no Leave button: the round plays to its deadline. The AI
+checker can be wrong on rare or ambiguous terms, and the free quotas are
+limited per day. The server caps AI use per visitor per hour and per day
+(`Plan.md` §2B.11); players sharing one address share the per-visitor cap. See [Plan.md §2B](Plan.md) for the full design and free hosting.

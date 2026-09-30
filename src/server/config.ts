@@ -10,6 +10,10 @@ const ENV_KEYS = {
   COUNTDOWN_MS: "countdownMs",
   COMPLETED_ROOM_TTL_MS: "completedRoomTtlMs",
   WAITING_ROOM_TTL_MS: "waitingRoomTtlMs",
+  AI_ROOMS_PER_VISITOR_HOUR: "aiRoomsPerVisitorHour",
+  HINTS_PER_VISITOR_HOUR: "hintsPerVisitorHour",
+  AI_DAILY_CALL_BUDGET: "aiDailyCallBudget",
+  TRUST_PROXY_HOPS: "trustProxyHops",
 } as const;
 
 /**

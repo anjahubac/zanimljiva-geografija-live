@@ -36,6 +36,14 @@ Resolved on 2026-09-22 while auditing the plan against the instruction set:
 | Instructions referenced a dictionary and answer-bank coverage | Core validity is letter-only; dictionary language removed. |
 | Client payloads carried a `requestId`, but client schemas are `.strict()` | Dropped from Core; the Socket.IO ack already correlates request and response. |
 
+## Week 4 additions (2026-09-30)
+
+| Source | Role | Risk if over-trusted | Mitigation |
+| --- | --- | --- | --- |
+| The product owner's Week 4 decisions (`Plan.md` §2B) | Authoritative intent for the revision; §2B wins over older sections | Older sections of `Plan.md` still read as current | Superseded text is marked; `GAME_SPEC.md` Amendment 5 restates the behavior |
+| A colleague's fork (`Cevizara1/zanimljiva-geografija-live`, `28ee792`) | Source of the provider-neutral AI layer and its tests | Its single-player, Vercel-hosted direction would remove both multiplayer modes | Only the files listed in `Plan.md` §2B.4 were reused; the direction was not adopted |
+| Google Gemini and Groq API docs (free tiers) | Provider behavior, quotas, fallback | Free-tier terms change | Quotas are handled as a failure that falls back to the local rule; no billing account |
+
 ## Known context risk still open
 
 `Plan.md` is long. A weaker model asked to "read the plan" will spend most of

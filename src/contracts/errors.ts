@@ -16,6 +16,9 @@ export const GAME_ERROR_CODES = [
   "ALREADY_FINISHED",
   "STALE_REVISION",
   "RATE_LIMITED",
+  "AI_UNAVAILABLE",
+  "AI_LIMIT",
+  "HINT_LIMIT",
   "INTERNAL",
 ] as const;
 
@@ -37,7 +40,10 @@ export const ERROR_MESSAGES: Record<GameErrorCode, string> = {
   TOO_LATE: "Vreme je isteklo.",
   ALREADY_FINISHED: "Tvoji odgovori su već zaključani.",
   STALE_REVISION: "Noviji odgovor je već sačuvan.",
-  RATE_LIMITED: "Previše zahteva. Uspori.",
+  RATE_LIMITED: "Previše zahteva. Probaj ponovo kasnije.",
+  AI_UNAVAILABLE: "AI trenutno nije dostupan. Probaj ponovo malo kasnije.",
+  AI_LIMIT: "Dnevni limit AI poziva je potrošen. Probaj ponovo sutra.",
+  HINT_LIMIT: "Nemaš više pomoći za ovu kategoriju ili rundu.",
   INTERNAL: "Nešto je pošlo naopako.",
 };
 

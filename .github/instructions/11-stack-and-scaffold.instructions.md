@@ -15,11 +15,16 @@ newest version **with the same major number**, and record the actual version in
 
 Run the scaffold exactly once, at the start of Block 1. Do not re-scaffold.
 
+**The scaffold is done.** From now on the repository's own `package.json`,
+`tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `eslint.config.js` and
+`.env.example` are authoritative. The blocks below are kept in step with them;
+if one ever disagrees with the file, the file wins and this module is fixed.
+
 ## Non-negotiable stack
 
 | Concern | Choice | Not allowed |
 | --- | --- | --- |
-| Runtime | Node.js 20 or 22 | Deno, Bun, Edge runtimes |
+| Runtime | Node.js 22.13 or newer (`engines` in `package.json`; needed for `--env-file-if-exists`) | Deno, Bun, Edge runtimes |
 | Package manager | npm, one root `package.json`, one lockfile | pnpm, yarn, workspaces, monorepo tooling |
 | Language | TypeScript, strict, ESM (`"type": "module"`) | CommonJS, JavaScript source files |
 | Client | React 18 + Vite | Next.js, CRA, Remix, Angular, Vue, plain DOM |
@@ -30,8 +35,11 @@ Run the scaffold exactly once, at the start of Block 1. Do not re-scaffold.
 | Styling | One plain CSS file per screen, or a single `app.css` | Tailwind, MUI, styled-components, CSS-in-JS |
 | State | React `useState`/`useReducer` + one socket context | Redux, Zustand, MobX, React Query, Jotai |
 | IDs | `node:crypto` (`randomUUID`, `randomInt`) | `uuid`, `nanoid`, `Math.random` |
+| AI providers (Week 4) | Plain `fetch` to the Gemini and Groq REST APIs, in `src/server/ai/` | Any AI SDK (`@google/genai`, `groq-sdk`, `openai`, LangChain…) — adding one is a new dependency |
 
 Adding **any** dependency not listed below is a scope change. Stop and ask.
+The Week 4 AI work added no package. `package.json` holds the resolved
+versions, all within the majors listed here.
 
 ## Exact dependencies
 
@@ -44,13 +52,9 @@ npm install -D typescript@^5.6.3 vite@^5.4.10 @vitejs/plugin-react@^4.3.3 vitest
 
 ```json
 {
-  "name": "zanimljiva-geografija-live",
-  "private": true,
-  "type": "module",
-  "engines": { "node": ">=20" },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "tsx watch src/server/index.ts",
+    "dev:server": "tsx watch --env-file-if-exists=.env src/server/index.ts",
     "dev:client": "vite",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
@@ -62,8 +66,9 @@ npm install -D typescript@^5.6.3 vite@^5.4.10 @vitejs/plugin-react@^4.3.3 vitest
     "format": "prettier --write .",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "tsup src/server/index.ts --format esm --target node20 --out-dir dist/server --clean",
-    "start": "node dist/server/index.js",
+    "build:server": "tsup src/server/index.ts --format esm --target node22 --out-dir dist/server --clean",
+    "start": "node --env-file-if-exists=.env dist/server/index.js",
+    "smoke:ai": "tsx --env-file-if-exists=.env scripts/ai-smoke.ts",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   }
 }
@@ -102,7 +107,7 @@ commit request, baseline capture, or deployment.
       "@client/*": ["src/client/*"]
     }
   },
-  "include": ["src", "tests", "vite.config.ts", "vitest.config.ts", "eslint.config.js"]
+  "include": ["src", "tests", "scripts", "vite.config.ts", "vitest.config.ts"]
 }
 ```
 
@@ -200,16 +205,25 @@ export default tseslint.config(
 The last block is a real guardrail, not decoration: the domain and contracts
 layers must never read ambient time or ambient randomness.
 
-## `.env.example` (exact, committed) 
+## `.env.example` (committed)
+
+The committed file is authoritative; it documents every variable. The game
+settings:
 
 ```text
 PORT=3000
 NODE_ENV=development
-ROUND_DURATION_MS=90000
+ROUND_DURATION_MS=150000
 COUNTDOWN_MS=3000
 COMPLETED_ROOM_TTL_MS=300000
 WAITING_ROOM_TTL_MS=1800000
 ```
+
+Week 4 AI settings (`Plan.md` §2B.5), all optional — with neither key the game
+runs on the letter rule, without the AI opponent or hints:
+`GEMINI_API_KEY`, `GROQ_API_KEY`, `GEMINI_MODEL_CHAIN`, `GEMINI_THINKING_LEVEL`,
+`GROQ_MODEL_CHAIN`, `AI_PROVIDER_ORDER`, `AI_DEBUG_LOG`. Keys are left empty in
+the committed file.
 
 `.gitignore` must contain at least `node_modules`, `dist`, `coverage`, `.env`,
 `.env.local`, `*.log`, `.DS_Store`. Parse the environment once at startup with

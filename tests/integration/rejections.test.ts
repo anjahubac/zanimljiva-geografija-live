@@ -4,6 +4,7 @@ import { ERROR_MESSAGES, GAME_ERROR_CODES, type GameErrorCode } from "@contracts
 import { CLIENT_EVENTS, SERVER_EVENTS, type RoundScheduled } from "@contracts/socket.schemas";
 import { connectClient, emitAck, settle, waitFor } from "../helpers/socket-client";
 import { startTestServer, type TestContext } from "../helpers/test-server";
+import { fakeAi, type FakeAi } from "../fakes/fake-ai";
 
 /**
  * E3 from docs/EVALS.md: every code in the module 12 registry is produced by a
@@ -16,12 +17,14 @@ describe("E3 invalid input never mutates canonical state", () => {
   let p3: Socket;
   let roomCode: string;
   let roundId: string;
+  let ai: FakeAi;
 
   /** Codes actually observed in this suite, checked for completeness at the end. */
   const observed = new Set<GameErrorCode>();
 
   beforeEach(async () => {
-    ctx = await startTestServer({ letter: "S" });
+    ai = fakeAi();
+    ctx = await startTestServer({ letter: "S", ai });
     p1 = await connectClient(ctx.port);
     p2 = await connectClient(ctx.port);
     p3 = await connectClient(ctx.port);
@@ -279,6 +282,51 @@ describe("E3 invalid input never mutates canonical state", () => {
       code: "INVALID_PAYLOAD",
       message: ERROR_MESSAGES.INVALID_PAYLOAD,
     });
+  });
+
+  it("rejects a hint when the AI cannot answer", async () => {
+    ctx.advance(ctx.config.countdownMs);
+    ai.onHint = async () => ({ ok: false, code: "timeout" });
+
+    await expectRejection("AI_UNAVAILABLE", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "sr" }),
+    );
+  });
+
+  it("rejects a hint once the daily AI limit is spent", async () => {
+    ctx.advance(ctx.config.countdownMs);
+    ai.onHint = async () => ({ ok: false, code: "quota_exhausted" });
+
+    await expectRejection("AI_LIMIT", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "en" }),
+    );
+  });
+
+  it("rejects a second hint in one category, and a hint beyond the round's allowance", async () => {
+    ctx.advance(ctx.config.countdownMs);
+    const first = await emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "sr" });
+    expect(first.ok).toBe(true);
+
+    await expectRejection("HINT_LIMIT", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "sr" }),
+    );
+
+    const second = await emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "city", language: "sr" });
+    expect(second.ok).toBe(true);
+    await expectRejection("HINT_LIMIT", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "animal", language: "sr" }),
+    );
+  });
+
+  it("rejects a hint before the round starts, and one carrying an unknown language", async () => {
+    await expectRejection("TOO_EARLY", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "sr" }),
+    );
+    ctx.advance(ctx.config.countdownMs);
+    await expectRejection("INVALID_PAYLOAD", () =>
+      emitAck(p1, CLIENT_EVENTS.hint, { roundId, category: "river", language: "de" }),
+    );
+    expect(ai.hintCalls).toHaveLength(0);
   });
 
   it("covers every code in the closed registry", () => {

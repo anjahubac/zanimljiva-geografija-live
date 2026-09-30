@@ -5,7 +5,10 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **6**.
+Used so far: **9 logged**. The Week 3 sessions for Steps 9–10 have no entries
+here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
+run log. Entry 007 was written afterwards, from the owner's summary of that
+session, not during it.
 
 ---
 
@@ -173,3 +176,101 @@ Used so far: **6**.
   commit, play a two-browser round, and record the real output, screenshots and
   commit hash in `docs/EVIDENCE_003.md`. Do not fix anything before the baseline
   is captured.
+
+## 007 — Week 4 revision: no accounts, AI checker, AI opponent, hints, SR/EN (Claude Code, 2026-09-30)
+
+- **Phase:** Week 4, product revision. One session, five requests in order:
+  plan the owner's version against a colleague's single-player fork; remove
+  accounts and add the AI checker and a play-against-AI mode, with free
+  hosting; add hints, Gemini and two languages; add Groq as Gemini's
+  fallback; summarise the session.
+- **Reason:** keep both multiplayer modes, which the fork had dropped, while
+  adding AI as a checker and as a third mode.
+- **Expected:** `Plan.md` §2B written before the code; A1–A6 written before the
+  code and passing with a fake AI; every AI failure ending in a scored round.
+- **Actual (from the session summary):** `npm run verify` green — typecheck,
+  lint, **431 tests across 27 files** (baseline 275 across 20), build. A1–A6
+  pass; a mutation check made A5 and A4 fail. Played in a browser against a
+  scripted AI stand-in: an AI round and a two-tab friend round, no errors.
+- **Not verified:** no API key was available, so neither Gemini nor Groq was
+  called for real; `GAME_SPEC.md` was left unamended (done in 008).
+- **Next decision:** add keys, run `npm run smoke:ai` per provider, commit,
+  deploy to Render.
+
+## 008 — Leave game on the waiting screen, and a docs pass (Claude Code, 2026-09-30)
+
+- **Phase:** Week 4, small product change plus documentation alignment.
+- **Reason:** the owner asked for a way out of the screen where you wait for a
+  friend — a back button or a leave button — and for every doc to be brought
+  up to date.
+- **Expected:** a labelled Leave game button on the waiting screen, with no new
+  event; a lobby whose host leaves stops accepting its code at once; tests
+  that fail without the server rule; docs matching the code.
+- **Actual (verified in-session):** `npm run verify` green — typecheck, lint,
+  **437 tests passed across 27 files**, both builds. The four new server tests
+  fail with the new `markDisconnected` rule disabled and pass with it restored.
+  Docs: `GAME_SPEC.md` Amendments 5 (Week 4, which it lacked) and 6;
+  scope changes for Week 4 (since moved to `EVIDENCE_004.md` W4-1, W4-2);
+  `Plan.md` §2B.10, §8, §13; README;
+  `EVALS.md` S8; new `docs/AI_EVALS.md`; architecture, implementation-order
+  and test-recipe modules.
+- **Not verified:** the button has not been clicked through in a browser.
+- **Next decision:** a manual check of Leave game in two browser profiles,
+  then the live AI run recorded in `docs/AI_EVALS.md`.
+
+## 009 — Week 4 audit of instructions and specs, and the fixes (Claude Code, 2026-09-30)
+
+- **Phase:** Week 4, documentation alignment. No application code changed.
+- **Reason:** the owner asked for an audit of the instructions and specs against
+  the Week 4 code, then for every suggestion to be applied, with Week 4
+  evidence in its own file and module 12 pointing to the code.
+- **Expected:** no document tells an agent to build something the code no
+  longer does; one Week 4 evidence file; the AI usage-limit gap written down
+  as a decision for the owner, not built.
+- **Actual (verified in-session):**
+  - Module 12 no longer copies the schemas: it maps `src/contracts`, and keeps
+    the event map (now with quick-play, play-ai, hint) and the error registry.
+    `AI_LIMIT` was checked in the gateway: it means every model on both
+    providers is out of quota; the doc said "every Gemini model".
+  - New `docs/EVIDENCE_004.md`; Week 4 scope changes moved there from
+    `EVIDENCE_003.md`. Entry 007 above added from the Week 4 session summary.
+  - `Plan.md`: §2B.4 claim corrected; §2B.11 AI usage limit proposed with
+    per-game costs and figures; §4 matchmaking; §9 structure; §14; §21 Week 4
+    done criteria. `GAME_SPEC.md` §3, §6, §8, §10 annotated for Week 4.
+  - Rule 2 in `CLAUDE.md`, `AGENTS.md` and the guardrails now covers the AI
+    seat; the reading order includes §2B; module 10 has a Week 4 section.
+  - Modules 02, 03, 04, 05 (new AI boundary section), 06, 07 (prompt
+    playbook), 08, 09, 11, 13 updated.
+  - `npm run verify` after the docs pass: **437 tests passed across 27 files**,
+    typecheck, lint and build clean.
+- **Not done:** the AI usage limit (§2B.11) awaits the owner's decision; the
+  module 12 event map is not yet checked against `CLIENT_EVENTS` by a test.
+- **Next decision:** the owner decides §2B.11; then the live AI run (W4-7).
+
+## 010 — AI usage limit per visitor and per day (Claude Code, 2026-09-30)
+
+- **Phase:** Week 4, W4-3.
+- **Reason:** the owner accepted `Plan.md` §2B.11 as proposed.
+- **Expected:** a script that loops play-AI → disconnect stops at the
+  per-visitor limit; hints are charged only when the AI is asked; once the
+  daily budget is spent, new AI games and hints answer `AI_LIMIT` but the
+  checker still runs; no new error code, event or dependency.
+- **Actual (verified in-session):**
+  - New `src/server/usage-limits.ts`; the room store checks and charges it in
+    `createAiRoom` and `requestHint`, and counts every AI call through a thin
+    wrapper around the AI service. The socket layer passes the visitor's
+    address, read from the transport. Four new settings in
+    `serverConfigSchema`.
+  - `x-forwarded-for` is trusted only for `TRUST_PROXY_HOPS` hops (default 0);
+    the server warns at startup in production when it is 0.
+  - `RATE_LIMITED` text changed from "slow down" to "try again later" in both
+    languages, since it now also covers the hourly limit.
+  - New tests: `tests/unit/usage-limits.test.ts`,
+    `tests/integration/ai-limits.test.ts`; `tests/unit/config.test.ts`
+    extended with the new fields (no assertion removed). With the limits
+    disabled in the store, all 5 integration cases failed; restored.
+  - `npm run verify`: **456 tests passed across 29 files**, typecheck, lint
+    and build clean.
+- **Not done:** the right `TRUST_PROXY_HOPS` for Render is unknown; it is part
+  of W4-9.
+- **Next decision:** the live AI run (W4-7).

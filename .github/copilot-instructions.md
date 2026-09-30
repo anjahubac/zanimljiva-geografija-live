@@ -2,16 +2,17 @@
 
 ## Purpose
 
-This is the concise always-on baseline for coding agents. Use `.github/00-index.instructions.md` to load only the relevant detailed modules. Do not use this summary as a substitute for `docs/GAME_SPEC.md` or `Plan.md`.
+This is the concise always-on baseline for coding agents. Use `.github/00-index.instructions.md` to load only the relevant detailed modules. Do not use this summary as a substitute for `docs/GAME_SPEC.md` or `Plan.md`. For Week 4 work, `Plan.md` §2B is the design and wins over older sections.
 
 ## Always-on guardrails
 
 - The server exclusively owns player identity, room membership, phase, letter, `startsAt`, `endsAt`, locked submissions, answer validity, and scores.
-- Start only after two players are present and both game screens automatically acknowledge that they are loaded. Schedule one future start for both and send the same `roundId`, letter, categories, `startsAt`, and `endsAt` to each.
+- Start only after two seats are filled and both are ready: a human seat when its game screen automatically acknowledges that it loaded, the AI opponent's seat when the server seats it (`Plan.md` §2B.3). Schedule one future start for both and send the same `roundId`, letter, categories, `startsAt`, and `endsAt` to each.
 - Never expose or log an opponent's draft before canonical reveal.
 - Store draft updates privately so timeout does not rely on a last-millisecond client message.
 - A player's finish action is idempotent and permanently locks that player's round answers.
 - Reveal and score exactly once, after both players finish or the server deadline expires.
+- Validity is the local rule (at least 2 characters, right letter) and then the AI checker's verdict; when the AI fails, the local rule alone decides and the result is marked unverified (`Plan.md` §2B.2).
 - Traditional category scoring is: different valid answers 10/10; the same normalized valid answer 5/5; only one valid answer 10/0; neither valid 0/0.
 - Keep normalization, validity decisions, and scoring pure and deterministic. Inject clock and letter selection into orchestration tests.
 - Treat Socket.IO payloads and environment configuration as `unknown` until a shared runtime schema validates them.
@@ -19,7 +20,7 @@ This is the concise always-on baseline for coding agents. Use `.github/00-index.
 - Infer boundary types from shared schemas instead of maintaining parallel handwritten event types.
 - Add or update a meaningful success case and rejection/edge case whenever behavior changes.
 - Preserve the Week 3 baseline and use the same pre-written evals before and after one controlled change.
-- Do not add accounts, a database, matchmaking, chat, spectators, a leaderboard, AI functionality, or another service unless the user explicitly expands scope.
+- Do not add accounts, a database, chat, spectators, a leaderboard, or another service unless the user explicitly expands scope. Random matchmaking and the Gemini/Groq-based answer checker, AI opponent and hints are in scope (`Plan.md` §2B); AI is called only from the server, and an opponent's answers reach the AI only after both sheets are locked.
 - Never commit secrets, `.env` files, private resume tokens, hidden answers, or raw sensitive payloads.
 - Do not push, deploy, open a pull request, or mutate an external service unless the user explicitly requests that operation.
 - Follow the build sequence in module 10 one step at a time. Finish a step, run its exit command, and report the real output before starting the next.

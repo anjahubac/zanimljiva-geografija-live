@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "tsx watch src/server/index.ts",
+    "dev:server": "tsx watch --env-file-if-exists=.env src/server/index.ts",
     "dev:client": "vite",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
@@ -21,7 +21,8 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "tsup src/server/index.ts --format esm --target node22 --out-dir dist/server --clean",
-    "start": "node dist/server/index.js",
+    "start": "node --env-file-if-exists=.env dist/server/index.js",
+    "smoke:ai": "tsx --env-file-if-exists=.env scripts/ai-smoke.ts",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {

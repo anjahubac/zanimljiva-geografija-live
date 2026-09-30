@@ -6,6 +6,7 @@ import {
   clientReadyAckSchema,
   draftAckSchema,
   finishAckSchema,
+  hintAckSchema,
   playerFinishedSchema,
   quickPlayAckSchema,
   roomAckSchema,
@@ -17,6 +18,8 @@ import {
   type DraftAck,
   type DraftRequest,
   type FinishAck,
+  type HintAck,
+  type HintRequest,
   type PlayerFinished,
   type QuickPlayAck,
   type RoomAck,
@@ -40,6 +43,8 @@ export type GameSocket = {
   joinRoom(roomCode: string, displayName: string): Promise<Ack<RoomAck>>;
   quickPlay(displayName: string): Promise<Ack<QuickPlayAck>>;
   cancelQuickPlay(): Promise<Ack<ClientReadyAck>>;
+  playAi(displayName: string): Promise<Ack<RoomAck>>;
+  requestHint(input: HintRequest): Promise<Ack<HintAck>>;
   clientReady(roomCode: string): Promise<Ack<ClientReadyAck>>;
   sendDraft(input: DraftRequest): Promise<Ack<DraftAck>>;
   finishRound(roundId: string): Promise<Ack<FinishAck>>;
@@ -92,6 +97,8 @@ export function createGameSocket(url?: string): GameSocket {
       emitAck(CLIENT_EVENTS.quickPlay, { displayName }, quickPlayAckSchema),
     cancelQuickPlay: () =>
       emitAck(CLIENT_EVENTS.cancelQuickPlay, {}, clientReadyAckSchema),
+    playAi: (displayName) => emitAck(CLIENT_EVENTS.playAi, { displayName }, roomAckSchema),
+    requestHint: (input) => emitAck(CLIENT_EVENTS.hint, input, hintAckSchema),
     clientReady: (roomCode) =>
       emitAck(CLIENT_EVENTS.clientReady, { roomCode }, clientReadyAckSchema),
     sendDraft: (input) => emitAck(CLIENT_EVENTS.draft, input, draftAckSchema),

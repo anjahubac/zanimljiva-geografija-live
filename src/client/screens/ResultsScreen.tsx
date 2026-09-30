@@ -1,12 +1,13 @@
-import { CATEGORIES, CATEGORY_LABELS_SR } from "@contracts/game.schemas";
-import type { Category, PlayerSlot } from "@contracts/game.schemas";
+import { CATEGORIES } from "@contracts/game.schemas";
+import type { Category, PlayerSlot, RejectReason } from "@contracts/game.schemas";
 import type { RoundResults, RoundRevealed } from "@contracts/socket.schemas";
-import { UI_SR } from "@client/strings";
+import { useI18n } from "@client/i18n";
 
 type Props = {
   you: PlayerSlot;
   revealed: RoundRevealed;
   results: RoundResults;
+  opponentIsBot?: boolean;
   onLeave: () => void;
 };
 
@@ -14,6 +15,8 @@ type SheetCell = {
   category: Category;
   raw: string;
   valid: boolean;
+  rejected: RejectReason | null;
+  hinted: boolean;
   points: number;
   reason: string;
 };
@@ -34,7 +37,9 @@ type SheetRow = {
  *  same height and shape it had while the round was being played. */
 const BLANK_SHEET_ROWS = [1, 2, 3];
 
-export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
+export function ResultsScreen({ you, revealed, results, opponentIsBot = false, onLeave }: Props) {
+  const { t, labels } = useI18n();
+
   const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
     const answers = slot === 1 ? revealed.player1 : revealed.player2;
 
@@ -45,8 +50,10 @@ export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
         category,
         raw: answer?.raw ?? "",
         valid: answer?.valid ?? false,
+        rejected: answer?.reason ?? null,
+        hinted: answer?.hinted ?? false,
         points: (slot === 1 ? score?.player1Points : score?.player2Points) ?? 0,
-        reason: score ? UI_SR.reasons[score.reason] : "",
+        reason: score ? t.reasons[score.reason] : "",
       };
     });
 
@@ -59,22 +66,22 @@ export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
   };
 
   const opponent: PlayerSlot = you === 1 ? 2 : 1;
-  const rows = [buildRow(you, UI_SR.you), buildRow(opponent, UI_SR.opponent)];
+  const rows = [buildRow(you, t.you), buildRow(opponent, opponentIsBot ? t.aiOpponent : t.opponent)];
 
   const yourTotal = you === 1 ? results.player1Total : results.player2Total;
   const theirTotal = you === 1 ? results.player2Total : results.player1Total;
 
   const outcomeText =
     results.outcome === "draw"
-      ? UI_SR.outcomeDraw
+      ? t.outcomeDraw
       : (results.outcome === "player_1") === (you === 1)
-        ? UI_SR.outcomeWin
-        : UI_SR.outcomeLoss;
+        ? t.outcomeWin
+        : t.outcomeLoss;
 
   return (
     <section className="screen screen-results screen-wide" aria-labelledby="results-title">
       <h1 id="results-title" className="screen-title">
-        {UI_SR.resultsTitle}
+        {t.resultsTitle}
       </h1>
 
       <p className="outcome" aria-live="polite">
@@ -82,24 +89,24 @@ export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
       </p>
 
       <p className="letter">
-        {UI_SR.letterIs} <strong>{revealed.letter}</strong>
+        {t.letterIs} <strong>{revealed.letter}</strong>
       </p>
 
       <div className="table-scroll">
         <table className="sheet-table">
-          <caption className="visually-hidden">{UI_SR.resultsTitle}</caption>
+          <caption className="visually-hidden">{t.resultsTitle}</caption>
           <thead>
             <tr>
               <th scope="col" className="col-head col-row-head">
-                {UI_SR.player}
+                {t.player}
               </th>
               {CATEGORIES.map((category) => (
                 <th scope="col" className="col-head" key={category}>
-                  {CATEGORY_LABELS_SR[category]}
+                  {labels[category]}
                 </th>
               ))}
               <th scope="col" className="col-head col-total">
-                {UI_SR.total}
+                {t.total}
               </th>
             </tr>
           </thead>
@@ -118,23 +125,29 @@ export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
                       {/* Marked in the corner in red pen, the way the points are
                           written on the paper sheet. */}
                       <span className="cell-points">
-                        <span className="visually-hidden">{UI_SR.points}: </span>
+                        <span className="visually-hidden">{t.points}: </span>
                         {cell.points}
                       </span>
 
                       {empty ? (
-                        <span className="visually-hidden">{UI_SR.noAnswer}</span>
+                        <span className="visually-hidden">{t.noAnswer}</span>
                       ) : (
                         <>
                           <span className={cell.valid ? "cell-answer" : "cell-answer answer-invalid"}>
                             {cell.raw}
                           </span>
                           <span className="verdict">
-                            {cell.valid ? UI_SR.valid : UI_SR.invalid}
+                            {cell.valid
+                              ? t.valid
+                              : cell.rejected
+                                ? t.rejectReasons[cell.rejected]
+                                : t.invalid}
                           </span>
                         </>
                       )}
 
+                      {/* Shown on a blank cell too: a hint used is part of the record. */}
+                      {cell.hinted ? <span className="verdict verdict-hinted">{t.hinted}</span> : null}
                       <span className="visually-hidden">{cell.reason}</span>
                     </td>
                   );
@@ -162,14 +175,12 @@ export function ResultsScreen({ you, revealed, results, onLeave }: Props) {
           than a rematch in this one. */}
       <div className="results-footer">
         <div className="results-note">
-          <p className="notice">{UI_SR.honorSystemSr}</p>
-          <p className="notice notice-en" lang="en">
-            {UI_SR.honorSystemEn}
-          </p>
+          <p className="notice">{results.verified ? t.verifiedNote : t.unverifiedNote}</p>
+          {results.botFailed ? <p className="notice">{t.botFailedNote}</p> : null}
         </div>
 
         <button type="button" onClick={onLeave}>
-          {UI_SR.backToLobby}
+          {t.backToLobby}
         </button>
       </div>
     </section>

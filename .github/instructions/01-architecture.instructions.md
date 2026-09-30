@@ -69,8 +69,13 @@ A new field is private by default until a schema and test explicitly prove it is
 ## Required lifecycle
 
 ```text
-waiting_for_player -> synchronizing -> countdown -> answering -> results -> closed
+waiting_for_player -> synchronizing -> countdown -> answering -> judging -> results -> closed
 ```
+
+`judging` is Week 4 (`Plan.md` §2B.2): the AI check, at most 20 s, then the
+local-rule fallback. Before a round is scheduled, a room whose last connected
+human disconnects goes straight to `closed` and is removed, so its code stops
+working (`Plan.md` §2B.10); a bot never keeps a room alive.
 
 There is exactly one round per room in Core. `results` never returns to
 `countdown`; replaying is Stretch. `connected`, `clientReady` and `finished`

@@ -390,6 +390,7 @@ describe("pre-reveal privacy", () => {
     for (const projected of [forP1, forP2]) {
       for (const player of projected.players) {
         expect(Object.keys(player).sort()).toEqual([
+          "bot",
           "clientReady",
           "connected",
           "displayName",
@@ -442,6 +443,8 @@ describe("finish and closeRound", () => {
       raw: "Srbija",
       normalized: "srbija",
       valid: true,
+      reason: null,
+      hinted: false,
     });
 
     const results = harness.eventsTo(P1, SERVER_EVENTS.roundResults)[0]?.payload as {
@@ -602,6 +605,36 @@ describe("disconnection", () => {
     expect(room?.phase).toBe("results");
   });
 
+  it("releases a lobby at once when its only player leaves, so the code stops working", () => {
+    const harness = createHarness();
+    const created = harness.store.createRoom("Ana", P1);
+    const roomCode = created.room.roomCode;
+
+    harness.store.markDisconnected(P1);
+
+    expect(harness.store.getRoomByCode(roomCode)).toBeUndefined();
+    expect(created.room.phase).toBe("closed");
+    expect(harness.store.joinRoom(roomCode, "Bojan", P2)).toMatchObject({
+      ok: false,
+      error: { code: "ROOM_NOT_FOUND" },
+    });
+  });
+
+  it("keeps a synchronizing room while one human stays, and releases it when both have left", () => {
+    const harness = createHarness();
+    const created = harness.store.createRoom("Ana", P1);
+    const roomCode = created.room.roomCode;
+    harness.store.joinRoom(roomCode, "Bojan", P2);
+
+    harness.store.markDisconnected(P2);
+    // The one who stayed sees the other go offline and decides to leave too.
+    expect(harness.store.getRoomByCode(roomCode)?.players[2]?.connected).toBe(false);
+
+    harness.store.markDisconnected(P1);
+    expect(harness.store.getRoomByCode(roomCode)).toBeUndefined();
+    expect(harness.store.getRoomBySocket(P1)).toBeUndefined();
+  });
+
   it("ignores a disconnect from a socket it never bound", () => {
     const harness = createHarness();
     openRound(harness);
@@ -653,27 +686,23 @@ describe("cleanup", () => {
 });
 
 describe("the random-opponent queue", () => {
-  it("never pairs one account with itself on a second device", () => {
+  it("matches the player who has waited longest", () => {
     const { store } = createHarness();
 
-    expect(store.quickPlay("Ana", P1, "account-ana")).toEqual({
-      ok: true,
-      data: { status: "queued" },
-    });
-
-    // The same account from another browser must keep waiting, not play itself.
-    const second = store.quickPlay("Ana", P2, "account-ana");
-    expect(second.ok && second.data.status).toBe("queued");
-    expect(store.queueLength()).toBe(2);
-
-    // A different account matches the one who waited longest.
-    const third = store.quickPlay("Marko", P3, "account-marko");
-    if (!third.ok || third.data.status !== "matched") throw new Error("not matched");
-    expect(third.data.room.players[1]?.socketId).toBe(P1);
+    expect(store.quickPlay("Ana", P1)).toEqual({ ok: true, data: { status: "queued" } });
+    // Asking twice from the same socket is the same answer, not a second entry.
+    expect(store.quickPlay("Ana", P1)).toEqual({ ok: true, data: { status: "queued" } });
     expect(store.queueLength()).toBe(1);
+
+    const second = store.quickPlay("Marko", P2);
+    if (!second.ok || second.data.status !== "matched") throw new Error("not matched");
+    expect(second.data.room.players[1]?.socketId).toBe(P1);
+    expect(store.queueLength()).toBe(0);
+
+    expect(store.quickPlay("Iva", P3)).toEqual({ ok: true, data: { status: "queued" } });
   });
 
-  it("pairs two guests, who have no account to collide", () => {
+  it("pairs two players into one synchronizing room", () => {
     const { store } = createHarness();
 
     store.quickPlay("Ana", P1);

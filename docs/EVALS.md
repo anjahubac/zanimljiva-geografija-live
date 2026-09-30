@@ -68,6 +68,11 @@ three of the four probes came back clean (see `EVIDENCE_003.md` §2.2).
 | S5  | `"Beograd"` for letter `S` vs blank                                         | 0 / 0, reason `neither`          |
 | S6  | 41-character answer                                                         | invalid, rejected by schema      |
 | S7  | Opponent's typed draft, inspected across every event received before reveal | absent from all payloads         |
+| S8  | Host leaves the waiting screen (socket drops) before anyone joins — added 2026-09-30 (`EVIDENCE_004.md` W4-2) | room removed; joining its code → `ROOM_NOT_FOUND` |
+
+Week 4 AI evaluations (A1–A6, and the live smoke check) are kept separately:
+`Plan.md` §2B.6 and `docs/AI_EVALS.md`; their runs are recorded in
+`docs/EVIDENCE_004.md`.
 
 ## Run log
 

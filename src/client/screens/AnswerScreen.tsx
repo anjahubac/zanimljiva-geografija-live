@@ -1,7 +1,8 @@
-import { CATEGORIES, CATEGORY_LABELS_SR, MAX_ANSWER_LENGTH } from "@contracts/game.schemas";
+import { CATEGORIES, MAX_ANSWER_LENGTH } from "@contracts/game.schemas";
 import type { Category } from "@contracts/game.schemas";
-import type { DraftStatus } from "@client/state/useGameState";
-import { UI_SR } from "@client/strings";
+import { useI18n } from "@client/i18n";
+import type { DraftStatus, HintView } from "@client/state/useGameState";
+import type { Strings } from "@client/strings";
 
 type Props = {
   letter: string;
@@ -13,18 +14,23 @@ type Props = {
   busy: boolean;
   opponentFinished: boolean;
   opponentConnected: boolean;
+  opponentIsBot?: boolean;
   announcement: string;
+  /** Hints (§2B.8). Without `onHint` the sheet shows no hint controls. */
+  hintsLeft?: number;
+  hints?: Partial<Record<Category, HintView>>;
+  onHint?: (category: Category) => void;
   onChange: (category: Category, value: string) => void;
   onBlur: (category: Category) => void;
   onFinish: () => void;
 };
 
-const STATUS_TEXT: Record<DraftStatus, string> = {
-  empty: UI_SR.statusEmpty,
-  pending: UI_SR.statusPending,
-  saved: UI_SR.statusSaved,
-  rejected: UI_SR.statusRejected,
-};
+const statusText = (t: Strings): Record<DraftStatus, string> => ({
+  empty: t.statusEmpty,
+  pending: t.statusPending,
+  saved: t.statusSaved,
+  rejected: t.statusRejected,
+});
 
 const LOW_TIME_MS = 15_000;
 
@@ -54,26 +60,34 @@ export function AnswerScreen({
   busy,
   opponentFinished,
   opponentConnected,
+  opponentIsBot = false,
   announcement,
+  hintsLeft = 0,
+  hints = {},
+  onHint,
   onChange,
   onBlur,
   onFinish,
 }: Props) {
+  const { t, labels } = useI18n();
+  const STATUS_TEXT = statusText(t);
+  const hintPending = Object.values(hints).some((hint) => hint?.status === "loading");
+
   return (
     <section className="screen screen-wide" aria-labelledby="answer-title">
       <header className="round-header">
         <div>
           <h1 id="answer-title" className="screen-title">
-            {UI_SR.answeringTitle}
+            {t.answeringTitle}
           </h1>
           <p className="letter">
-            {UI_SR.letterIs} <strong>{letter}</strong>
+            {t.letterIs} <strong>{letter}</strong>
           </p>
         </div>
         {/* Reads once per second, so it is hidden from assistive technology;
             the live region below announces milestones instead. */}
         <p className={`timer${remainingMs <= LOW_TIME_MS ? " timer-low" : ""}`} aria-hidden="true">
-          <span className="timer-label">{UI_SR.timeLeft}</span>
+          <span className="timer-label">{t.timeLeft}</span>
           {formatRemaining(remainingMs)}
         </p>
       </header>
@@ -84,12 +98,19 @@ export function AnswerScreen({
           while someone is typing an answer, and must not interrupt them
           mid-word. A departure outranks whether they had finished. */}
       <p className={`opponent-note${opponentConnected ? "" : " opponent-note-gone"}`} aria-live="polite">
+        {opponentIsBot ? `${t.aiOpponent}: ` : ""}
         {!opponentConnected
-          ? UI_SR.opponentLeft
+          ? t.opponentLeft
           : opponentFinished
-            ? UI_SR.opponentFinished
-            : UI_SR.opponentStillPlaying}
+            ? t.opponentFinished
+            : t.opponentStillPlaying}
       </p>
+
+      {onHint ? (
+        <p className="hints-left">
+          {t.hintsLeft}: <strong>{hintsLeft}</strong>
+        </p>
+      ) : null}
 
       <p className="visually-hidden" aria-live="polite">
         {announcement}
@@ -98,12 +119,12 @@ export function AnswerScreen({
       <form onSubmit={(event) => { event.preventDefault(); onFinish(); }}>
         <div className="table-scroll">
           <table className="sheet-table play-table">
-            <caption className="visually-hidden">{UI_SR.answeringTitle}</caption>
+            <caption className="visually-hidden">{t.answeringTitle}</caption>
             <thead>
               <tr>
                 {CATEGORIES.map((category) => (
                   <th scope="col" className="col-head" key={category}>
-                    {CATEGORY_LABELS_SR[category]}
+                    {labels[category]}
                   </th>
                 ))}
               </tr>
@@ -124,7 +145,7 @@ export function AnswerScreen({
                           on a wide screen, so it is hidden there and shown
                           again once the sheet stacks. */}
                       <label className="cell-label" htmlFor={`answer-${category}`}>
-                        {CATEGORY_LABELS_SR[category]}
+                        {labels[category]}
                       </label>
                       <input
                         id={`answer-${category}`}
@@ -149,6 +170,15 @@ export function AnswerScreen({
                           {error}
                         </p>
                       ) : null}
+                      {onHint ? (
+                        <HintCell
+                          view={hints[category]}
+                          canAsk={!locked && hintsLeft > 0 && !hintPending}
+                          label={`${t.hintFor}: ${labels[category]}`}
+                          t={t}
+                          onAsk={() => onHint(category)}
+                        />
+                      ) : null}
                     </td>
                   );
                 })}
@@ -168,9 +198,40 @@ export function AnswerScreen({
         </div>
 
         <button type="submit" disabled={locked || busy}>
-          {UI_SR.finish}
+          {t.finish}
         </button>
       </form>
     </section>
+  );
+}
+
+type HintCellProps = {
+  view: HintView | undefined;
+  canAsk: boolean;
+  label: string;
+  t: Strings;
+  onAsk: () => void;
+};
+
+/**
+ * One category's hint: a button until it is asked for, then what came back.
+ * The clue is announced politely, so it never interrupts someone typing.
+ */
+function HintCell({ view, canAsk, label, t, onAsk }: HintCellProps) {
+  if (!view || view.status === "error") {
+    return (
+      <>
+        {view?.status === "error" ? <p className="field-error">{view.message}</p> : null}
+        <button type="button" className="link hint-button" disabled={!canAsk} aria-label={label} onClick={onAsk}>
+          {t.hint}
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <p className="hint-text" aria-live="polite">
+      {view.status === "loading" ? t.hintLoading : view.status === "clue" ? view.clue : t.hintNone}
+    </p>
   );
 }

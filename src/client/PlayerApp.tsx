@@ -1,121 +1,50 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { App } from "@client/App";
-import { AccountScreen } from "@client/screens/AccountScreen";
-import { ProfileScreen } from "@client/screens/ProfileScreen";
+import { I18nProvider, LanguageToggle, useI18n } from "@client/i18n";
 import { ThemeToggle } from "@client/ThemeToggle";
-import { useSession } from "@client/accounts/useSession";
-import { AUTH_SR, UI_SR } from "@client/strings";
-
-type View = "game" | "account" | "profile";
 
 /**
- * The account shell around the game. The server reads the session cookie at the
- * socket handshake, so `App` is keyed by the account: signing in or out
- * remounts it and the new socket introduces itself as the right player.
+ * The page shell around the game. There are no accounts: every player is a
+ * guest who types a name in the lobby.
  */
 export function PlayerApp() {
-  const session = useSession();
-  const [view, setView] = useState<View>("account");
+  return (
+    <I18nProvider>
+      <Shell />
+    </I18nProvider>
+  );
+}
+
+function Shell() {
+  const { t } = useI18n();
   /**
-   * Bumped when a player leaves a finished room. It remounts `App`, which
+   * Bumped when a player leaves a room — from the waiting screen before a
+   * round, or from the results sheet after it. It remounts `App`, which
    * drops the socket — and the server releases the room on that disconnect,
    * so the next socket is unbound and free to create or join a new room. A
    * reset of client state alone would leave the socket tied to the dead room.
    */
   const [gameNonce, setGameNonce] = useState(0);
 
-  const { account, loading } = session;
-
-  useEffect(() => {
-    if (loading) return;
-    // A returning player with a live cookie goes straight to the game.
-    if (account) setView((current) => (current === "account" ? "game" : current));
-  }, [account, loading]);
-
-  const onAccountScreen = view === "account" && !account;
-
   /**
    * The brand is deliberately not a link home: a stray click during a live
    * round would abandon it with no warning. Leaving a partija is an explicit
-   * action on the results sheet.
+   * action on the waiting screen and on the results sheet.
    */
-  const shell = (body: ReactNode) => (
+  return (
     <>
       <header className="site-header">
         <div className="site-header-inner">
-          <span className="brand">{UI_SR.appTitle}</span>
+          <span className="brand">{t.appTitle}</span>
 
-          <nav className="site-nav" aria-label={UI_SR.navLabel}>
-            {/* On the sign-in screen these would only repeat what is already
-                on it, so the bar carries just the theme control there. */}
-            {loading || onAccountScreen ? null : account ? (
-              <>
-                <span className="nav-who">{account.displayName}</span>
-                <button
-                  type="button"
-                  className="link"
-                  aria-current={view === "profile" ? "page" : undefined}
-                  onClick={() => setView("profile")}
-                >
-                  {AUTH_SR.profile}
-                </button>
-                <button
-                  type="button"
-                  className="link"
-                  disabled={session.busy}
-                  onClick={() => void session.logOut().then(() => setView("account"))}
-                >
-                  {AUTH_SR.signOut}
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="nav-who">{AUTH_SR.guestShort}</span>
-                <button type="button" className="link" onClick={() => setView("account")}>
-                  {AUTH_SR.signIn}
-                </button>
-              </>
-            )}
-
+          <nav className="site-nav" aria-label={t.navLabel}>
+            <LanguageToggle />
             <ThemeToggle />
           </nav>
         </div>
       </header>
 
-      {body}
+      <App key={gameNonce} onLeave={() => setGameNonce((current) => current + 1)} />
     </>
-  );
-
-  if (loading) return shell(null);
-
-  if (onAccountScreen) {
-    return shell(
-      <main className="app">
-        <AccountScreen
-          busy={session.busy}
-          error={session.error}
-          onRegister={(input) => void session.register(input)}
-          onLogIn={(input) => void session.logIn(input)}
-          onPlayAsGuest={() => setView("game")}
-          onModeChange={session.clearError}
-        />
-      </main>,
-    );
-  }
-
-  if (view === "profile" && account) {
-    return shell(
-      <main className="app">
-        <ProfileScreen onBack={() => setView("game")} />
-      </main>,
-    );
-  }
-
-  return shell(
-    <App
-      key={`${account?.id ?? "guest"}-${gameNonce}`}
-      accountName={account?.displayName ?? null}
-      onLeave={() => setGameNonce((current) => current + 1)}
-    />,
   );
 }

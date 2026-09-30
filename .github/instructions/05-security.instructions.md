@@ -18,7 +18,7 @@ The server is the sole authority for:
 - Start and end timestamps
 - Whether a draft is on time
 - Locked submissions
-- Answer validity and review status
+- Answer validity (the local rule plus the AI checker's verdict, applied by server code)
 - Category points and totals
 
 Never accept these values as authoritative merely because a client sent them.
@@ -57,18 +57,45 @@ Never accept these values as authoritative merely because a client sent them.
 - Clear deadline timers during normal close and room cleanup.
 - Never reopen a closed round because a late client event arrives.
 
+## AI boundary (Week 4, `Plan.md` §2B)
+
+- Only the server calls the AI, only through `src/server/ai/service.ts`. The
+  browser never sees a key, a prompt, a model reply, or the hint's term.
+- An opponent's answers reach the AI only after both sheets are locked, inside
+  the close path; the AI opponent's answers are absent from every payload
+  before `round:revealed`.
+- Answers are untrusted data in a prompt: control characters stripped,
+  JSON-encoded in the user message, and the system prompt says never to follow
+  instructions inside them.
+- A model reply is untrusted too: JSON parse, then the schema in
+  `src/contracts/ai-output.schemas.ts`, then semantic checks (exactly the item
+  ids sent, each once). Anything else is a failure, and a failure falls back
+  to the letter rule — never a stuck round and never a guessed verdict.
+- The round letter is enforced by code on the recognised name; the model is
+  never trusted to apply it.
+- A hint clue that contains its term, or any 4 consecutive letters of it in
+  Serbian or English, is discarded.
+- Answers go to third parties (Google, Groq). The lobby tells players so;
+  never send display names, room codes, socket ids or tokens to a provider.
+- AI quota is a shared resource, bounded per visitor and per day
+  (`Plan.md` §2B.11, `src/server/usage-limits.ts`). A new path that spends AI
+  calls goes through the room store's counted AI service and, if a visitor
+  can trigger it at will, a per-visitor limit. The visitor's address comes
+  from the transport, never the payload, and `x-forwarded-for` is trusted
+  only for the configured number of proxy hops.
+
 ## Secrets and logging
 
 - Keep `.env`, deployment credentials, tokens, private URLs, and production data out of git, prompts, screenshots, evidence, fixtures, and responses.
 - Commit only placeholder names in `.env.example`.
-- Never log full socket payloads, raw answers before reveal, resume tokens, environment contents, or stack traces to clients.
+- Never log full socket payloads, raw answers before reveal, resume tokens, environment contents, API keys, prompts or model replies, or stack traces to clients. AI telemetry logs counts, models and outcomes only; `AI_DEBUG_LOG` is for local debugging and is ignored in production.
 - Prefer structured summaries: event name, request ID, redacted room ID, phase, accepted/rejected outcome, and safe reason code.
 
 ## Production transport
 
 - Use HTTPS/WSS in production through the hosting platform.
 - Prefer same-origin SPA and Socket.IO hosting. If origins differ, use an explicit allowlist; never use unrestricted production CORS with credentials.
-- Do not claim strong anti-cheat or durable sessions. The Week 3 in-memory, no-account model has documented limitations.
+- Do not claim strong anti-cheat or durable sessions. The in-memory, no-account model has documented limitations.
 
 ## Security-sensitive change completion
 

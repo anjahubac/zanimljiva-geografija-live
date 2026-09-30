@@ -1,5 +1,5 @@
 ---
-description: "Repeatable playbooks for scoring, room lifecycle, socket events, UI, answer data, documentation, and deployment preparation."
+description: "Repeatable playbooks for scoring, room lifecycle, socket events, UI, AI prompts and features, documentation, and deployment preparation."
 applyTo: "**/*"
 ---
 
@@ -40,15 +40,23 @@ Never implement a canonical scoring rule only in the client.
 2. Update the documented Unicode, whitespace, case, script, and starting-letter policy.
 3. Add examples that should compare equal and examples that must remain different.
 4. Re-run every scoring test because equality affects 5-versus-10 points.
-5. Document dictionary coverage and unknown-answer behavior honestly.
+5. Document what the AI checker decides and what the local rule decides, and what happens when the AI is unavailable.
 
-## Add a supported letter or answer-bank entry
+## Add a supported letter
 
-1. Use the existing typed data format and category allowlist.
-2. Validate that every configured category has intentional coverage for the new letter.
-3. Add spelling/normalization fixtures.
-4. Do not enable a random letter merely because one answer exists.
-5. Have the other developer review geography content separately from code correctness.
+1. Add it to `SUPPORTED_LETTERS` and to the letter rules in `src/server/prompts/category-rules.ts`.
+2. Check with the live smoke check that the AI finds terms for it in every category; add a case to `scripts/ai-smoke.ts` and `docs/AI_EVALS.md`.
+3. Add spelling/normalization fixtures, including letters with diacritics.
+4. Have the other developer review geography content separately from code correctness.
+
+## Change an AI prompt or AI feature
+
+1. Prompts are versioned files in `src/server/prompts/`. Never edit a released version in place: add the next version (`check-round.v3` → `v4`) and switch to it.
+2. Write the expectation first: a fake-AI case in `tests/integration/ai-round.test.ts` for game behavior, and a pre-written verdict in `scripts/ai-smoke.ts` for model behavior.
+3. Change one variable at a time — the prompt, or the model chain, or the output schema — and record the before/after live run in `docs/AI_EVALS.md` and `docs/EVIDENCE_004.md`.
+4. If the output shape changes, change `src/contracts/ai-output.schemas.ts` and its semantic checks together.
+5. Keep every failure path ending in the letter rule; re-run A1–A6.
+6. Re-check the security rules in module 05's AI boundary section.
 
 ## Change the client UI
 
@@ -58,7 +66,7 @@ Never implement a canonical scoring rule only in the client.
 4. Confirm the opponent's answer data is absent, not merely hidden with CSS.
 5. Run the production build and manually test two isolated clients.
 
-## Update Week 3 documents
+## Update Week 3 and Week 4 documents
 
 1. Keep claims tied to actual prompts, context, code state, commands, output, screenshots, and dates.
 2. Update the most specific document first.
@@ -71,7 +79,7 @@ Never implement a canonical scoring rule only in the client.
 1. Prove a local built server can serve the SPA, `/healthz`, and Socket.IO from one origin.
 2. Confirm the selected host supports long-lived WebSocket upgrades.
 3. Run one instance only while rooms are in memory.
-4. Configure environment values in the host, never in committed files.
+4. Configure environment values in the host, never in committed files. The AI keys (`GEMINI_API_KEY`, `GROQ_API_KEY`) go in the host's secret store.
 5. Complete a two-computer production round and capture safe evidence.
 
 ## Local commit handoff

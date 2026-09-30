@@ -1,14 +1,20 @@
 import { z } from "zod";
 import {
   CATEGORY_COUNT,
+  HINTS_PER_ROUND,
+  MAX_CLUE_LENGTH,
+  MIN_CLUE_LENGTH,
   answerValueSchema,
   categorySchema,
   closedReasonSchema,
   categoryScoreSchema,
   displayNameSchema,
+  requestedNameSchema,
   epochMsSchema,
+  languageSchema,
   letterSchema,
   outcomeSchema,
+  rejectReasonSchema,
   playerSlotSchema,
   resumeTokenSchema,
   revisionSchema,
@@ -24,17 +30,21 @@ import {
  * `score`, `endsAt` or `phase` into a mutation.
  */
 
-export const createRoomRequestSchema = z.object({ displayName: displayNameSchema }).strict();
+export const createRoomRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
 export type CreateRoomRequest = z.infer<typeof createRoomRequestSchema>;
 
 export const joinRoomRequestSchema = z
-  .object({ roomCode: roomCodeSchema, displayName: displayNameSchema })
+  .object({ roomCode: roomCodeSchema, displayName: requestedNameSchema })
   .strict();
 export type JoinRoomRequest = z.infer<typeof joinRoomRequestSchema>;
 
 /** Same payload as creating a room: the queue needs only a name to show. */
-export const quickPlayRequestSchema = z.object({ displayName: displayNameSchema }).strict();
+export const quickPlayRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
 export type QuickPlayRequest = z.infer<typeof quickPlayRequestSchema>;
+
+/** Week 4 (§2B.3): a room with the server's AI opponent in the second seat. */
+export const playAiRequestSchema = z.object({ displayName: requestedNameSchema }).strict();
+export type PlayAiRequest = z.infer<typeof playAiRequestSchema>;
 
 /** Leaving the queue carries nothing; the caller is resolved from the socket. */
 export const cancelQuickPlayRequestSchema = z.object({}).strict();
@@ -54,6 +64,12 @@ export type DraftRequest = z.infer<typeof draftRequestSchema>;
 
 export const finishRequestSchema = z.object({ roundId: roundIdSchema }).strict();
 export type FinishRequest = z.infer<typeof finishRequestSchema>;
+
+/** Week 4 (§2B.8). The language is the clue's language only; it changes no rule. */
+export const hintRequestSchema = z
+  .object({ roundId: roundIdSchema, category: categorySchema, language: languageSchema })
+  .strict();
+export type HintRequest = z.infer<typeof hintRequestSchema>;
 
 /* ------------------------------------------------------- acknowledgements */
 
@@ -92,6 +108,24 @@ export type DraftAck = z.infer<typeof draftAckSchema>;
 export const finishAckSchema = z.object({ finished: z.literal(true) }).strict();
 export type FinishAck = z.infer<typeof finishAckSchema>;
 
+const hintsLeftSchema = z.number().int().min(0).max(HINTS_PER_ROUND);
+
+/** Caller-only. The term the clue describes never leaves the server. */
+export const hintAckSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("clue"),
+      category: categorySchema,
+      clue: z.string().min(MIN_CLUE_LENGTH).max(MAX_CLUE_LENGTH),
+      hintsLeft: hintsLeftSchema,
+    })
+    .strict(),
+  z
+    .object({ kind: z.literal("no_known_term"), category: categorySchema, hintsLeft: hintsLeftSchema })
+    .strict(),
+]);
+export type HintAck = z.infer<typeof hintAckSchema>;
+
 /* ------------------------------------------------------- server -> client */
 
 export const publicPlayerSchema = z
@@ -101,6 +135,8 @@ export const publicPlayerSchema = z
     connected: z.boolean(),
     clientReady: z.boolean(),
     finished: z.boolean(),
+    /** The server's AI opponent (§2B.3). */
+    bot: z.boolean(),
   })
   .strict();
 export type PublicPlayer = z.infer<typeof publicPlayerSchema>;
@@ -136,6 +172,10 @@ export const revealedAnswerSchema = z
     raw: z.string(),
     normalized: z.string(),
     valid: z.boolean(),
+    /** Why a non-blank answer did not count; null when it counted or was blank. */
+    reason: rejectReasonSchema.nullable(),
+    /** This player asked for a hint in this category (§2B.8). */
+    hinted: z.boolean(),
   })
   .strict();
 export type RevealedAnswer = z.infer<typeof revealedAnswerSchema>;
@@ -158,6 +198,10 @@ export const roundResultsSchema = z
     player1Total: z.number().int().nonnegative(),
     player2Total: z.number().int().nonnegative(),
     outcome: outcomeSchema,
+    /** The AI checker judged this round. False = the local letter rule only (§2B.2). */
+    verified: z.boolean(),
+    /** The AI opponent could not get answers and played a blank sheet (§2B.3). */
+    botFailed: z.boolean(),
   })
   .strict();
 export type RoundResults = z.infer<typeof roundResultsSchema>;
@@ -169,9 +213,11 @@ export const CLIENT_EVENTS = {
   joinRoom: "room:join",
   quickPlay: "room:quick-play",
   cancelQuickPlay: "room:cancel-quick-play",
+  playAi: "room:play-ai",
   clientReady: "room:client-ready",
   draft: "round:draft",
   finish: "round:finish",
+  hint: "round:hint",
 } as const;
 
 export const SERVER_EVENTS = {

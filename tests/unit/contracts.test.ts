@@ -27,7 +27,10 @@ import {
   draftAckSchema,
   draftRequestSchema,
   finishRequestSchema,
+  hintAckSchema,
+  hintRequestSchema,
   joinRoomRequestSchema,
+  playAiRequestSchema,
   roomAckSchema,
   roomStateSchema,
   roundResultsSchema,
@@ -44,6 +47,8 @@ const validAnswers = CATEGORIES.map((category) => ({
   raw: "Srbija",
   normalized: "srbija",
   valid: true,
+  reason: null,
+  hinted: false,
 }));
 
 const validScores = CATEGORIES.map((category) => ({
@@ -160,8 +165,8 @@ const cases: Case[] = [
       phase: "answering",
       you: 2,
       players: [
-        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false },
-        { slot: 2, displayName: "Marko", connected: true, clientReady: true, finished: false },
+        { slot: 1, displayName: "Ana", connected: true, clientReady: true, finished: false, bot: false },
+        { slot: 2, displayName: "AI", connected: true, clientReady: true, finished: false, bot: true },
       ],
     },
     malformed: { roomCode: ROOM_CODE, phase: "revealed", you: 1, players: [] },
@@ -213,6 +218,8 @@ const cases: Case[] = [
       player1Total: 60,
       player2Total: 60,
       outcome: "draw",
+      verified: true,
+      botFailed: false,
     },
     malformed: {
       roundId: ROUND_ID,
@@ -220,7 +227,28 @@ const cases: Case[] = [
       player1Total: 42,
       player2Total: 60,
       outcome: "draw",
+      verified: true,
+      botFailed: false,
     },
+  },
+  {
+    name: "playAiRequest",
+    schema: playAiRequestSchema,
+    valid: { displayName: "Ana" },
+    // The bot's name is reserved: a human cannot pose as the AI opponent.
+    malformed: { displayName: " ai " },
+  },
+  {
+    name: "hintRequest",
+    schema: hintRequestSchema,
+    valid: { roundId: ROUND_ID, category: "river", language: "en" },
+    malformed: { roundId: ROUND_ID, category: "river", language: "de" },
+  },
+  {
+    name: "hintAck",
+    schema: hintAckSchema,
+    valid: { kind: "clue", category: "river", clue: "Druga najduža reka Evrope.", hintsLeft: 1 },
+    malformed: { kind: "clue", category: "river", clue: "Druga najduža reka Evrope.", hintsLeft: 3 },
   },
 ];
 

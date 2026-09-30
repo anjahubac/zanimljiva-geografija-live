@@ -132,6 +132,13 @@ because that is where totals belong. Two tests replaced the one that asserted a
 letter cell: the sheet now starts at the first category with no total column,
 and no points markup appears anywhere while a round is running.
 
+### SC-13 and SC-14 — moved to `EVIDENCE_004.md`
+
+The Week 4 revision (no accounts, AI checker, AI opponent, hints, two
+languages) and the Leave game button are Week 4 scope changes. They are
+recorded as W4-1 and W4-2 in `docs/EVIDENCE_004.md`, so that each week's
+evidence stays in its own file.
+
 ### SC-12 — A real site header (2026-09-23)
 
 - **Requested by:** the product owner — make the nav bar presentable, to best
@@ -344,6 +351,10 @@ SQLite file, no new package, and history readable only by its owner.
 
 Sign-in with Google is still refused, and is the one item above that cannot be
 delivered without a new dependency and an external service. See `Plan.md` §2.
+
+_Update 2026-09-30:_ accounts, profiles and history were then removed again
+(`EVIDENCE_004.md` W4-1), so the SQLite file and Google sign-in question no
+longer apply.
 
 ---
 

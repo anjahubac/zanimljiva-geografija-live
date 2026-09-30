@@ -22,7 +22,7 @@ applyTo: "**/*"
 - Contracts, integration, eval execution, deployment smoke tests, and evidence are shared work.
 - During each joint block, one developer drives while the other checks expectation, diff, and output. Swap halfway through.
 - Review each other's first implementation block before integration.
-- Record both code contributions and review/evidence contributions in `EVIDENCE_003.md`.
+- Record both code contributions and review/evidence contributions in `EVIDENCE_003.md` (Week 3) and `EVIDENCE_004.md` (Week 4).
 - Do not use parallel AI coding agents for the Core implementation; keep meaningful AI calls within the challenge budget and record them in `docs/AI_USAGE_LOG.md`.
 
 ## Baseline and controlled change
@@ -61,8 +61,8 @@ Then document claim, signal, hypothesis, smallest change, verification, expected
 - Current sequence and ownership: `Plan.md`
 - Setup and user flow: `README.md`
 - Context selection: `docs/CONTEXT_MANIFEST.md`
-- Planned/actual evals: `docs/EVALS.md`
-- Baseline and controlled change: `docs/EVIDENCE_003.md`
+- Planned/actual evals: `docs/EVALS.md`; live AI checks: `docs/AI_EVALS.md`
+- Baseline and controlled change: `docs/EVIDENCE_003.md` (Week 3), `docs/EVIDENCE_004.md` (Week 4)
 - Significant AI calls: `docs/AI_USAGE_LOG.md`
 - Deployment procedure/limitations: `DEPLOYMENT.md` if created
 
