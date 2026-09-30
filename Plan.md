@@ -14,7 +14,8 @@
   §2B wins, and the older text is marked. A **Leave game** button on the
   waiting screen followed the same day (§2B.10). Week 4 evidence is in
   `docs/EVIDENCE_004.md`. An AI usage limit per visitor and per day was
-  accepted and built the same day (§2B.11).
+  accepted and built the same day (§2B.11). Spec Kit was added afterwards,
+  with specs reconstructed for the features already built (§2B.12).
 
 ## 2. How the source documents are used
 
@@ -297,7 +298,8 @@ quite true: every `room:play-ai` round costs AI calls, and the per-socket rate
 limit resets on reconnect, so a script can spend the shared free quota. See
 §2B.11. the single-player reducer and screens, the Spec Kit
 scaffolding, and the Cyrillic → Latin normalization (Cyrillic input stays out
-of scope, §4).
+of scope, §4). _Correction 2026-09-30:_ Spec Kit was added later the same day,
+installed fresh rather than copied from the fork; see §2B.12.
 
 **New here:** `src/server/ai/service.ts` (the one interface the room store
 uses), `features/bot-answers.ts` + `prompts/bot-answers.v1.ts`, the judging
@@ -544,6 +546,32 @@ visitor first, since that needs no exact quota figure.**
   With the limits disabled, all the integration cases fail.
 - The figures can be tuned after the first live week from the telemetry
   counts already logged.
+
+### 2B.12 Spec Kit — added retroactively (2026-09-30)
+
+**Asked by the owner:** add GitHub Spec Kit to the repository after the Week 3
+and Week 4 builds. §2B.4 had recorded the fork's Spec Kit scaffolding as not
+reused; this reverses that, as a development-tool decision only.
+
+**What was added:** `specify init --here --integration claude --script sh`
+(the `specify` CLI already installed on the owner's machine). It added
+`.specify/` (templates, scripts, constitution), eleven `/speckit-*` skills in
+`.claude/skills/`, and a marked block in `CLAUDE.md`, copied to `AGENTS.md`.
+No npm package, no runtime code, no service; `package.json` is unchanged.
+
+**How it fits, so there is one source of truth, not two:**
+
+- `.specify/memory/constitution.md` points to `CLAUDE.md`, `.github/` and this
+  file instead of restating them.
+- This file stays the plan of record. A feature's `specs/NNN/plan.md` links the
+  section here that it implements.
+- `specs/001`–`specs/008` were **reconstructed after the features were built**,
+  from this file, `docs/GAME_SPEC.md`, the tests and the git history. Each says
+  so in its header and links its sources. They are not evidence that a spec
+  was written first. Accounts were built and removed, so they have no spec.
+- New features start at `009` and use the full specify → plan → tasks flow.
+  One that adds anything this file does not list still needs the owner's
+  decision recorded here first (rule 5).
 
 ## 2A. Execution contract for the implementation model
 

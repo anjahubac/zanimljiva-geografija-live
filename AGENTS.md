@@ -37,3 +37,13 @@ moving on.
 - If the same failure survives three attempts, stop and report goal, expected,
   actual, what you checked, and a precise question.
 - Do not push, deploy, or open a pull request unless explicitly asked.
+
+<!-- SPECKIT START -->
+## Spec Kit
+
+Spec Kit is installed (`.specify/`, `.claude/skills/speckit-*`, `specs/`).
+Its constitution, `.specify/memory/constitution.md`, points back to the rules
+above; it does not replace them, and `Plan.md` stays the plan of record.
+Features 001–008 in `specs/` were reconstructed after they were built. New
+features start at 009 and use the full specify → plan → tasks flow.
+<!-- SPECKIT END -->
