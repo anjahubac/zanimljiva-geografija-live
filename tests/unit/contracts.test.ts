@@ -508,7 +508,8 @@ describe("round coach — the model-step envelope (contracts/model-step.md)", ()
   });
 
   it("rejects a missing or an extra field", () => {
-    const { tips: _tips, ...withoutTips } = step;
+    const withoutTips: Partial<typeof step> = { ...step };
+    delete withoutTips.tips;
     expect(coachStepSchema.safeParse(withoutTips).success).toBe(false);
     expect(coachStepSchema.safeParse({ ...step, reasoning: "because" }).success).toBe(false);
     expect(coachStepSchema.safeParse({ ...step, action: "" }).success).toBe(false);
