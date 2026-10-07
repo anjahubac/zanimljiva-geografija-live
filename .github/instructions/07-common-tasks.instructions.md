@@ -68,7 +68,7 @@ Week 5, `Plan.md` §2C; the code is `src/server/agent/` and `src/server/prompts/
 2. Write the eval first in `docs/AGENT_EVALS.md`, then its test: loop behaviour in `tests/unit/coach-agent.test.ts` (real gateway, `fakeAdapter`, `fakeTime`), tool behaviour in `tests/unit/agent-tools.test.ts`, wire behaviour in `tests/integration/coach.test.ts`. Never change a written expected result.
 3. A tool gets its own entry in `src/server/agent/tools.ts`: argument schema, run scope, repeat guard, a timer, result size and shape checks, then `TOOLS`. No generic `execute(name, args)`; nothing that writes, reads the opponent's sheet, or reaches the network outside the existing AI service.
 4. Limits live only in `RUN_LIMITS` (`src/server/agent/limits.ts`) and are checked by `runCoach` before every step. The model is never the only stop condition.
-5. A prompt change is a new version (`coach-step.v1` → `v2`); the zod envelope stays loose so that the allowlist, not the parser, refuses unknown actions.
+5. A prompt change is a new version (`coach-step.v2` → `v3`; v2 asks for terms in the player's language); the zod envelope stays loose so that the allowlist, not the parser, refuses unknown actions.
 6. Re-run the mutation checks (`docs/EVIDENCE_005.md` §3): with the allowlist, the repeat guard or the deadline check removed, or with the suggestion taken from the model, the named eval must fail.
 7. Live runs only with `npm run smoke:coach` (at most 3 per invocation), recorded in `docs/EVIDENCE_005.md` and `docs/AI_USAGE_LOG.md`.
 

@@ -8,9 +8,14 @@ import { CATEGORY_RULES, LETTER_RULES } from "./category-rules";
  * envelope schema, the per-step allowlist, each tool's argument check and the
  * final-evidence check. The player's answers are data — the same untrusted-data
  * discipline as `check-round.v3`.
+ *
+ * v2 (2026-10-07): v1 asked for the summary in the player's language but not
+ * the terms, so a Serbian player could be shown "Euphrates" for Eufrat. The
+ * game accepts either language, so code cannot refuse it; the prompt asks for
+ * the name the player would write, and the other language only as a fallback.
  */
 
-export const COACH_STEP_PROMPT_VERSION = "coach-step.v1";
+export const COACH_STEP_PROMPT_VERSION = "coach-step.v2";
 
 /** Exactly the fields of contracts/model-step.md, in that order; nothing else reaches the model. */
 export type CoachStepInput = {
@@ -63,6 +68,11 @@ Each step you reply with exactly one action, and only one listed in "allowedActi
   in the language given by "language" ("sr" = Serbian Latin, "en" = English), telling the player
   what would have counted. Set "confidence" to "low", "medium" or "high". Leave "candidates" and
   "evidenceIds" empty.
+
+Write every term the way the player would write it on their sheet, in the language given by
+"language": the Serbian Latin name when "language" is "sr" (Eufrat, not Euphrates; Dunav, not
+Danube; Švajcarska, not Switzerland), the English name when it is "en". Use the other
+language's name only when the name in the player's language does not start with the round letter.
 
 Prefer well-known terms. When a check fails with "wrong_letter", propose a different term that
 really starts with the round letter. Give no reasoning: reply only with JSON matching the schema.

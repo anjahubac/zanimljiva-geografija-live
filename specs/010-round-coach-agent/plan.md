@@ -92,7 +92,7 @@ src/server/agent/limits.ts           # RUN_LIMITS: steps, tool calls, attempts, 
 src/server/agent/tools.ts            # TOOLS allowlist; check_candidates; verify_terms (O1); arg + result validation
 src/server/agent/coach-agent.ts      # the orchestrator: allowed actions per step, stop rules, final check, report
 src/server/agent/run-log.ts          # the agent.run record (typed fields only) and its sink
-src/server/prompts/coach-step.v1.ts  # system instruction + user content builder
+src/server/prompts/coach-step.v2.ts  # system instruction + user content builder (v1 until 2026-10-07)
 src/client/screens/CoachPanel.tsx    # focus checkboxes, status, report, details (O6)
 scripts/coach-smoke.ts               # limited live run on a fixed Lj round (npm run smoke:coach)
 

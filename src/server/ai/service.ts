@@ -9,7 +9,7 @@ import {
   COACH_STEP_PROMPT_VERSION,
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v1";
+} from "@server/prompts/coach-step.v2";
 import { generate } from "./gateway";
 import { createDebugSink, type DebugEnv } from "./debug-log";
 import type { GatewayDeps } from "./gateway";

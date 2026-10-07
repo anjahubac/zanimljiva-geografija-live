@@ -6,6 +6,14 @@ R17). Everything the model returns is **untrusted input** and passes through
 four checks in order: JSON parse → envelope schema → per-step allowlist →
 arguments or final validation.
 
+
+_Update 2026-10-07: the prompt is now `coach-step.v2`
+(`src/server/prompts/coach-step.v2.ts`). v1 did not say which language a
+proposed term should be in, so a Serbian player was shown "Euphrates" instead
+of "Eufrat". v2 asks for the name the player would write in their interface
+language, and the other language only when that name misses the round letter.
+The request and response shapes are unchanged. This is a prompt hint: the game
+accepts both languages, so code does not enforce it._
 ## Request (built by the server per step)
 
 The system instruction is fixed per prompt version. The user content is one

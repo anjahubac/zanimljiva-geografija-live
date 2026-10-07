@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **15 logged** (001–015; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **16 logged** (001–016; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -434,3 +434,22 @@ Live agent runs used: **6** (entry 015).
 - **Not done:** W5-12's demo rehearsal (≤ 3 live runs) and the contributions
   table; W4-8 and W4-9; no push, deploy or pull request.
 - **Next decision:** the owner reviews the diff on `feature/round-coach`.
+
+## 016 — Round coach: suggestions in the player's language, `coach-step.v2` (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after W5-11.
+- **Reason:** the owner saw the coach suggest "Euphrates" for river to a
+  Serbian player; the Serbian name is "Eufrat".
+- **Cause:** `coach-step.v1` set the summary's language but not the terms'.
+  The game accepts answers in either language, so the letter rule and the
+  referee both passed the English name.
+- **Expected:** a new prompt version that asks for each term in the player's
+  interface language, with the other language only when that name misses the
+  round letter; no change to contracts, checks or limits.
+- **Actual (verified in-session):** prompt test written first and seen failing;
+  `coach-step.v2` replaces v1; prompt, loop and wire tests pass; `npm run
+  verify` green (see `docs/EVIDENCE_005.md` §4).
+- **Not done:** no live run of v2 (the earlier 6 runs used v1, at letter Lj,
+  where the two languages mostly agree). Code cannot enforce the language.
+- **Next decision:** whether to spend live runs on a letter where the names
+  differ (for example E: Eufrat / Euphrates).

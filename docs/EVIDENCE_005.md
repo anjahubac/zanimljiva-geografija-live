@@ -101,6 +101,7 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | W5-10b O6 run details | 2026-10-07 | after `0a2df04` | `npm run verify` | red first (4 cases); then 34 files, 629 tests passed; typecheck, lint, build clean | implementation session |
 | W5-11 live, Gemini | 2026-10-07 | after `502a9b1` | `AI_PROVIDER_ORDER=gemini npm run smoke:coach -- 3` | 3 runs: 3 `completed`; 9 model steps, 12 provider attempts (all first-attempt successes), 6 tool calls (3 check, 3 verify); 4.8–5.3 s each | run logs below |
 | W5-11 live, Groq | 2026-10-07 | after `502a9b1` | `AI_PROVIDER_ORDER=groq npm run smoke:coach -- 3` | 3 runs: 1 `failed` (`invalid_tool_args`), 2 `incomplete` (`invalid_tool_args`, `final_invalid`); 6 model steps, 8 provider attempts (1 rate-limited, then fallback), 3 tool calls (2 check, 1 verify); 0.9–3.7 s each | run logs below |
+| Prompt `coach-step.v2` | 2026-10-07 | after `34c5a8c` | `npx vitest run tests/unit/ai-features.test.ts tests/unit/coach-agent.test.ts`, then `npm run verify` | the owner saw "Euphrates" suggested to a Serbian player; red first (v2 missing), then 72 tests passed; verify below | implementation session |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
 Used: **6** in development (3 Gemini, 3 Groq), 0 in the demo.
@@ -232,7 +233,11 @@ a run shows it.
 - The report is in memory and disappears with the finished room (5 minutes).
 - One status while waiting, not live step progress.
 - Players behind one address share one hourly limit.
-- 6 live runs are a small sample (3 per provider).
+- 6 live runs are a small sample (3 per provider), all with `coach-step.v1`.
+- The language of a suggested term is a prompt hint (`coach-step.v2`), not
+  enforced: the game accepts Serbian and English names alike, so "Euphrates"
+  still passes every check if the model ignores the hint. v2 has not had a
+  live run.
 
 ---
 
