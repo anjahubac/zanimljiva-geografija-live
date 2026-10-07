@@ -1,0 +1,387 @@
+import { describe, expect, it } from "vitest";
+import { CATEGORIES } from "@contracts/game.schemas";
+import { RUN_LIMITS } from "@server/agent/limits";
+import {
+  TOOLS,
+  checkCandidates,
+  isToolName,
+  verifyTerms,
+  type CandidateResult,
+  type EvidenceItem,
+  type RoundSnapshot,
+  type ToolScope,
+} from "@server/agent/tools";
+
+/*
+ * `check_candidates` (contracts/tools.md), evals C5 and C6 at tool level.
+ * The fixed round of docs/AGENT_EVALS.md: letter Lj, Serbian alphabet; the
+ * player left river blank, wrote "Lav" for animal (wrong letter) and
+ * "Ljubljana" for country (rejected by the referee as the wrong category).
+ */
+
+function snapshot(overrides: Partial<RoundSnapshot> = {}): RoundSnapshot {
+  return deepFreeze({
+    letter: "Lj",
+    alphabet: "sr",
+    focus: [
+      { category: "river", yourAnswer: "", whyMissed: "empty" },
+      { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter" },
+      { category: "country", yourAnswer: "Ljubljana", whyMissed: "wrong_category" },
+    ],
+    ...overrides,
+  } as RoundSnapshot);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object") {
+    for (const inner of Object.values(value)) deepFreeze(inner);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+const scope = (evidence: EvidenceItem[] = [], toolCallsUsed = 0, round = snapshot()): ToolScope => ({
+  snapshot: round,
+  evidence,
+  toolCallsUsed,
+});
+
+const clock = () => ({ now: () => 1_000 });
+const propose = (...candidates: Array<[string, string]>) => ({
+  candidates: candidates.map(([category, term]) => ({ category, term })),
+});
+
+function passed(result: ReturnType<typeof checkCandidates>): CandidateResult {
+  if (!result.ok) throw new Error(`expected the tool to run, got ${result.reason}`);
+  return result.result;
+}
+
+describe("the allowlist", () => {
+  it("holds check_candidates and nothing that writes", () => {
+    expect(Object.keys(TOOLS)).toEqual(["check_candidates", "verify_terms"]);
+    expect(isToolName("check_candidates")).toBe(true);
+    for (const name of ["delete_room", "final", "set_score", "toString", "__proto__", "constructor"]) {
+      expect(isToolName(name)).toBe(false);
+    }
+  });
+
+  it("freezes the run limits of Plan.md §2C.8", () => {
+    expect(Object.isFrozen(RUN_LIMITS)).toBe(true);
+    expect(RUN_LIMITS).toMatchObject({
+      maxModelSteps: 3,
+      maxToolCalls: 2,
+      maxAttemptsPerStep: 2,
+      maxAttemptsPerRun: 5,
+      perAttemptMs: 6_000,
+      perStepMs: 10_000,
+      runDeadlineMs: 25_000,
+      minStepMs: 2_000,
+      // Amended 2026-10-07 (owner: a backup word and a repair step): 8 → 16, 2 KB → 4 KB.
+      maxCandidatesPerCall: 16,
+      maxCandidatesPerCategory: 2,
+      toolTimeMs: 100,
+      maxToolResultBytes: 4_096,
+      repairModelSteps: 1,
+      repairToolCalls: 1,
+      repairAttempts: 2,
+      repairExtraMs: 10_000,
+    });
+  });
+});
+
+describe("check_candidates — the game's own letter rule", () => {
+  it("passes Ljubljanica and fails Lisica for Lj, with ids and the call id", () => {
+    const result = passed(checkCandidates(propose(["river", "Ljubljanica"], ["animal", "Lisica"]), scope(), clock()));
+    expect(result).toEqual({
+      callId: "t1",
+      items: [
+        { id: "c1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+        { id: "c2", category: "animal", term: "Lisica", passes: false, failure: "wrong_letter" },
+      ],
+    });
+  });
+
+  it("reports a one-letter word as too_short", () => {
+    const result = passed(checkCandidates(propose(["river", "Lj"]), scope(), clock()));
+    // "Lj" is two characters, the minimum; a single "L" is too short before it is the wrong letter.
+    expect(result.items[0]).toMatchObject({ passes: true });
+    const short = passed(checkCandidates(propose(["river", "L"]), scope(), clock()));
+    expect(short.items[0]).toMatchObject({ passes: false, failure: "too_short" });
+  });
+
+  it("reports the player's own non-counting answer, folded, as same_as_yours", () => {
+    const result = passed(checkCandidates(propose(["country", " ljubljana "]), scope(), clock()));
+    expect(result.items[0]).toMatchObject({ term: "ljubljana", passes: false, failure: "same_as_yours" });
+  });
+
+  it("orders failures too_short, then wrong_letter, then same_as_yours", () => {
+    // "lav" is the player's own animal answer, but the letter failure is reported first.
+    const result = passed(checkCandidates(propose(["animal", "lav"], ["animal", "x"]), scope(), clock()));
+    expect(result.items.map((item) => item.failure)).toEqual(["wrong_letter", "too_short"]);
+  });
+
+  it("follows the room's alphabet: in an English room Ljubljana passes for L", () => {
+    const round = snapshot({ letter: "L", alphabet: "en" });
+    const result = passed(checkCandidates(propose(["river", "Ljubljanica"]), scope([], 0, round), clock()));
+    expect(result.items[0]).toMatchObject({ passes: true, failure: null });
+    const serbian = snapshot({ letter: "L", alphabet: "sr" });
+    const refused = passed(checkCandidates(propose(["river", "Ljubljanica"]), scope([], 0, serbian), clock()));
+    expect(refused.items[0]).toMatchObject({ passes: false, failure: "wrong_letter" });
+  });
+
+  it("numbers ids c1, c2, … across two calls, and the second call is t2", () => {
+    const first = passed(checkCandidates(propose(["river", "Ljubljanica"], ["animal", "Lisica"]), scope(), clock()));
+    const evidence = first.items.map((item) => ({ ...item, callId: first.callId }));
+    const second = passed(checkCandidates(propose(["animal", "Ljuskavac"]), scope(evidence, 1), clock()));
+    expect(second.callId).toBe("t2");
+    expect(second.items[0]).toMatchObject({ id: "c3", term: "Ljuskavac", passes: true });
+  });
+
+  it("changes nothing: the snapshot and the evidence are the same after every call", () => {
+    const round = snapshot();
+    const before = JSON.stringify(round);
+    const evidence: EvidenceItem[] = [];
+    checkCandidates(propose(["river", "Ljubljanica"]), scope(evidence, 0, round), clock());
+    checkCandidates(propose(["river", "x".repeat(41)]), scope(evidence, 0, round), clock());
+    expect(JSON.stringify(round)).toBe(before);
+    expect(evidence).toEqual([]);
+  });
+});
+
+/** Two words for each of the eight categories, 16 in all. */
+function sixteenForEveryCategory(): Array<[string, string]> {
+  return CATEGORIES.flatMap((category): Array<[string, string]> => [
+    [category, `Lja${category}`],
+    [category, `Lje${category}`],
+  ]);
+}
+
+describe("check_candidates — a backup word for every category (owner, 2026-10-07)", () => {
+  const everyCategory = snapshot({
+    focus: CATEGORIES.map((category) => ({ category, yourAnswer: "", whyMissed: "empty" as const })),
+  });
+
+  it("checks two words for each of the eight categories in one call", () => {
+    const result = passed(checkCandidates(propose(...sixteenForEveryCategory()), scope([], 0, everyCategory), clock()));
+    expect(result.items).toHaveLength(16);
+    expect(result.items.at(-1)).toMatchObject({ id: "c16", passes: true });
+  });
+
+  it("keeps 16 items of the longest terms, with two-byte letters, within the result limit", () => {
+    const longest = CATEGORIES.flatMap((category): Array<[string, string]> => [
+      [category, `Lj${"ž".repeat(37)}a`],
+      [category, `Lj${"ž".repeat(37)}e`],
+    ]);
+    expect(checkCandidates(propose(...longest), scope([], 0, everyCategory), clock()).ok).toBe(true);
+  });
+
+  it("allows a third call only when the scope grants it: the repair step's", () => {
+    const repair = propose(["river", "Ljuta"]);
+    expect(checkCandidates(repair, scope([], 2), clock())).toEqual({ ok: false, reason: "invalid_tool_args" });
+    expect(passed(checkCandidates(repair, { ...scope([], 2), toolCallLimit: 3 }, clock())).callId).toBe("t3");
+  });
+});
+
+describe("check_candidates — arguments (C5): refused before the tool runs", () => {
+  const nine = Array.from({ length: 9 }, (_, n): [string, string] => [
+    ["river", "animal", "country"][n % 3]!,
+    `Lj${"a".repeat(n + 1)}`,
+  ]);
+
+  /** Two for each of the eight categories, plus one. */
+  const seventeen = [...sixteenForEveryCategory(), ["river", "Ljig"] as [string, string]];
+
+  const invalid: Array<[string, unknown]> = [
+    ["no candidates", propose()],
+    ["nine candidates", propose(...nine)],
+    ["seventeen candidates", propose(...seventeen)],
+    ["three for one category", propose(["river", "Ljuta"], ["river", "Ljubljanica"], ["river", "Ljig"])],
+    ["a 41-character term", propose(["river", `Lj${"a".repeat(39)}`])],
+    ["a blank term", propose(["river", "   "])],
+    ["a control character", propose(["river", "Lju\u0007ta"])],
+    ["a category outside focus", propose(["city", "Ljubljana"])],
+    ["an unknown category", propose(["lake", "Ljubljansko"])],
+    ["a smuggled extra field", { candidates: [{ category: "river", term: "Ljuta", passes: true }] }],
+    ["the same candidate twice in one call", propose(["river", "Ljuta"], ["river", "ljuta"])],
+    ["not an object", "check everything"],
+  ];
+
+  it.each(invalid)("%s → invalid_tool_args", (_name, proposal) => {
+    let ran = false;
+    const result = checkCandidates(proposal, scope(), {
+      ...clock(),
+      impl: () => {
+        ran = true;
+        return { callId: "t1", items: [] };
+      },
+    });
+    expect(result).toEqual({ ok: false, reason: "invalid_tool_args" });
+    expect(ran).toBe(false);
+  });
+
+  it("refuses a category that already has a passing candidate", () => {
+    const evidence: EvidenceItem[] = [
+      { id: "c1", callId: "t1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+    ];
+    expect(checkCandidates(propose(["river", "Ljuta"]), scope(evidence, 1), clock())).toEqual({
+      ok: false,
+      reason: "invalid_tool_args",
+    });
+  });
+
+  it("refuses a call when no tool call is left", () => {
+    expect(checkCandidates(propose(["river", "Ljuta"]), scope([], 2), clock())).toEqual({
+      ok: false,
+      reason: "invalid_tool_args",
+    });
+  });
+
+  it("refuses a (category, folded term) already checked in this run as repeated_call", () => {
+    const evidence: EvidenceItem[] = [
+      { id: "c1", callId: "t1", category: "animal", term: "Lisica", passes: false, failure: "wrong_letter" },
+    ];
+    let ran = false;
+    const impl = () => {
+      ran = true;
+      return { callId: "t2", items: [] };
+    };
+    expect(checkCandidates(propose(["animal", " LISICA "]), scope(evidence, 1), { ...clock(), impl })).toEqual({
+      ok: false,
+      reason: "repeated_call",
+    });
+    expect(ran).toBe(false);
+    // The same word in another category is a different candidate.
+    expect(checkCandidates(propose(["river", "Lisica"]), scope(evidence, 1), clock()).ok).toBe(true);
+  });
+});
+
+describe("check_candidates — results (C6): a bad tool result stops the run", () => {
+  const ok = propose(["river", "Ljubljanica"]);
+
+  it("a throwing tool → tool_failed", () => {
+    const impl = () => {
+      throw new Error("boom");
+    };
+    expect(checkCandidates(ok, scope(), { ...clock(), impl })).toEqual({ ok: false, reason: "tool_failed" });
+  });
+
+  it("a result of the wrong shape → tool_failed", () => {
+    const shapes: unknown[] = [
+      null,
+      { callId: "t1" },
+      { callId: "t1", items: [{ id: "c1", category: "river", term: "Ljubljanica", passes: "yes", failure: null }] },
+      // failure must be null exactly when the item passes
+      { callId: "t1", items: [{ id: "c1", category: "river", term: "Ljubljanica", passes: true, failure: "too_short" }] },
+      // one item per candidate, in order
+      { callId: "t1", items: [] },
+      { callId: "t1", items: [{ id: "c1", category: "animal", term: "Ljubljanica", passes: true, failure: null }] },
+      { callId: "t9", items: [{ id: "c1", category: "river", term: "Ljubljanica", passes: true, failure: null }] },
+      { callId: "t1", items: [{ id: "c1", category: "river", term: "Ljubljanica", passes: true, failure: null, extra: 1 }] },
+    ];
+    for (const shape of shapes) {
+      expect(checkCandidates(ok, scope(), { ...clock(), impl: () => shape as CandidateResult })).toEqual({
+        ok: false,
+        reason: "tool_failed",
+      });
+    }
+  });
+
+  it("a result over 4 KB → tool_failed", () => {
+    const six = propose(
+      ["river", "Ljubljanica"],
+      ["river", "Ljuta"],
+      ["animal", "Ljuskavac"],
+      ["animal", "Ljiljan"],
+      ["country", "Ljubovija"],
+      ["country", "Ljig"],
+    );
+    const impl = (): CandidateResult => ({
+      callId: "t1",
+      items: six.candidates.map((candidate, n) => ({
+        id: `c${n + 1}`,
+        category: candidate.category as "river",
+        term: candidate.term,
+        passes: false,
+        failure: "wrong_letter" as const,
+        padding: "x".repeat(800),
+      })),
+    });
+    expect(checkCandidates(six, scope(), { ...clock(), impl })).toEqual({ ok: false, reason: "tool_failed" });
+  });
+
+  it("a tool that takes over 100 ms → tool_failed, even with a good result", () => {
+    let now = 1_000;
+    const result = checkCandidates(ok, scope(), {
+      now: () => now,
+      impl: () => {
+        now += 101;
+        return { callId: "t1", items: [{ id: "c1", category: "river", term: "Ljubljanica", passes: true, failure: null }] };
+      },
+    });
+    expect(result).toEqual({ ok: false, reason: "tool_failed" });
+  });
+});
+
+describe("verify_terms (O1) — arguments, before the referee is asked", () => {
+  const evidence: EvidenceItem[] = [
+    { id: "c1", callId: "t1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+    { id: "c2", callId: "t1", category: "animal", term: "Lisica", passes: false, failure: "wrong_letter" },
+    { id: "c3", callId: "t1", category: "animal", term: "Ljuskavac", passes: true, failure: null, referee: "accepted" },
+  ];
+
+  it("is on the allowlist", () => {
+    expect(isToolName("verify_terms")).toBe(true);
+  });
+
+  it.each([
+    ["an already-verified id", ["c3"]],
+    ["a failing id", ["c2"]],
+    ["an unknown id", ["c7"]],
+    ["a repeated id", ["c1", "c1"]],
+    ["nine ids", Array.from({ length: 9 }, () => "c1")],
+    ["seventeen ids", Array.from({ length: 17 }, (_, n) => `c${n + 1}`)],
+    ["no id", []],
+  ])("refuses %s as invalid_tool_args without asking the referee", async (_name, ids) => {
+    let asked = 0;
+    const referee = async () => {
+      asked += 1;
+      return null;
+    };
+    const result = await verifyTerms({ evidenceIds: ids }, scope(evidence, 1), { now: () => 0, referee });
+    expect(result).toEqual({ ok: false, reason: "invalid_tool_args" });
+    expect(asked).toBe(0);
+  });
+
+  it("sends only the cited words, at most one per category per sheet", async () => {
+    const two: EvidenceItem[] = [
+      { id: "c1", callId: "t1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+      { id: "c2", callId: "t1", category: "river", term: "Ljuta", passes: true, failure: null },
+    ];
+    let sent: unknown;
+    const result = await verifyTerms({ evidenceIds: ["c1", "c2"] }, scope(two, 1), {
+      now: () => 0,
+      referee: async (sheets) => {
+        sent = sheets;
+        return (slot) => (slot === 1 ? { valid: true } : { valid: false, reason: "not_real" });
+      },
+    });
+    expect((sent as Record<number, Record<string, string>>)[1]!.river).toBe("Ljubljanica");
+    expect((sent as Record<number, Record<string, string>>)[2]!.river).toBe("Ljuta");
+    expect(JSON.stringify(sent)).not.toContain("Ljubljana"); // the player's own answers are never sent
+    expect(result).toEqual({
+      ok: true,
+      result: {
+        callId: "t2",
+        items: [
+          { id: "c1", verdict: "accepted", reason: null },
+          { id: "c2", verdict: "rejected", reason: "not_real" },
+        ],
+      },
+    });
+  });
+
+  it("marks every word unverified when the referee fails", async () => {
+    const result = await verifyTerms({ evidenceIds: ["c1"] }, scope(evidence.slice(0, 1), 1), { now: () => 0, referee: async () => null });
+    expect(result).toEqual({ ok: true, result: { callId: "t2", items: [{ id: "c1", verdict: "unverified", reason: null }] } });
+  });
+});

@@ -84,6 +84,33 @@ Never accept these values as authoritative merely because a client sent them.
   from the transport, never the payload, and `x-forwarded-for` is trusted
   only for the configured number of proxy hops.
 
+## Agent boundary (Week 5, `Plan.md` §2C)
+
+- **The model proposes, the application decides.** Every step's reply is
+  untrusted: JSON parse, the envelope schema, the step's allowlist
+  (`allowedActions`), the action's shape, then the tool's own argument schema,
+  run scope and repeat guard. A name outside `TOOLS` is `unknown_tool` and
+  nothing runs; a refused proposal is never counted as a tool call.
+- **Read-only.** The coach runs only in phase `results`, from the reveal
+  already sent to both players (`Round.reveal`). No coach path writes an
+  answer, validity, point, phase or timer, and no tool reads the opponent's
+  sheet. The model sees only the caller's own misses (`Plan.md` §2C.5).
+- **Caller-only.** The report is the `round:coach` ack; there is no broadcast.
+- **Evidence, not text.** The final cites ids, and a final that cites anything
+  but a passing item is rejected whole. A suggestion is shown only if the
+  referee accepted it in the same run — before any report the game itself
+  sends the words it would show to the referee — and it is shown in the
+  referee's spelling. No model text reaches the player: the summary is the
+  game's own sentence (owner, 2026-10-07).
+- **Bounded by code.** `RUN_LIMITS` (steps, tool calls, attempts per step and
+  per run, time) is checked before every step, and the gateway's
+  `maxAttempts` caps each step. Every model step counts toward
+  `AI_DAILY_CALL_BUDGET`; runs are capped per visitor
+  (`COACH_RUNS_PER_VISITOR_HOUR`).
+- **The run log holds no content.** `agent.run` is built from typed fields:
+  counts, actions, decisions, attempts, stop reason — never an answer, a
+  proposed word, a prompt, a reply or a key.
+
 ## Secrets and logging
 
 - Keep `.env`, deployment credentials, tokens, private URLs, and production data out of git, prompts, screenshots, evidence, fixtures, and responses.

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BOT_DISPLAY_NAME,
   CATEGORIES,
@@ -12,6 +13,7 @@ import {
   type ServerConfig,
 } from "@contracts/game.schemas";
 import { type Ack, fail, ok } from "@contracts/errors";
+import type { CoachReport, CoachRequest } from "@contracts/coach.schemas";
 import {
   SERVER_EVENTS,
   type DraftAck,
@@ -41,6 +43,9 @@ import type { UsageLimits } from "@server/usage-limits";
 import type { Cancel, Clock, Scheduler } from "@server/clock";
 import { answerKey, type CheckVerdicts } from "@server/features/check-round";
 import { generateResumeToken, generateRoomCode, generateRoundId } from "@server/ids";
+import { runCoach, type CoachRunOutcome } from "@server/agent/coach-agent";
+import { consoleRunLog, type RunLogSink } from "@server/agent/run-log";
+import type { FocusEntry } from "@server/agent/tools";
 import type { LetterSelector } from "@server/letters";
 
 /* ------------------------------------------------------- internal state */
@@ -68,7 +73,16 @@ type Player = {
   /** Categories this player received a clue for in the current round (§2B.8). */
   hinted: Set<Category>;
   hintPending: boolean;
+  /**
+   * The round coach (§2C), one run per player per round: running (later
+   * requests join it) or done (later requests get the same report).
+   */
+  coach: CoachState | null;
 };
+
+type CoachState =
+  | { state: "running"; roundId: string; promise: Promise<CoachRunOutcome>; controller: AbortController }
+  | { state: "done"; roundId: string; report: CoachReport };
 
 /** The bot's side of a round. Its answers stay here, unseen, until it finishes. */
 type BotTurn = {
@@ -94,6 +108,8 @@ type Round = {
   cancelDeadline: Cancel | null;
   cancelJudgeTimeout: Cancel | null;
   bot: BotTurn | null;
+  /** The reveal both players saw, kept read-only for the round coach (§2C, research R11). */
+  reveal: RoundRevealed | null;
 };
 
 export type Room = {
@@ -135,6 +151,8 @@ export type RoomStoreDeps = {
   limits?: UsageLimits | null;
   /** The bot's choices; injected so tests are deterministic. */
   random?: () => number;
+  /** Where each coach run's `agent.run` record goes; the console by default. */
+  runLog?: RunLogSink;
 };
 
 export type CreateRoomResult = { room: Room; resumeToken: string; slot: PlayerSlot };
@@ -158,6 +176,8 @@ export type RoomStore = {
   applyDraft(input: DraftRequest, socketId: string): Ack<DraftAck>;
   finish(roundId: string, socketId: string): Ack<FinishAck>;
   requestHint(input: HintRequest, socketId: string, visitor?: string): Promise<Ack<HintAck>>;
+  /** Week 5 (§2C). Null: the run was cancelled because the caller left or the room was reaped; send nothing. */
+  requestCoach(input: CoachRequest, socketId: string, visitor?: string): Promise<Ack<CoachReport> | null>;
   closeRound(roundId: string, reason: ClosedReason): void;
   projectRoomState(room: Room, slot: PlayerSlot): RoomState;
   markDisconnected(socketId: string): void;
@@ -205,6 +225,16 @@ function countedAi(ai: AiService, limits: UsageLimits, clock: Clock): AiService 
       limits.countCall(clock.now());
       return ai.hint(letter, alphabet, category, language);
     },
+    // Each coach model step is one call, whatever its retries (§2C.8).
+    coachStep(input, options) {
+      limits.countCall(clock.now());
+      return ai.coachStep(input, options);
+    },
+    // O1: the referee's one call per verify_terms (FR-028).
+    verifyTerms(letter, alphabet, sheets, options) {
+      limits.countCall(clock.now());
+      return ai.verifyTerms(letter, alphabet, sheets, options);
+    },
   };
 }
 
@@ -213,6 +243,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const limits = deps.limits ?? null;
   const ai = deps.ai && limits ? countedAi(deps.ai, limits, clock) : (deps.ai ?? null);
   const random = deps.random ?? Math.random;
+  const runLog = deps.runLog ?? consoleRunLog;
 
   const rooms = new Map<string, Room>();
   const roomCodeBySocket = new Map<string, string>();
@@ -252,6 +283,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       lockedAnswers: null,
       hinted: new Set(),
       hintPending: false,
+      coach: null,
     };
   }
 
@@ -318,6 +350,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       cancelDeadline: null,
       cancelJudgeTimeout: null,
       bot: null,
+      reveal: null,
     };
     room.phase = "countdown";
     roomCodeByRound.set(roundId, room.roomCode);
@@ -697,6 +730,75 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   }
 
   /**
+   * The round coach (`Plan.md` §2C, contracts/coach-socket.md). Read-only: it
+   * reads the reveal the caller already saw and writes nothing but the
+   * caller's own coach state. Every check below costs no AI and changes no
+   * state; the visitor is charged only when a run actually starts.
+   */
+  async function requestCoach(input: CoachRequest, socketId: string, visitor = socketId): Promise<Ack<CoachReport> | null> {
+    // 2. A human player of a room: the bot has no socket, so it never gets here.
+    const room = getRoomBySocket(socketId);
+    if (!room) return fail("NOT_IN_ROOM");
+    const player = findPlayerBySocket(room, socketId);
+    if (!player || player.bot) return fail("NOT_IN_ROOM");
+
+    // 3. That room's round, then 4. revealed (so a request while judging is WRONG_PHASE).
+    const round = room.round;
+    if (!round || round.roundId !== input.roundId) return fail("ROUND_STALE");
+    if (room.phase !== "results" || !round.reveal) return fail("WRONG_PHASE");
+
+    // 5. Only categories where the caller scored 0, i.e. was not valid.
+    const sheet = player.slot === 1 ? round.reveal.player1 : round.reveal.player2;
+    const missed = new Map(sheet.filter((answer) => !answer.valid).map((answer) => [answer.category, answer]));
+    if (!input.focus.every((category) => missed.has(category))) return fail("INVALID_PAYLOAD");
+
+    // 6. An AI to coach with.
+    if (!ai) return fail("AI_UNAVAILABLE");
+
+    // 7. One run per player per round: join it, or return its report.
+    const existing = player.coach?.roundId === round.roundId ? player.coach : null;
+    if (existing?.state === "done") return ok(existing.report);
+    if (existing?.state === "running") return settleCoach(await existing.promise);
+
+    // 8-9. The daily budget, then this visitor's hourly runs; 10. charge and start.
+    const limited = limits?.check("coach", visitor, clock.now());
+    if (limited) return fail(limited);
+    limits?.charge("coach", visitor, clock.now());
+
+    // Exactly what the agent may see (§2C.5): the caller's own misses, in category order.
+    const focus: FocusEntry[] = CATEGORIES.filter((category) => input.focus.includes(category)).map((category) => {
+      const answer = missed.get(category)!;
+      return { category, yourAnswer: answer.raw, whyMissed: answer.reason ?? "empty" };
+    });
+    const controller = new AbortController();
+    const promise = runCoach(
+      {
+        runId: randomUUID(),
+        goal: input.goal,
+        language: input.language,
+        snapshot: Object.freeze({ letter: round.letter, alphabet: round.alphabet, focus: Object.freeze(focus) }),
+      },
+      { ai, now: () => clock.now(), signal: controller.signal, log: runLog },
+    );
+    const running: CoachState = { state: "running", roundId: round.roundId, promise, controller };
+    player.coach = running;
+
+    const outcome = await promise;
+    if (player.coach === running) {
+      player.coach = outcome.cancelled ? null : { state: "done", roundId: round.roundId, report: outcome.report };
+    }
+    return settleCoach(outcome);
+  }
+
+  const settleCoach = (outcome: CoachRunOutcome): Ack<CoachReport> | null =>
+    outcome.cancelled ? null : ok(outcome.report);
+
+  /** The caller left or the room is gone: stop the run; nothing is kept or sent. */
+  function abortCoach(player: Player): void {
+    if (player.coach?.state === "running") player.coach.controller.abort();
+  }
+
+  /**
    * Idempotent. The only path to reveal and scoring, per `Plan.md` §12.
    *
    * Week 4 (§2B.2): closing and scoring are now two stages. Steps 1-4 run
@@ -802,6 +904,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       player1: one.revealed,
       player2: two.revealed,
     });
+    round.reveal = revealed;
     for (const player of playersOf(room)) {
       if (!player.socketId) continue;
       deliver({ socketId: player.socketId, event: SERVER_EVENTS.roundRevealed, payload: revealed });
@@ -851,6 +954,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
     // The round timer keeps running and accepted drafts are retained; only the
     // public connection status changes (`Plan.md` §13).
+    abortCoach(player);
     player.connected = false;
     player.socketId = null;
     broadcastRoomState(room);
@@ -872,6 +976,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     room.round?.cancelJudgeTimeout?.();
     room.round?.bot?.cancelFinish?.();
     for (const player of playersOf(room)) {
+      abortCoach(player);
       if (player.socketId) roomCodeBySocket.delete(player.socketId);
     }
     if (room.round) roomCodeByRound.delete(room.round.roundId);
@@ -906,6 +1011,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     applyDraft,
     finish,
     requestHint,
+    requestCoach,
     closeRound,
     projectRoomState,
     markDisconnected,

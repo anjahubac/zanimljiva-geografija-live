@@ -33,6 +33,7 @@ they have no spec.
 | # | Feature | Status | Design |
 | --- | --- | --- | --- |
 | [009](009-full-alphabet-letters/spec.md) | Letters from the whole alphabet | Built 2026-09-30, full flow | `Plan.md` §2B.13 |
+| [010](010-round-coach-agent/spec.md) | Round coach — Week 5 bounded agentic feature | Specified 2026-10-07 through `tasks.md` and analyzed; Built 2026-10-07 on `feature/round-coach`: Core, O1 and O6 (W5-4 → W5-10b), 6 live runs (W5-11); demo open | `Plan.md` §2C, §2C.16 |
 
 Use the full flow: `/speckit-specify` → `/speckit-clarify` (optional) →
 `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`.

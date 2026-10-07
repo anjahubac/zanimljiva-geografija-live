@@ -228,6 +228,8 @@ export const CLIENT_EVENTS = {
   draft: "round:draft",
   finish: "round:finish",
   hint: "round:hint",
+  /** Week 5 (§2C): the round coach. Answered by an ack to the caller only; no server event. */
+  coach: "round:coach",
 } as const;
 
 export const SERVER_EVENTS = {

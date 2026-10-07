@@ -1118,3 +1118,103 @@ button.link:hover:not(:disabled) {
     align-items: flex-start;
   }
 }
+
+/* ------------------------------------------------------ the round coach */
+
+/* Under the sheet, on the same paper: a short form, a status, the report. */
+.coach-panel {
+  display: grid;
+  gap: 0.6rem;
+  border-top: 1px dashed var(--rule-strong);
+  padding-top: 1rem;
+  max-width: 60ch;
+}
+
+.coach-title {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: 1.4rem;
+}
+
+.coach-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.5rem;
+}
+
+.coach-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.coach-focus legend {
+  padding: 0;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.coach-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.coach-status {
+  margin: 0;
+  min-height: 1.4em;
+  font-weight: 600;
+}
+
+.coach-report {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.coach-summary {
+  margin: 0;
+}
+
+.coach-tips {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.coach-tip {
+  display: grid;
+  gap: 0.1rem;
+  overflow-wrap: anywhere;
+}
+
+.coach-suggestion {
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.coach-details summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.coach-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.2rem 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.coach-details dd {
+  margin: 0;
+}

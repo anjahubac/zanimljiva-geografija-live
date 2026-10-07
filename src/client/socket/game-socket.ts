@@ -33,6 +33,7 @@ import {
   type RoundScheduled,
 } from "@contracts/socket.schemas";
 import type { GameError } from "@contracts/errors";
+import { coachReportSchema, type CoachReport, type CoachRequest } from "@contracts/coach.schemas";
 import type { z } from "zod";
 
 /**
@@ -41,6 +42,20 @@ import type { z } from "zod";
  * application state: an unparsable message is treated as an error, never
  * rendered on trust.
  */
+/**
+ * How long the browser waits for a coach report: 10 s beyond the server's
+ * 35 s (the 25 s run deadline plus the repair step's 10 s, owner 2026-10-07;
+ * `Plan.md` §2C, FR-023). The only ack with a timeout.
+ */
+export const COACH_ACK_TIMEOUT_MS = 45_000;
+
+/** Null when no answer came in time; otherwise the parsed ack, a malformed one as INTERNAL. */
+export function parseCoachAck(error: unknown, raw: unknown): Ack<CoachReport> | null {
+  if (error) return null;
+  const parsed = ackSchema(coachReportSchema).safeParse(raw);
+  return parsed.success ? (parsed.data as Ack<CoachReport>) : { ok: false, error: gameError("INTERNAL") };
+}
+
 export type GameSocket = {
   readonly socket: Socket;
   /** `language` is the interface language; it picks the room's alphabet (§2B.13). */
@@ -50,6 +65,8 @@ export type GameSocket = {
   cancelQuickPlay(): Promise<Ack<ClientReadyAck>>;
   playAi(displayName: string, language: Language): Promise<Ack<RoomAck>>;
   requestHint(input: HintRequest): Promise<Ack<HintAck>>;
+  /** Week 5 (§2C). Resolves null when no report arrives within `COACH_ACK_TIMEOUT_MS`. */
+  requestCoach(input: CoachRequest): Promise<Ack<CoachReport> | null>;
   clientReady(roomCode: string): Promise<Ack<ClientReadyAck>>;
   sendDraft(input: DraftRequest): Promise<Ack<DraftAck>>;
   finishRound(roundId: string): Promise<Ack<FinishAck>>;
@@ -105,6 +122,12 @@ export function createGameSocket(url?: string): GameSocket {
     playAi: (displayName, language) =>
       emitAck(CLIENT_EVENTS.playAi, { displayName, language } satisfies PlayAiRequest, roomAckSchema),
     requestHint: (input) => emitAck(CLIENT_EVENTS.hint, input, hintAckSchema),
+    requestCoach: (input) =>
+      new Promise((resolve) => {
+        socket.timeout(COACH_ACK_TIMEOUT_MS).emit(CLIENT_EVENTS.coach, input, (error: unknown, raw: unknown) => {
+          resolve(parseCoachAck(error, raw));
+        });
+      }),
     clientReady: (roomCode) =>
       emitAck(CLIENT_EVENTS.clientReady, { roomCode }, clientReadyAckSchema),
     sendDraft: (input) => emitAck(CLIENT_EVENTS.draft, input, draftAckSchema),

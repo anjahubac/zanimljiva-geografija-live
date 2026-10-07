@@ -13,7 +13,7 @@ Use this file to select the smallest relevant instruction set for a task. Produc
 
 1. Current user request and explicitly agreed acceptance criteria
 2. `docs/GAME_SPEC.md`
-3. Week 3 and Week 4 submission criteria captured in `Plan.md` and the required `docs/` artifacts
+3. Week 3, Week 4 and Week 5 submission criteria captured in `Plan.md` and the required `docs/` artifacts
 4. `Plan.md` (its §2B wins over its older sections)
 5. Relevant numbered instruction modules
 6. `.github/copilot-instructions.md`
@@ -42,7 +42,7 @@ Stop and report a conflict instead of guessing when two higher-priority sources 
 If you are about to write application code, read exactly these, in this order,
 and nothing else first:
 
-1. `Plan.md` sections 2B (Week 4 — wins over older sections), 2A, 4, 5, 6, 7, 8, 12, 21
+1. `Plan.md` sections 2B (Week 4 — wins over older sections), 2C (Week 5 — the round coach), 2A, 4, 5, 6, 7, 8, 12, 21
 2. `.github/copilot-instructions.md`
 3. `10-implementation-order.instructions.md` (your driver)
 4. `11-stack-and-scaffold.instructions.md` (only during Step 0)
@@ -68,10 +68,11 @@ sends you there, not by default.
 | Change a React screen | Architecture | Conventions, testing |
 | Change answer normalization or validity | `GAME_SPEC.md`, Conventions | Testing, common tasks |
 | Change an AI prompt, the checker, the bot or hints | `Plan.md` §2B, Common tasks | Security, testing, `docs/AI_EVALS.md` |
+| Build or change the round coach (agent loop, tools, limits, its prompt) | `Plan.md` §2C, `specs/010-round-coach-agent/` (spec, contracts, tasks) | Implementation order (Week 5), security, testing, `docs/AGENT_FLOW.md`, `docs/AGENT_EVALS.md` |
 | Change AI providers, models or keys | External services, `Plan.md` §2B.5 | Security, build and commands |
 | Run/build/lint/test | Build and commands | Testing, workflow |
 | Deploy or change hosting | External services | Build and commands, security, workflow |
-| Capture baseline/evidence or prepare handoff | Workflow | Testing, code review; Week 4 evidence goes in `docs/EVIDENCE_004.md` |
+| Capture baseline/evidence or prepare handoff | Workflow | Testing, code review; Week 4 evidence goes in `docs/EVIDENCE_004.md`, Week 5 in `docs/EVIDENCE_005.md` |
 | Update agent instructions | Workflow | Relevant module, code review |
 
 ## Planned repository baseline

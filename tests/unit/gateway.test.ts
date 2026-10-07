@@ -214,3 +214,41 @@ describe("gateway — telemetry (S01, S02)", () => {
     expect(line).not.toContain("SECRET-REPLY");
   });
 });
+
+describe("gateway — optional per-interaction attempt cap (Plan.md §2C.8, research R5)", () => {
+  it("with maxAttempts 2 and three transient failures scripted, calls the adapter exactly twice", async () => {
+    const { adapter, deps } = setup([S503, S503, S503, GOOD]);
+    const result = await generate(request({ budget: { ...BUDGETS["check-round"], maxAttempts: 2 } }), deps);
+    expect(result).toMatchObject({ ok: false, code: "provider_transient" });
+    expect(adapter.calls).toHaveLength(2);
+    expect(result.attempts).toHaveLength(2);
+  });
+
+  it("with maxAttempts 1, a retryable failure is not retried and no fallback runs", async () => {
+    const { adapter, time, deps } = setup([S503, GOOD]);
+    const result = await generate(request({ budget: { ...BUDGETS["check-round"], maxAttempts: 1 } }), deps);
+    expect(result).toMatchObject({ ok: false, code: "provider_transient" });
+    expect(adapter.calls).toHaveLength(1);
+    // Stopped before the backoff, so no time was spent waiting for an attempt that never runs.
+    expect(time.sleeps).toEqual([]);
+  });
+
+  it("with maxAttempts 2, a timeout then a fallback success is still a success", async () => {
+    const { adapter, deps } = setup([{ code: "timeout" }, GOOD]);
+    const result = await generate(request({ budget: { ...BUDGETS["check-round"], maxAttempts: 2 } }), deps);
+    expect(result).toMatchObject({ ok: true, model: CHAIN[1] });
+    expect(adapter.calls).toHaveLength(2);
+  });
+
+  it("the coach-step budget of Plan.md §2C.8", () => {
+    expect(BUDGETS["coach-step"]).toEqual({
+      perAttemptMs: 6_000,
+      totalMs: 10_000,
+      maxAttemptsPerModel: 2,
+      backoffBaseMs: 300,
+      backoffCapMs: 1_500,
+      minAttemptMs: 2_000,
+      maxAttempts: 2,
+    });
+  });
+});

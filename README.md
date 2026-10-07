@@ -5,7 +5,10 @@ A two-player online round of the Serbian pen-and-paper game
 at the same moment — so neither gets a head start — and an AI (Google Gemini,
 with Groq as a backup) checks that every answer is a real term of its category.
 
-Built for Weeks 3–4 of the Serbian AI Bootcamp.
+Built for Weeks 3–4 of the Serbian AI Bootcamp. Week 5 adds a **round
+coach** — after the results, a bounded AI agent shows what would have counted
+where you scored 0 — approved and specified, not built yet
+([Plan.md §2C](Plan.md), [specs/010](specs/010-round-coach-agent/spec.md)).
 
 ## Three ways to play
 
@@ -41,6 +44,16 @@ game also picks the letters: a Serbian game uses the whole Serbian alphabet
 
 If the AI is unavailable, the round is scored on the starting letter only, and
 the results say so. The game never waits on the AI for more than 20 seconds.
+
+7. On the results sheet, the **round coach** (_Trener partije_) offers the
+   categories where you scored 0. Ask, and within about half a minute you get
+   one suggestion per category, or an honest "no checked suggestion". Every
+   word shown passed the game's letter rule **and** was accepted by the AI
+   referee, in the referee's spelling; the short summary is written by the
+   game, not the AI. An AI proposes words, the game checks them, the AI may
+   revise once, and the referee confirms them before you see them; it never
+   changes your points, only you see the report, and it never uses your
+   opponent's answers. One analysis per round (`Plan.md` §2C).
 
 ## Requirements
 
@@ -79,6 +92,10 @@ lobby tells players this.
 | [docs/AI_EVALS.md](docs/AI_EVALS.md) | Live checks of the AI against real Gemini and Groq |
 | [docs/EVIDENCE_003.md](docs/EVIDENCE_003.md) | Week 3: scope changes, baseline, the controlled change |
 | [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
+| [docs/EVIDENCE_005.md](docs/EVIDENCE_005.md) | Week 5: the round coach — scope change, baseline, runs, security checklist |
+| [docs/AGENT_FLOW.md](docs/AGENT_FLOW.md) | Week 5: the coach's flow, checks and stop conditions |
+| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: agent evals C1–C19 and live L1–L3, written before the code |
+| [specs/](specs/README.md) | Spec Kit features; Week 5 is `specs/010-round-coach-agent` (tool contracts in `contracts/tools.md`) |
 | [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
 | [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |
 | [docs/CONTEXT_MANIFEST.md](docs/CONTEXT_MANIFEST.md) | What context was used, and what was excluded |
@@ -92,4 +109,7 @@ There is no reconnect after a refresh and no replay in the same room. Once a
 round has started there is no Leave button: the round plays to its deadline. The AI
 checker can be wrong on rare or ambiguous terms, and the free quotas are
 limited per day. The server caps AI use per visitor per hour and per day
-(`Plan.md` §2B.11); players sharing one address share the per-visitor cap. See [Plan.md §2B](Plan.md) for the full design and free hosting.
+(`Plan.md` §2B.11); players sharing one address share the per-visitor cap. The
+round coach shows only words the AI referee accepted, but the referee is an AI
+too and can be wrong (live, it once accepted an invented word). Its report lives with the
+finished room and is gone when the room is cleared five minutes later. See [Plan.md §2B](Plan.md) for the full design and free hosting.

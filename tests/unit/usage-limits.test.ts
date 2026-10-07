@@ -4,7 +4,7 @@ import { createUsageLimits, visitorAddress, VISITOR_WINDOW_MS } from "@server/us
 /** Plan §2B.11: one visitor cannot spend the shared AI quota for everyone. */
 const T0 = Date.UTC(2026, 8, 30, 10, 0, 0);
 const limits = (overrides: Partial<Parameters<typeof createUsageLimits>[0]> = {}) =>
-  createUsageLimits({ aiRoomsPerVisitorHour: 2, hintsPerVisitorHour: 3, aiDailyCallBudget: 5, ...overrides });
+  createUsageLimits({ aiRoomsPerVisitorHour: 2, hintsPerVisitorHour: 3, aiDailyCallBudget: 5, coachRunsPerVisitorHour: 2, ...overrides });
 
 describe("per-visitor hourly limit", () => {
   it("refuses the action past the limit, for that visitor only, until the hour has passed", () => {
@@ -34,6 +34,27 @@ describe("per-visitor hourly limit", () => {
     usage.prune(T0 + VISITOR_WINDOW_MS);
     expect(usage.check("aiRoom", "old", T0 + VISITOR_WINDOW_MS)).toBeNull();
     expect(usage.check("aiRoom", "new", T0 + VISITOR_WINDOW_MS)).toBe("RATE_LIMITED");
+  });
+});
+
+describe("round coach runs (Plan.md §2C.8)", () => {
+  it("counts coaching runs apart from AI rooms and hints, per visitor, per hour", () => {
+    const usage = limits();
+    for (let i = 0; i < 2; i += 1) {
+      expect(usage.check("coach", "1.1.1.1", T0)).toBeNull();
+      usage.charge("coach", "1.1.1.1", T0);
+    }
+    expect(usage.check("coach", "1.1.1.1", T0 + 1)).toBe("RATE_LIMITED");
+    expect(usage.check("coach", "2.2.2.2", T0 + 1)).toBeNull();
+    expect(usage.check("hint", "1.1.1.1", T0 + 1)).toBeNull();
+    expect(usage.check("aiRoom", "1.1.1.1", T0 + 1)).toBeNull();
+    expect(usage.check("coach", "1.1.1.1", T0 + VISITOR_WINDOW_MS)).toBeNull();
+  });
+
+  it("refuses coaching once the daily budget is spent, before the visitor limit", () => {
+    const usage = limits({ aiDailyCallBudget: 1 });
+    usage.countCall(T0);
+    expect(usage.check("coach", "1.1.1.1", T0)).toBe("AI_LIMIT");
   });
 });
 

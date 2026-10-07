@@ -6,7 +6,7 @@ import type { ThinkingLevel } from "./config";
  * the adapter never decides retries or business validity.
  */
 
-export type AiOperation = "check-round" | "hint" | "bot-answers";
+export type AiOperation = "check-round" | "hint" | "bot-answers" | "coach-step";
 /** Providers the gateway can route to (`Plan.md` §2B.5). */
 export type AiProvider = "gemini" | "groq";
 export type AttemptKind = "initial" | "retry" | "fallback";
@@ -68,6 +68,12 @@ export type RetryBudget = {
   backoffCapMs: number;
   /** No attempt starts with less time than this left. */
   minAttemptMs: number;
+  /**
+   * Week 5 (`Plan.md` §2C.8): at most this many attempts in the whole
+   * interaction, across retries and fallbacks. Absent = bounded only per model
+   * and by time, exactly as before.
+   */
+  maxAttempts?: number;
 };
 
 /** Counts only — never content — for telemetry. */

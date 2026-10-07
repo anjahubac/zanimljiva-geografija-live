@@ -5,10 +5,15 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **9 logged**. The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **19 logged** (001–019; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
+
+Week 5 (W05 §44): at most **15 live agent runs** in development and **3** in
+the demo. From W5-11 on, each entry keeps agent runs, model calls, retries and
+tool calls apart; the run logs themselves go in `docs/EVIDENCE_005.md` §4.
+Live agent runs used: **6** (entry 015).
 
 ---
 
@@ -308,3 +313,204 @@ session, not during it.
   honour the digraph rule and find terms for Q, X, Đ, Nj … is untested. Not
   clicked through in a browser.
 - **Next decision:** the live AI run (W4-7), now including an English W sheet.
+
+## 012 — Week 5 planning: a bounded agentic feature (Claude Code, 2026-10-07)
+
+- **Phase:** before Week 5; planning only, no application code.
+- **Reason:** the owner shared the W05 assignment ("Bounded Agentic Feature")
+  and asked for an implementation plan that fits the current state of the
+  repository, appended to `Plan.md` without rewriting anything in it.
+- **Expected:** a status check of Week 4, one recommended agentic scenario
+  that the game's data can support, tool contracts, limits, stop rules, evals
+  and a step order, with every scope change left as an open decision.
+- **Actual (verified in-session):**
+  - `npm ci && npm run verify` on `4dea3b5`: typecheck, lint and build clean,
+    **490 tests passed across 30 files**, matching `Plan.md` §2B.6 step 11.
+  - Read `CLAUDE.md`, `.github/` modules 00 and 10, `Plan.md` §1, §2, §2B, §4
+    and §19–§22, `docs/EVIDENCE_004.md`, `docs/AI_EVALS.md`, `specs/README.md`,
+    the constitution, and the AI layer (`src/server/ai/*`, `features/*`,
+    `ai-output.schemas.ts`, the room store's hint and close paths, the fakes).
+  - Added `Plan.md` §2C (proposed, not approved) and one status bullet in §1;
+    `git diff --numstat` shows 389 lines added and 0 removed.
+- **Not done:** no spec, contract or code for the feature; no live AI call.
+  The out-of-date statements found (§2B's header, §1's date, this file's
+  header count) are listed in §2C.1, not corrected.
+- **Next decision:** the owner answers §2C.15; then W5-0 (W4-7 with keys) and
+  W5-1 (`/speckit-specify` for `specs/010-round-coach-agent`).
+
+## 013 — Week 5 decisions recorded; Spec Kit feature 010 through tasks (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, W5-1 to W5-3 (documents only).
+- **Reason:** the owner said "Go with suggested changes, add them to Plan and
+  all the docs, don't start implementation yet", and asked to see the Spec Kit
+  instructions.
+- **Expected:** the decisions in `Plan.md`, added without rewriting anything
+  there; `specs/010-round-coach-agent` through `/speckit-tasks` and a
+  read-only `/speckit-analyze`; the W05 documents; agent instructions pointing
+  at Week 5; no source change.
+- **Actual (verified in-session):**
+  - `Plan.md`: §2C.16 (decisions, O1/O6 placement, two spec refinements) and
+    dated correction lines under §1's date, §1's Week 5 bullet, §2B's status
+    and §2C's status. `git diff` shows lines added and none removed.
+  - Spec Kit: `/speckit-specify` (spec and quality checklist; all items pass;
+    `/speckit-clarify` skipped because the owner had decided every open
+    question), `/speckit-plan` (plan, research R1–R17, data model, three
+    contracts, quickstart; the optional agent-context hook replaced by a hand
+    edit of `CLAUDE.md`, which keeps its wording), `/speckit-tasks` (62 tasks,
+    10 phases, an exit command per phase), `/speckit-analyze` (read-only; 0
+    critical, 2 high, 1 medium, 10 low; nothing fixed yet, awaiting the owner).
+  - New: `docs/AGENT_FLOW.md`, `docs/AGENT_EVALS.md` (C1–C18 and L1–L3,
+    expected results before code), `docs/EVIDENCE_005.md` (skeleton; only the
+    baseline and the decisions observed). Changed: `docs/GAME_SPEC.md`
+    Amendment 8 (approved, not built), `README.md`, `specs/README.md`,
+    `CLAUDE.md` and `AGENTS.md` (identical), `.github/copilot-instructions.md`,
+    the index, and a Week 5 section in module 10.
+  - `npm run verify` after the change: **490 tests passed across 30 files**,
+    typecheck, lint and build clean — unchanged, as expected for a
+    documentation-only change. `git status` shows no file under `src/` or
+    `tests/`.
+- **Not done:** no source code, no test code, no live AI call. Pushing was
+  refused by the session's permission check in the previous turn.
+- **Next decision:** the owner approves the analyze remediation; then
+  implementation from W5-4 when asked; W4-7 with keys before W5-11.
+
+## 014 — `/speckit-analyze` findings applied to feature 010 (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, still documents only (before W5-4).
+- **Reason:** the owner answered "Apply" to the 13 findings of the read-only
+  `/speckit-analyze` pass in entry 013.
+- **Expected:** every finding fixed in the documents; `Plan.md` gains lines
+  only; no expected result written earlier is changed; no source change.
+- **Actual (verified in-session):**
+  - I1: `round:coach` checks the round before the phase, so a request during
+    `judging` is `WRONG_PHASE`, as C3 expects (`contracts/coach-socket.md`,
+    `data-model.md`).
+  - G1: eval C19, malformed model output (a W05 §32 row), added to
+    `docs/AGENT_EVALS.md` as task T030; later tasks renumbered (63 tasks, all
+    well-formed and sequential) and the references in `docs/AGENT_FLOW.md` and
+    `docs/EVIDENCE_005.md` remapped. The Core gate is now C1–C16 and C19.
+  - U1, L1–L5: C3, C5, C13, C14 and C17 (and their tasks) gained the cases for
+    a final on step 1, a known tool the step does not offer, the exact step-input
+    keys, a 281-character summary, refused requests costing nothing, the
+    report's answer and reason, and the referee's daily-budget count.
+  - L6, L10: FR-023 names 30 seconds; FR-017 points to FR-015's limits.
+  - L7–L9: dated notes in `Plan.md` §2C.7, §2C.9 and §2C.16 (17 lines added, 0
+    removed).
+  - `npm run verify` after the fixes: **490 tests passed across 30 files**,
+    typecheck, lint and build clean; no file under `src/` or `tests/` changed.
+- **Not done:** no code; no push (the session's permission check refused it
+  earlier, and it is not retried).
+- **Next decision:** implementation from W5-4 when the owner asks; W4-7 with
+  keys before W5-11.
+
+## 015 — Week 5 round coach built, W5-0 → W5-11 (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5 implementation, at the owner's request ("Implement the
+  Week 5 changes described in Plan.md §2C"), on `feature/round-coach`.
+- **Reason:** build the approved round coach step by step (module 10's Week 5
+  table), tests first, with each step's exit command run and committed.
+- **Expected:** Core (W5-4 → W5-10) passing C1–C16 and C19 on fakes; then O1
+  and O6 (C17, C18); the four mutation checks failing their evals; W4-7 and at
+  most 3 live coaching runs per provider.
+- **Actual (verified in-session):**
+  - W5-0: `npm run verify` 490 tests / 30 files; W4-7 `smoke:ai` once per
+    provider, 5 requests each, checker 16/16 on both (`docs/AI_EVALS.md`).
+  - W5-4 → W5-10b: one commit per step; final `npm run verify` 629 tests / 34
+    files, typecheck, lint and build clean. Exit outputs: `docs/EVIDENCE_005.md` §4.
+  - Mutation checks 4/4 caught (`docs/EVIDENCE_005.md` §3).
+  - One conflict stopped the work and went to the owner: with O1 built, C2's
+    "step 2 offers only final" contradicted FR-016. The owner chose FR-016; a
+    dated note sits under C2 and its expected text is unchanged.
+  - W5-11 live: **6 agent runs** (3 Gemini, 3 Groq), **15 model steps**,
+    **20 provider attempts** (1 rate-limited attempt then a fallback; no other
+    retry), **9 tool calls** (5 `check_candidates`, 4 `verify_terms`; the
+    referee's 5 provider attempts are part of the 20). Gemini 3/3
+    completed; Groq 0/3 completed (2 refused arguments, 1 refused final).
+  - The 10 W4-7 requests (2 × 5) are model calls outside the agent and are not
+    counted above.
+- **Findings:** the referee accepted an invented word ("Ljlama"); Groq's agent
+  often sends arguments the tool refuses, and the content-free run log does
+  not say which.
+- **Not done:** W5-12's demo rehearsal (≤ 3 live runs) and the contributions
+  table; W4-8 and W4-9; no push, deploy or pull request.
+- **Next decision:** the owner reviews the diff on `feature/round-coach`.
+
+## 016 — Round coach: suggestions in the player's language, `coach-step.v2` (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after W5-11.
+- **Reason:** the owner saw the coach suggest "Euphrates" for river to a
+  Serbian player; the Serbian name is "Eufrat".
+- **Cause:** `coach-step.v1` set the summary's language but not the terms'.
+  The game accepts answers in either language, so the letter rule and the
+  referee both passed the English name.
+- **Expected:** a new prompt version that asks for each term in the player's
+  interface language, with the other language only when that name misses the
+  round letter; no change to contracts, checks or limits.
+- **Actual (verified in-session):** prompt test written first and seen failing;
+  `coach-step.v2` replaces v1; prompt, loop and wire tests pass; `npm run
+  verify` green (see `docs/EVIDENCE_005.md` §4).
+- **Not done:** no live run of v2 (the earlier 6 runs used v1, at letter Lj,
+  where the two languages mostly agree). Code cannot enforce the language.
+- **Next decision:** whether to spend live runs on a letter where the names
+  differ (for example E: Eufrat / Euphrates).
+
+## 017 — Round coach: only valid and checked answers (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after W5-11, from the owner's own browser test.
+- **Reason:** the report's model-written summary named "Rosno more" for sea,
+  which the checks had not backed, and a suggestion read "Rtnj" (Rtanj),
+  because the referee tolerates typos and the coach showed the model's
+  spelling. The owner: "we need to give people only valid and checked
+  answers"; decisions recorded in `Plan.md` §2C.16 before code.
+- **Expected:** only referee-accepted words shown, in the referee's spelling;
+  the game always asks the referee before a report; the summary written by the
+  game; no new event, error code, stop reason or tool; Week 4 checker output
+  unchanged.
+- **Actual (verified in-session):** tests first (red), then `coach-step.v3`,
+  the game's own referee check in `runCoach`, named verdicts on an opt-in path
+  of `runCheck` (the seven Week 4 checker assertions unchanged), `summary`
+  removed from the report, the panel's own summary sentence and "Nema
+  proverenog predloga." While doing it a real bug surfaced: a provider failure
+  was labelled `call_budget` whenever the run's attempts happened to be spent;
+  now only when the run's budget actually narrowed the call. 637 tests pass;
+  mutation checks re-run, 4/4 caught. Eval amendments are dated notes in
+  `docs/AGENT_EVALS.md`; no expected text was rewritten.
+- **Not done:** no live run of v3.
+- **Next decision:** live runs on a letter where Serbian and English differ.
+
+## 018 — Round coach: a suggestion for every category it can fill (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after entry 017, from the owner's browser test.
+- **Reason:** the owner got suggestions for only 4 categories and asked for an
+  answer in every category "if there is one". Four causes in the code: one
+  word per category (8 per check), no second chance after a referee
+  rejection, a final allowed to leave a category empty, and a failed final
+  check dropping every unchecked word. Options put to the owner; chosen:
+  backup word + repair (`Plan.md` §2C.16, last entry), before code.
+- **Expected:** up to 16 candidates per check; a backup word in the same
+  referee call; gaps the final left filled by the game; one repair step after
+  a completed run, 1 model and 1 referee attempt; maxima 4 steps, 3 tool
+  calls, 7 attempts, 35 s; client ack 45 s; no new event, error code, stop
+  reason or tool; the failure evals unchanged.
+- **Actual (verified in-session):** tests first (red), then `coach-step.v4`
+  and the loop changes. C1, C17, C18 and the run-log test needed the repair
+  scripted; amended with dated notes, expected text left as written. 654
+  tests pass; 4 new mutation checks, 4/4 caught.
+- **Judgement call:** the repair runs only after a completed run, because
+  C4–C13, C16 and C19 pin tool calls and status after a refusal.
+- **Not done:** no live run of v4.
+
+## 019 — Round coach: search the category before giving up, `coach-step.v5` (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after entry 018, from the owner's browser test.
+- **Reason:** no sea suggested for H, although the Halmahera Sea exists. The
+  owner asked whether the AI could search the web; options (live Google
+  Search in the repair step, a checked word list) were laid out, and the owner
+  declined both: "just try to improve the suggestions".
+- **Expected:** prompt only. v4 said "Prefer well-known terms" and nothing
+  about what to do when none comes to mind; v5 asks for a term in every
+  category and a systematic pass, with where to look per category, for a
+  lesser-known real term, never an invented one.
+- **Actual (verified in-session):** test first (red), then v5; 655 tests pass.
+  The shared category rules (referee, hint, bot) are unchanged.
+- **Not done:** no live run; the effect on recall is unmeasured.

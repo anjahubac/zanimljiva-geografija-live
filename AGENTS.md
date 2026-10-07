@@ -12,8 +12,11 @@ context; read them before writing code.
 If you are implementing, your driver file is
 `.github/instructions/10-implementation-order.instructions.md`. Steps 0–11 are
 the Week 3 build; all are done except Step 11's deployment, which is now Week 4
-step W4-9. New work follows its **Week 4** section and `Plan.md` §2B. Work one step at a time, and run each step's exit command before
-moving on.
+step W4-9. Week 4 work follows its **Week 4** section and `Plan.md` §2B.
+**Week 5** — the round coach, a bounded agentic feature (`Plan.md` §2C) —
+follows its **Week 5** section. Its Core was built on `feature/round-coach`
+(W5-4 → W5-10, 2026-10-07); O1, O6 and the live runs follow in that order.
+Work one step at a time, and run each step's exit command before moving on.
 
 ## The five rules that matter most
 
@@ -47,5 +50,7 @@ above; it does not replace them, and `Plan.md` stays the plan of record.
 Features 001–008 in `specs/` were reconstructed after they were built. New
 features start at 009 and use the full specify → plan → tasks flow.
 
-Current feature: `specs/009-full-alphabet-letters/plan.md` (`Plan.md` §2B.13).
+Current feature: `specs/010-round-coach-agent/plan.md` (`Plan.md` §2C) —
+Core built on `feature/round-coach` (W5-4 → W5-10, 2026-10-07). The previous feature,
+`specs/009-full-alphabet-letters` (`Plan.md` §2B.13), is built.
 <!-- SPECKIT END -->

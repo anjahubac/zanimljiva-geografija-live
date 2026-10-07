@@ -33,6 +33,17 @@ export const BUDGETS: Record<AiOperation, RetryBudget> = {
     backoffCapMs: 3_000,
     minAttemptMs: 2_000,
   },
+  // One round-coach step (`Plan.md` §2C.8). The orchestrator narrows `totalMs`
+  // to the time left in the run and `maxAttempts` to the attempts left in it.
+  "coach-step": {
+    perAttemptMs: 6_000,
+    totalMs: 10_000,
+    maxAttemptsPerModel: 2,
+    backoffBaseMs: 300,
+    backoffCapMs: 1_500,
+    minAttemptMs: 2_000,
+    maxAttempts: 2,
+  },
 };
 
 /** Exponential backoff with full jitter: uniform in [0, min(cap, base × 2ⁿ)). */

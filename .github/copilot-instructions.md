@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This is the concise always-on baseline for coding agents. Use `.github/00-index.instructions.md` to load only the relevant detailed modules. Do not use this summary as a substitute for `docs/GAME_SPEC.md` or `Plan.md`. For Week 4 work, `Plan.md` §2B is the design and wins over older sections.
+This is the concise always-on baseline for coding agents. Use `.github/00-index.instructions.md` to load only the relevant detailed modules. Do not use this summary as a substitute for `docs/GAME_SPEC.md` or `Plan.md`. For Week 4 work, `Plan.md` §2B is the design and wins over older sections. For Week 5 work (the round coach), `Plan.md` §2C is the design.
 
 ## Always-on guardrails
 
@@ -21,6 +21,7 @@ This is the concise always-on baseline for coding agents. Use `.github/00-index.
 - Add or update a meaningful success case and rejection/edge case whenever behavior changes.
 - Preserve the Week 3 baseline and use the same pre-written evals before and after one controlled change.
 - Do not add accounts, a database, chat, spectators, a leaderboard, or another service unless the user explicitly expands scope. Random matchmaking and the Gemini/Groq-based answer checker, AI opponent and hints are in scope (`Plan.md` §2B); AI is called only from the server, and an opponent's answers reach the AI only after both sheets are locked.
+- The Week 5 round coach (`Plan.md` §2C) is built (Core, 2026-10-07). It is read-only and runs only after the reveal; its report goes to the caller only; it never reads the opponent's sheet; the model may only propose actions from the coach's allowlist, every proposal is validated before it runs, and the application, not the model, enforces the step, call, attempt and time limits.
 - Never commit secrets, `.env` files, private resume tokens, hidden answers, or raw sensitive payloads.
 - Do not push, deploy, open a pull request, or mutate an external service unless the user explicitly requests that operation.
 - Follow the build sequence in module 10 one step at a time. Finish a step, run its exit command, and report the real output before starting the next.

@@ -45,8 +45,11 @@ type I18n = {
   labels: Record<Category, string>;
 };
 
-/** Serbian unless a provider says otherwise, so a screen renders on its own in tests. */
-const I18nContext = createContext<I18n>({
+/**
+ * Serbian unless a provider says otherwise, so a screen renders on its own in
+ * tests. Exported so a render test can pin the language.
+ */
+export const I18nContext = createContext<I18n>({
   language: "sr",
   setLanguage: () => {},
   t: STRINGS.sr,

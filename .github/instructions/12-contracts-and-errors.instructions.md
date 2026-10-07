@@ -26,7 +26,8 @@ the code disagree, the code wins and this file is the one to fix.
 | `src/contracts/game.schemas.ts` | Constants (`CATEGORIES`, `ALL_LETTERS`, `SERBIAN_LETTERS`, `ENGLISH_LETTERS`, `ALPHABETS`, `MAX_ANSWER_LENGTH`, `MIN_ANSWER_LENGTH`, `HINTS_PER_ROUND`, `BOT_DISPLAY_NAME`, `LANGUAGES`), category labels in both languages, primitives (room code, display name, `requestedNameSchema`, answer, round id, revision, epoch ms, slot, resume token), `roomPhaseSchema`, reject and score reasons, `serverConfigSchema` |
 | `src/contracts/errors.ts` | The closed `GAME_ERROR_CODES` list, the server's (Serbian) message per code, the `Ack<T>` envelope, `ok()`, `fail()`, `ackSchema()` |
 | `src/contracts/socket.schemas.ts` | Every client request, every ack, every server event payload, and the event-name constants `CLIENT_EVENTS` / `SERVER_EVENTS` |
-| `src/contracts/ai-output.schemas.ts` | What the AI model must return (check, bot answers, hint). Server-only; never sent to a browser |
+| `src/contracts/ai-output.schemas.ts` | What the AI model must return (check, bot answers, hint, and the round coach's step envelope `coachStepSchema` with `COACH_STEP_JSON_SCHEMA`). Server-only; never sent to a browser |
+| `src/contracts/coach.schemas.ts` | Week 5 (`Plan.md` §2C): `coachRequestSchema` (strict, distinct focus), `coachReportSchema` (the caller's ack: status, tips, confidence, stop reason, optional `run` details; no `summary` and no model text since 2026-10-07 — the client writes the summary from the tips), `coachStopReasonSchema`, `missReasonSchema`, `runDetailsSchema`, `COACH_GOALS` |
 
 Client payloads use `.strict()`, so an unexpected key is a rejection, not a
 silently ignored field. This is what stops a browser from smuggling `letter`,
@@ -58,12 +59,22 @@ events. Adding one is a scope change (`Plan.md` §11) and starts in
 | C→S | `round:draft` | `draftRequestSchema` | `draftAckSchema` |
 | C→S | `round:finish` | `finishRequestSchema` | `finishAckSchema` |
 | C→S | `round:hint` | `hintRequestSchema` | `hintAckSchema` (`clue` or `no_known_term`, with `hintsLeft`) — Week 4, §2B.8 |
+| C→S | `round:coach` | `coachRequestSchema` (`roundId`, `goal: "fill_gaps"`, `focus`, `language`) | `coachReportSchema` — Week 5, §2C. The report travels **only** in this ack, so it reaches only the caller; there is no server event for it. A cancelled run (the caller left, the room was reaped) sends no ack. The client waits at most 30 s (`COACH_ACK_TIMEOUT_MS`) |
 | S→C | `room:state` | `roomStateSchema` (players carry `bot`) | — |
 | S→C | `round:scheduled` | `roundScheduledSchema` | — |
 | S→C | `round:player-finished` | `playerFinishedSchema` | — |
 | S→C | `round:revealed` | `roundRevealedSchema` (per answer: `valid`, reject `reason`, `hinted`) | — |
 | S→C | `round:results` | `roundResultsSchema` (with `verified`, `botFailed`) | — |
 | S→C | `game:error` | `gameErrorSchema` | — |
+
+The coach's tools are `check_candidates` and, since O1 (W5-10a),
+`verify_terms` (`src/server/agent/tools.ts`; contracts in
+`specs/010-round-coach-agent/contracts/tools.md`). Neither is an event: only
+the orchestrator calls them. The round coach added **no error code**: its refusals reuse `INVALID_PAYLOAD`,
+`NOT_IN_ROOM`, `ROUND_STALE`, `WRONG_PHASE`, `AI_UNAVAILABLE`, `AI_LIMIT`,
+`RATE_LIMITED` and `INTERNAL`, in the order of
+`specs/010-round-coach-agent/contracts/coach-socket.md`. Why a run stopped is a
+`CoachStopReason` inside a successful ack, not an error.
 
 Leaving a room has **no event**: the client drops its socket and the server's
 disconnect path handles it (`Plan.md` §2B.10). The private resume token is

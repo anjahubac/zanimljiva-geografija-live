@@ -4,7 +4,7 @@ import type { GameErrorCode } from "@contracts/errors";
  * `Plan.md` §2B.11. The free AI quota is shared by every player, so no one
  * visitor may spend it for everyone. Two bounds:
  *
- * 1. Per visitor (client IP), per hour: AI rooms and hints. The socket rate
+ * 1. Per visitor (client IP), per hour: AI rooms, hints and coaching runs. The socket rate
  *    limit resets on reconnect; this one does not.
  * 2. Per UTC day, a global budget of AI calls. Once spent, no new AI room and
  *    no hint — but a round already played is still checked, because the
@@ -17,12 +17,14 @@ import type { GameErrorCode } from "@contracts/errors";
 export const VISITOR_WINDOW_MS = 60 * 60 * 1_000;
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
-export type LimitedAction = "aiRoom" | "hint";
+export type LimitedAction = "aiRoom" | "hint" | "coach";
 
 export type UsageLimitsConfig = {
   aiRoomsPerVisitorHour: number;
   hintsPerVisitorHour: number;
   aiDailyCallBudget: number;
+  /** Week 5 (§2C.8): round-coach runs, charged when a run starts. */
+  coachRunsPerVisitorHour: number;
 };
 
 export type UsageLimits = {
@@ -37,12 +39,16 @@ export type UsageLimits = {
 };
 
 export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
-  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number }>();
+  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number; coach: number }>();
   let day = -1;
   let callsToday = 0;
 
   const maxFor = (action: LimitedAction) =>
-    action === "aiRoom" ? config.aiRoomsPerVisitorHour : config.hintsPerVisitorHour;
+    action === "aiRoom"
+      ? config.aiRoomsPerVisitorHour
+      : action === "hint"
+        ? config.hintsPerVisitorHour
+        : config.coachRunsPerVisitorHour;
 
   const windowOf = (visitor: string, now: number) => {
     const current = visitors.get(visitor);
@@ -69,7 +75,7 @@ export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
     charge(action, visitor, now) {
       let window = windowOf(visitor, now);
       if (!window) {
-        window = { startedAt: now, aiRoom: 0, hint: 0 };
+        window = { startedAt: now, aiRoom: 0, hint: 0, coach: 0 };
         visitors.set(visitor, window);
       }
       window[action] += 1;
