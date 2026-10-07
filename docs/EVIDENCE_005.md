@@ -72,6 +72,9 @@ C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 | Run | Date | Code state | Command | Result | Source |
 | --- | --- | --- | --- | --- | --- |
 | Baseline | 2026-10-07 | `4dea3b5` | `npm ci && npm run verify` | pass — 490 tests, 30 files | `AI_USAGE_LOG.md` 012 |
+| W5-0 baseline | 2026-10-07 | `d4c22c8` (`feature/round-coach`) | `npm run verify` | pass — 30 files, 490 tests; typecheck, lint, build clean | implementation session |
+| W5-0 / W4-7, Gemini | 2026-10-07 | `d4c22c8` | `AI_PROVIDER_ORDER=gemini npm run smoke:ai` | 5 requests, all first-attempt successes; checker 16/16 | `docs/AI_EVALS.md` run log |
+| W5-0 / W4-7, Groq | 2026-10-07 | `d4c22c8` | `AI_PROVIDER_ORDER=groq npm run smoke:ai` | 5 requests, all first-attempt successes; checker 16/16; both hint clues factually wrong | `docs/AI_EVALS.md` run log |
 | After W5-4 … W5-10b | — | — | `npm run verify` | **not run** | — |
 | Live, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:coach` | **not run** | — |
 | Live, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:coach` | **not run** | — |

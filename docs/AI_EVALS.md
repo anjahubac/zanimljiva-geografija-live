@@ -54,5 +54,5 @@ river and is not a Dž river.
 
 | Date | Provider | Model | Agreement | Bot sheet | Hints | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| _not run yet_ | Gemini | | /16 | | | Needs the owner's key in `.env` |
-| _not run yet_ | Groq | | /16 | | | Needs the owner's key in `.env` |
+| 2026-10-07 | Gemini | `gemini-3.5-flash-lite` (every call, initial attempt, no fallback) | 16/16 (check 2.75 s, 1 863 tokens) | K/sr: 7 of 8, river blanked by code; W/en: 7 of 8, mountain blanked by code, country "Wales" (not a UN member: the checker would reject it) | sr and en clues valid, both describe the Danube (Dunav) | W4-7, `AI_PROVIDER_ORDER=gemini npm run smoke:ai`, 5 requests, every one succeeded first time (1.1–2.7 s) |
+| 2026-10-07 | Groq | `openai/gpt-oss-120b` (every call, initial attempt, no fallback) | 16/16 (check 2.89 s, 2 487 tokens) | K/sr: 8 of 8 ("Korsičko more" is doubtful); W/en: 7 of 8, country blank | Both clues passed validation but are **factually wrong**: sr says the river is Serbia's longest and flows through Belgrade toward Montenegro; en puts the Drina's mouth near Bosanska Gradiška. The hint validator checks the letter and leaks, not facts | W4-7, `AI_PROVIDER_ORDER=groq npm run smoke:ai`, 5 requests, every one succeeded first time (0.7–2.9 s) |

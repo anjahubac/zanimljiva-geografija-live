@@ -19,9 +19,9 @@
 
 ## Phase 1: Setup (W5-0)
 
-- [ ] T001 Run `npm ci && npm run verify` and record the baseline (490 tests, 30 files on 2026-10-07, or the current figure) in `docs/EVIDENCE_005.md` §4 before any source change
-- [ ] T002 Owner, with keys in `.env`: run W4-7 (`AI_PROVIDER_ORDER=gemini npm run smoke:ai`, then `AI_PROVIDER_ORDER=groq npm run smoke:ai`) and fill both rows of the run log in `docs/AI_EVALS.md`. Blocks Phase 9 only; Phases 2–8 need no key
-- [ ] T003 Confirm `docs/AGENT_EVALS.md` holds C1–C19 with expected results in a commit older than the first change under `src/` (`git log --oneline -- docs/AGENT_EVALS.md src/`)
+- [X] T001 Run `npm ci && npm run verify` and record the baseline (490 tests, 30 files on 2026-10-07, or the current figure) in `docs/EVIDENCE_005.md` §4 before any source change
+- [X] T002 Owner, with keys in `.env`: run W4-7 (`AI_PROVIDER_ORDER=gemini npm run smoke:ai`, then `AI_PROVIDER_ORDER=groq npm run smoke:ai`) and fill both rows of the run log in `docs/AI_EVALS.md`. Blocks Phase 9 only; Phases 2–8 need no key
+- [X] T003 Confirm `docs/AGENT_EVALS.md` holds C1–C19 with expected results in a commit older than the first change under `src/` (`git log --oneline -- docs/AGENT_EVALS.md src/`)
 
 **Exit (W5-0)**: `npm run verify` green; T003 confirmed.
 
