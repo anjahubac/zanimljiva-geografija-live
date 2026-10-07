@@ -4,6 +4,8 @@
 
 - Product name: **Zanimljiva Geografija Live**
 - Delivery target: **23 September 2026**
+  _Correction 2026-10-07:_ that was the Week 3 date. Week 4 (§2B) and Week 5
+  (§2C) follow the bootcamp's weekly schedule.
 - Players: exactly two people on two separate computers
 - Deployment: one public browser URL backed by one real-time Node.js service
 - Plan status: Core gameplay implemented; baseline/evidence and deployed two-computer acceptance remain incomplete. See the 2026-09-22 review in `docs/PRODUCT_REVIEW.md`.
@@ -20,6 +22,10 @@
   feature — the round coach (_Trener partije_) — proposed from the W05
   assignment. **Not approved and not built**; the owner's open decisions are
   listed in §2C.15.
+- **Week 5 approved (2026-10-07): see §2C.16.** The owner accepted every
+  recommendation in §2C.15. The Spec Kit feature
+  `specs/010-round-coach-agent` is written through `tasks.md`, and the Week 5
+  docs exist. **No application code is written yet.**
 
 ## 2. How the source documents are used
 
@@ -155,6 +161,10 @@ If two higher-priority sources conflict, pause and resolve the conflict in `GAME
 **Status: implemented locally on 2026-09-30. Not yet committed, pushed or deployed.**
 `npm run verify` passes (437 tests, 27 files, after §2B.10). Not yet run against the real Gemini or Groq APIs,
 because no key was available in the session; see §2B.6 step 7.
+
+_Correction 2026-10-07:_ Week 4 is committed and on `main` (`6232482`, then
+`4dea3b5`); `npm run verify` there passes with 490 tests in 30 files (§2C.1).
+It is still **not deployed**, and still not run against the real APIs.
 
 The owner's decisions, recorded before any code changes:
 
@@ -635,6 +645,10 @@ Until then this section is a plan, and §2B stays the design of record for
 everything already built. When approved, it becomes Spec Kit feature
 `specs/010-round-coach-agent`, and that spec links back here.
 
+**Update 2026-10-07: approved.** The owner accepted every recommendation in
+§2C.15; the decisions of record are §2C.16. The section below is now the design
+of record for Week 5. Nothing is built yet.
+
 ### 2C.1 Status check before Week 5 (2026-10-07)
 
 Checked in the planning session, so Week 5 starts from known ground:
@@ -1009,6 +1023,65 @@ Each has a recommendation; none is decided.
    (recommended), or `EVIDENCE_W05.md`, as the assignment names it.
 9. **Week 4 leftovers:** W4-7 first (recommended, blocks the W05 live demo);
    W4-8 and W4-9 after W05 Core, or not at all this week.
+
+### 2C.16 Owner's decisions (2026-10-07)
+
+**Asked by the owner:** "Go with suggested changes, add them to Plan and all
+the docs, don't start implementation yet." Every recommendation in §2C.15 is
+accepted:
+
+| # | Decision |
+| --- | --- |
+| 1 | Scenario: the round coach (_Trener partije_ / Round coach) |
+| 2 | Core goal: `fill_gaps` only. `stand_out` is not planned |
+| 3 | One new client event, `round:coach`, answered by an ack to the caller only. No server-to-client event, no new error code |
+| 4 | The figures in §2C.8: 3 model steps, 2 tool calls, 2 provider attempts per step and 5 per run, 6 s per attempt, 10 s per step, 25 s per run, no step with under 2 s left, ≤ 8 candidates per call (≤ 2 per category), 1 run per player per round, `COACH_RUNS_PER_VISITOR_HOUR` = 6, every model step counted in `AI_DAILY_CALL_BUDGET` |
+| 5 | A final that cites bad evidence is rejected whole (`final_invalid`) |
+| 6 | Options O1 (`verify_terms`) and O6 (run details) are approved; see below |
+| 7 | The pair split in §2C.15 item 7. Names go in `docs/EVIDENCE_005.md` §7 |
+| 8 | Week 5 evidence goes in `docs/EVIDENCE_005.md` |
+| 9 | W4-7 first. W4-8 and W4-9 come after Week 5 Core if time allows; W05 does not need them |
+
+**O1 and O6 are approved scope, not Stretch in §4's sense**, but they are
+built only once Core is green. They slot in after W5-10 as **W5-10a** (O1) and
+**W5-10b** (O6), before the live runs (W5-11), so the live runs and the
+evidence cover the feature as shipped. Each starts only when `npm run verify`
+is green and C1–C16 pass.
+
+- **O1 shares the Core budget.** `verify_terms` is a tool call, so it counts
+  toward the 2 tool calls per run: after the first check the agent chooses
+  between revising the failures and verifying the passes. That choice between
+  two allowed tools is what O1 asks for. The referee's provider attempts count
+  toward the run's 5, and its call toward the daily budget. A cited evidence id
+  must have passed `check_candidates` and, if `verify_terms` judged it, been
+  accepted; otherwise the final is invalid (decision 5). If the referee
+  fails, the run continues and those suggestions stay "letter rule only".
+  With O1, the step after every focus category has passed may offer
+  `verify_terms` as well as `final` (`specs/010-round-coach-agent`, FR-016).
+  Step 1 offers only `check_candidates` in either case, so every completed run
+  has at least one tool execution between two model steps.
+- **Refined in the spec (2026-10-07):** §2C.9's `unknown_tool` row is split.
+  A name outside the allowlist is `unknown_tool`; a known tool that the step
+  does not offer is `max_steps` on the last step (C10) and
+  `invalid_tool_args` otherwise; a final on step 1 is `final_invalid`
+  (`specs/010-round-coach-agent/contracts/model-step.md`).
+- **O6 adds one ack field, `run`:** model steps, tool calls, provider attempts,
+  the last provider and model, elapsed time and the stop reason. No prompt,
+  reply, candidate or answer. Shown under the report as "Detalji" / "Details".
+- **Two more evals**, pre-registered with the rest: C17 (O1: the referee
+  rejects one suggestion; the referee fails) and C18 (O6: the details hold
+  only those fields).
+
+**Done the same day, documentation only:** `specs/010-round-coach-agent`
+(spec, quality checklist, plan, research, data model, contracts, quickstart,
+tasks, and a read-only `/speckit-analyze` pass), `docs/AGENT_FLOW.md`,
+`docs/AGENT_EVALS.md` (C1–C18, expected results written before any code),
+`docs/EVIDENCE_005.md` (skeleton), `docs/GAME_SPEC.md` Amendment 8 (approved,
+not built), a Week 5 section in module 10, and the pointers in `CLAUDE.md`,
+`AGENTS.md`, the index and the guardrails. So W5-1 to W5-3 of §2C.10 are done.
+W5-0 still waits for the owner's keys (W4-7). W5-4 to W5-10b need no key and
+can start before W4-7; the live runs (W5-11) cannot. **Implementation starts at
+W5-4, and only when the owner asks for it.**
 
 ## 2A. Execution contract for the implementation model
 

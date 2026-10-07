@@ -5,7 +5,10 @@ A two-player online round of the Serbian pen-and-paper game
 at the same moment — so neither gets a head start — and an AI (Google Gemini,
 with Groq as a backup) checks that every answer is a real term of its category.
 
-Built for Weeks 3–4 of the Serbian AI Bootcamp.
+Built for Weeks 3–4 of the Serbian AI Bootcamp. Week 5 adds a **round
+coach** — after the results, a bounded AI agent shows what would have counted
+where you scored 0 — approved and specified, not built yet
+([Plan.md §2C](Plan.md), [specs/010](specs/010-round-coach-agent/spec.md)).
 
 ## Three ways to play
 
@@ -79,6 +82,10 @@ lobby tells players this.
 | [docs/AI_EVALS.md](docs/AI_EVALS.md) | Live checks of the AI against real Gemini and Groq |
 | [docs/EVIDENCE_003.md](docs/EVIDENCE_003.md) | Week 3: scope changes, baseline, the controlled change |
 | [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
+| [docs/EVIDENCE_005.md](docs/EVIDENCE_005.md) | Week 5: the round coach — scope change, baseline, runs, security checklist |
+| [docs/AGENT_FLOW.md](docs/AGENT_FLOW.md) | Week 5: the coach's flow, checks and stop conditions |
+| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: agent evals C1–C18 and live L1–L3, written before the code |
+| [specs/](specs/README.md) | Spec Kit features; Week 5 is `specs/010-round-coach-agent` (tool contracts in `contracts/tools.md`) |
 | [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
 | [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |
 | [docs/CONTEXT_MANIFEST.md](docs/CONTEXT_MANIFEST.md) | What context was used, and what was excluded |

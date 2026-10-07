@@ -5,10 +5,15 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **9 logged**. The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **13 logged** (001–013; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
+
+Week 5 (W05 §44): at most **15 live agent runs** in development and **3** in
+the demo. From W5-11 on, each entry keeps agent runs, model calls, retries and
+tool calls apart; the run logs themselves go in `docs/EVIDENCE_005.md` §4.
+Live agent runs used: **0**.
 
 ---
 
@@ -332,3 +337,39 @@ session, not during it.
   header count) are listed in §2C.1, not corrected.
 - **Next decision:** the owner answers §2C.15; then W5-0 (W4-7 with keys) and
   W5-1 (`/speckit-specify` for `specs/010-round-coach-agent`).
+
+## 013 — Week 5 decisions recorded; Spec Kit feature 010 through tasks (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, W5-1 to W5-3 (documents only).
+- **Reason:** the owner said "Go with suggested changes, add them to Plan and
+  all the docs, don't start implementation yet", and asked to see the Spec Kit
+  instructions.
+- **Expected:** the decisions in `Plan.md`, added without rewriting anything
+  there; `specs/010-round-coach-agent` through `/speckit-tasks` and a
+  read-only `/speckit-analyze`; the W05 documents; agent instructions pointing
+  at Week 5; no source change.
+- **Actual (verified in-session):**
+  - `Plan.md`: §2C.16 (decisions, O1/O6 placement, two spec refinements) and
+    dated correction lines under §1's date, §1's Week 5 bullet, §2B's status
+    and §2C's status. `git diff` shows lines added and none removed.
+  - Spec Kit: `/speckit-specify` (spec and quality checklist; all items pass;
+    `/speckit-clarify` skipped because the owner had decided every open
+    question), `/speckit-plan` (plan, research R1–R17, data model, three
+    contracts, quickstart; the optional agent-context hook replaced by a hand
+    edit of `CLAUDE.md`, which keeps its wording), `/speckit-tasks` (62 tasks,
+    10 phases, an exit command per phase), `/speckit-analyze` (read-only; 0
+    critical, 2 high, 1 medium, 10 low; nothing fixed yet, awaiting the owner).
+  - New: `docs/AGENT_FLOW.md`, `docs/AGENT_EVALS.md` (C1–C18 and L1–L3,
+    expected results before code), `docs/EVIDENCE_005.md` (skeleton; only the
+    baseline and the decisions observed). Changed: `docs/GAME_SPEC.md`
+    Amendment 8 (approved, not built), `README.md`, `specs/README.md`,
+    `CLAUDE.md` and `AGENTS.md` (identical), `.github/copilot-instructions.md`,
+    the index, and a Week 5 section in module 10.
+  - `npm run verify` after the change: **490 tests passed across 30 files**,
+    typecheck, lint and build clean — unchanged, as expected for a
+    documentation-only change. `git status` shows no file under `src/` or
+    `tests/`.
+- **Not done:** no source code, no test code, no live AI call. Pushing was
+  refused by the session's permission check in the previous turn.
+- **Next decision:** the owner approves the analyze remediation; then
+  implementation from W5-4 when asked; W4-7 with keys before W5-11.

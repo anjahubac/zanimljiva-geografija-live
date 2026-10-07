@@ -4,6 +4,19 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
+**Amendment 8 — 2026-10-07, at the product owner's request. Approved, not
+yet built.** After a round's results, a human player may ask a **round coach**
+(_Trener partije_) what they could have written in the categories where they
+scored 0. Server-side, an AI proposes words, the game's own letter rule checks
+them, and the AI may revise once; the player then gets a short report, in
+their language, whose every suggestion passed that check (and, with option
+O1, the answer referee). Coaching is read-only: it changes no answer, validity
+mark, point or result, it reaches only the player who asked, and it never uses
+the opponent's answers. One run per player per round, and the run is bounded
+in steps, checks, AI attempts and time. Nothing about the round itself — sheet,
+letter, timing, judging, scoring — changes. Recorded in `Plan.md` §2C and
+§2C.16, `docs/EVIDENCE_005.md` (W5-1) and `specs/010-round-coach-agent`.
+
 **Amendment 7 — 2026-09-30, at the product owner's request.** The round
 letter is no longer limited to `A, B, D, K, M, S, V` (§5). A room's letter
 comes from the whole alphabet of the player who opened it: the creator of a
