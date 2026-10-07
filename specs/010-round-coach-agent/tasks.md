@@ -167,8 +167,8 @@
 
 **Independent test**: C18 in `tests/unit/coach-agent.test.ts` and `tests/unit/client-coach.test.ts`.
 
-- [ ] T056 [US5] Add failing C18 cases: `report.run` has exactly `modelSteps`, `toolCalls`, `providerAttempts`, `provider`, `model`, `elapsedMs`, `stopReason`, equal to the run log's totals, and its JSON holds no candidate or answer; the panel renders "Detalji" / "Details" collapsed by default
-- [ ] T057 [US5] Fill `run` from the run-log totals in `src/server/agent/coach-agent.ts`; render it in `src/client/screens/CoachPanel.tsx` with strings in `src/client/strings.ts`
+- [X] T056 [US5] Add failing C18 cases: `report.run` has exactly `modelSteps`, `toolCalls`, `providerAttempts`, `provider`, `model`, `elapsedMs`, `stopReason`, equal to the run log's totals, and its JSON holds no candidate or answer; the panel renders "Detalji" / "Details" collapsed by default
+- [X] T057 [US5] Fill `run` from the run-log totals in `src/server/agent/coach-agent.ts`; render it in `src/client/screens/CoachPanel.tsx` with strings in `src/client/strings.ts`
 
 **Exit (W5-10b)**: `npm run verify`
 

@@ -106,6 +106,31 @@ export function CoachPanelView({ focus, selected, state, onToggle, onSubmit }: V
               </li>
             ))}
           </ul>
+          {report.run ? (
+            <details className="coach-details">
+              <summary>{t.coach.details.title}</summary>
+              <dl>
+                <dt>{t.coach.details.modelSteps}</dt>
+                <dd>{report.run.modelSteps}</dd>
+                <dt>{t.coach.details.toolCalls}</dt>
+                <dd>{report.run.toolCalls}</dd>
+                <dt>{t.coach.details.providerAttempts}</dt>
+                <dd>{report.run.providerAttempts}</dd>
+                <dt>{t.coach.details.model}</dt>
+                <dd>
+                  {report.run.provider && report.run.model
+                    ? `${t.coach.details.providers[report.run.provider]} · ${report.run.model}`
+                    : t.coach.details.none}
+                </dd>
+                <dt>{t.coach.details.elapsed}</dt>
+                <dd>
+                  {(report.run.elapsedMs / 1000).toFixed(1)} {t.coach.details.seconds}
+                </dd>
+                <dt>{t.coach.details.stopReason}</dt>
+                <dd>{t.coach.stopReasons[report.run.stopReason]}</dd>
+              </dl>
+            </details>
+          ) : null}
         </div>
       ) : null}
     </section>

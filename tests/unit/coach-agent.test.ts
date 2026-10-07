@@ -465,3 +465,41 @@ describe("C17 — the referee (verify_terms)", () => {
     expect(recordOf(log).totals.toolCalls).toBe(1);
   });
 });
+
+/* ------------------------------------------------------ O6, W5-10b: C18 */
+
+describe("C18 — run details on the report", () => {
+  it("hold exactly the counts, the last provider and model, the time and the stop reason, as in the run log", async () => {
+    const { log, run } = harness([
+      "hang",
+      STEP1,
+      check(["animal", "Ljuskavac"]),
+      final([["river", "c1"], ["animal", "c4"], ["country", ""]]),
+    ]);
+    const report = reportOf(await run());
+    const record = recordOf(log);
+    expect(Object.keys(report.run!).sort()).toEqual(
+      ["elapsedMs", "model", "modelSteps", "provider", "providerAttempts", "stopReason", "toolCalls"].sort(),
+    );
+    expect(report.run).toEqual({
+      modelSteps: record.totals.modelSteps,
+      toolCalls: record.totals.toolCalls,
+      providerAttempts: record.totals.providerAttempts,
+      provider: "gemini",
+      // Step 1 fell back to model-b; with no model-health memory in this harness,
+      // steps 2 and 3 start from the head of the chain again, so model-a answered last.
+      model: "model-a",
+      elapsedMs: record.totals.elapsedMs,
+      stopReason: "goal_completed",
+    });
+    expect(report.run).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 4, elapsedMs: 6_000 });
+    const details = JSON.stringify(report.run);
+    for (const word of ["Ljubljanica", "Lisica", "Ljuskavac", "Ljubljana", "Lav", "Za reku"]) expect(details).not.toContain(word);
+  });
+
+  it("are on every report, with no provider when no attempt succeeded", async () => {
+    const { run } = harness([{ code: "invalid_request", httpStatus: 400 }]);
+    const report = reportOf(await run());
+    expect(report.run).toMatchObject({ modelSteps: 1, toolCalls: 0, providerAttempts: 1, provider: null, model: null, stopReason: "provider_unavailable" });
+  });
+});

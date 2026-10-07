@@ -165,6 +165,7 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
 
   const finish = (stopReason: CoachStopReason | "cancelled", completed?: CoachReport): CoachRunOutcome => {
     const report = stopReason === "cancelled" ? null : (completed ?? evidenceReport(stopReason, snapshot, evidence));
+    const totals = { modelSteps: steps.length, providerAttempts: attemptsUsed, toolCalls, elapsedMs: deps.now() - startedAt };
     const record: AgentRunRecord = {
       event: "agent.run",
       runId: context.runId,
@@ -173,10 +174,23 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
       status: report ? report.status : "cancelled",
       stopReason,
       steps,
-      totals: { modelSteps: steps.length, providerAttempts: attemptsUsed, toolCalls, elapsedMs: deps.now() - startedAt },
+      totals,
     };
     deps.log(record);
-    return report ? { cancelled: false, report: coachReportSchema.parse(report) } : { cancelled: true };
+    if (!report) return { cancelled: true };
+
+    // O6: the run log's totals and the last provider that answered — no content.
+    const lastSuccess = steps
+      .flatMap((each) => [...each.attempts, ...(each.tool?.attempts ?? [])])
+      .filter((attempt) => attempt.status === "success")
+      .at(-1);
+    const run = {
+      ...totals,
+      provider: lastSuccess?.provider ?? null,
+      model: lastSuccess?.model ?? null,
+      stopReason: report.stopReason,
+    };
+    return { cancelled: false, report: coachReportSchema.parse({ ...report, run }) };
   };
 
   for (let n = 1; n <= RUN_LIMITS.maxModelSteps; n++) {

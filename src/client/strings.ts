@@ -112,6 +112,18 @@ export const UI_SR = {
       letter_rule: "provereno pravilom slova",
       letter_rule_and_referee: "provereno pravilom slova i AI sudijom",
     },
+    details: {
+      title: "Detalji",
+      modelSteps: "AI koraci",
+      toolCalls: "Provere",
+      providerAttempts: "AI pokušaji",
+      model: "Poslednji odgovor",
+      elapsed: "Trajanje",
+      seconds: "s",
+      stopReason: "Kraj",
+      none: "nijedan",
+      providers: { gemini: "Gemini", groq: "Groq" },
+    },
     stopReasons: {
       goal_completed: "Analiza je završena.",
       unknown_tool: "AI je zatražio radnju koja nije dozvoljena, pa je analiza zaustavljena.",
@@ -246,6 +258,18 @@ export const UI_EN: Strings = {
     checkedBy: {
       letter_rule: "checked against the letter rule",
       letter_rule_and_referee: "checked against the letter rule and by the AI referee",
+    },
+    details: {
+      title: "Details",
+      modelSteps: "AI steps",
+      toolCalls: "Checks",
+      providerAttempts: "AI attempts",
+      model: "Last answer from",
+      elapsed: "Time",
+      seconds: "s",
+      stopReason: "Ended",
+      none: "none",
+      providers: { gemini: "Gemini", groq: "Groq" },
     },
     stopReasons: {
       goal_completed: "The analysis finished.",

@@ -60,8 +60,8 @@ C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 
 | Eval group | Result |
 | --- | --- |
-| C1–C16, C19 (Core) | not run — not built |
-| C17 (O1), C18 (O6) | not run — not built |
+| C1–C16, C19 (Core) | pass — W5-7 (loop), W5-8 (wire) |
+| C17 (O1), C18 (O6) | pass — W5-10a, W5-10b |
 | Mutation checks | 4 of 4 caught, then restored — see below |
 | L1–L3 (live) | not run — needs W4-7 and the owner's key |
 
@@ -97,7 +97,7 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | W5-9 client | 2026-10-07 | after `2bdba5b` | `npm run verify` | red first (panel module missing); then typecheck, lint, build clean; 34 files, 607 tests passed | implementation session |
 | W5-10 docs | 2026-10-07 | after `75ccc54` | `npm run verify` | pass — 34 files, 607 tests; typecheck, lint, build clean (documentation only) | implementation session |
 | W5-10a O1 `verify_terms` | 2026-10-07 | after `8fdf755` | `npx vitest run tests/unit/coach-agent.test.ts && npm run verify` | red first (18 cases); C2 conflicted with FR-016 once O1 was built — the owner chose FR-016, noted in `AGENT_EVALS.md` under C2; then 37 loop tests and verify passed — 34 files, 625 tests | implementation session |
-| After W5-4 … W5-10b | — | — | `npm run verify` | **not run** | — |
+| W5-10b O6 run details | 2026-10-07 | after `0a2df04` | `npm run verify` | red first (4 cases); then 34 files, 629 tests passed; typecheck, lint, build clean | implementation session |
 | Live, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:coach` | **not run** | — |
 | Live, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:coach` | **not run** | — |
 

@@ -1199,3 +1199,22 @@ button.link:hover:not(:disabled) {
   font-size: 1.15rem;
   font-weight: 700;
 }
+
+.coach-details summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.coach-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.2rem 0.75rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.coach-details dd {
+  margin: 0;
+}

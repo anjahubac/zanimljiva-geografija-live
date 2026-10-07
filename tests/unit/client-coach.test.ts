@@ -204,3 +204,33 @@ describe("the coach request's ack", () => {
     expect(parseCoachAck(null, { ok: false, error: { code: "RATE_LIMITED", message: "x" } })).toMatchObject({ ok: false });
   });
 });
+
+describe("C18 — run details in the panel (O6)", () => {
+  const run = {
+    modelSteps: 3,
+    toolCalls: 2,
+    providerAttempts: 4,
+    provider: "groq" as const,
+    model: "openai/gpt-oss-120b",
+    elapsedMs: 5_400,
+    stopReason: "goal_completed" as const,
+  };
+
+  it("shows 'Details' collapsed, with the counts, provider and model, time and the stop sentence", () => {
+    const markup = render(view({ status: "report", report: { ...completed, run } }));
+    expect(markup).toMatch(/<details class="coach-details">/);
+    expect(markup).not.toMatch(/<details[^>]*open/);
+    expect(markup).toContain(`<summary>${UI_SR.coach.details.title}</summary>`);
+    for (const value of ["3", "2", "4", "Groq", "openai/gpt-oss-120b", "5.4", UI_SR.coach.stopReasons.goal_completed]) {
+      expect(markup).toContain(value);
+    }
+    expectNoCodes(markup);
+    const english = render(view({ status: "report", report: { ...completed, run } }), "en");
+    expect(english).toContain(`<summary>${UI_EN.coach.details.title}</summary>`);
+  });
+
+  it("is absent from a failed report", () => {
+    const markup = render(view({ status: "report", report: { ...failed, run: { ...run, stopReason: "unknown_tool" } } }));
+    expect(markup).not.toContain(UI_SR.coach.details.title);
+  });
+});
