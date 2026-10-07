@@ -45,6 +45,14 @@ game also picks the letters: a Serbian game uses the whole Serbian alphabet
 If the AI is unavailable, the round is scored on the starting letter only, and
 the results say so. The game never waits on the AI for more than 20 seconds.
 
+7. On the results sheet, the **round coach** (_Trener partije_) offers the
+   categories where you scored 0. Ask, and within about half a minute you get
+   one suggestion per category that passed the game's own letter rule, or an
+   honest "no suggestion", with a short summary in your language. An AI
+   proposes words, the game checks them, and the AI may revise once; it never
+   changes your points, only you see the report, and it never uses your
+   opponent's answers. One analysis per round (`Plan.md` §2C).
+
 ## Requirements
 
 Node.js 22.13 or newer, npm. For the AI features, a free Gemini and/or Groq API key.
@@ -99,4 +107,7 @@ There is no reconnect after a refresh and no replay in the same room. Once a
 round has started there is no Leave button: the round plays to its deadline. The AI
 checker can be wrong on rare or ambiguous terms, and the free quotas are
 limited per day. The server caps AI use per visitor per hour and per day
-(`Plan.md` §2B.11); players sharing one address share the per-visitor cap. See [Plan.md §2B](Plan.md) for the full design and free hosting.
+(`Plan.md` §2B.11); players sharing one address share the per-visitor cap. The
+round coach checks the letter, not the facts: a suggestion can pass the letter
+rule and still not be a real term of its category. Its report lives with the
+finished room and is gone when the room is cleared five minutes later. See [Plan.md §2B](Plan.md) for the full design and free hosting.

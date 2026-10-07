@@ -229,8 +229,8 @@ The AI usage limit (§2B.11) was accepted and built on 2026-09-30.
 
 ## Week 5 — the round coach (bounded agentic feature)
 
-**Approved 2026-10-07, specified, not built.** Do not start until the owner
-asks. Design of record: `Plan.md` §2C and its decisions in §2C.16. The task
+**Approved 2026-10-07; Core built the same day on `feature/round-coach`
+(W5-4 → W5-10), at the owner's request.** Design of record: `Plan.md` §2C and its decisions in §2C.16. The task
 list is `specs/010-round-coach-agent/tasks.md`; it follows this order and
 these exits. Before a Week 5 step:
 

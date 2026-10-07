@@ -140,10 +140,10 @@
 
 ## Phase 6: Documentation for Core (W5-10)
 
-- [ ] T049 [P] Add `round:coach` to the event map, the schema locations, and "no new error code" in `.github/instructions/12-contracts-and-errors.instructions.md`
-- [ ] T050 [P] Add a playbook "Change the coach agent (prompt, tool, limits)" to `.github/instructions/07-common-tasks.instructions.md`
-- [ ] T051 [P] Add the agent's security rules (allowlist, untrusted arguments, read-only, caller-only, no opponent data, run log without content) to `.github/instructions/05-security.instructions.md`
-- [ ] T052 [P] `COACH_RUNS_PER_VISITOR_HOUR` in `.env.example`; the coach in `README.md`; `docs/GAME_SPEC.md` Amendment 8 status to "built"; status in `specs/README.md`
+- [X] T049 [P] Add `round:coach` to the event map, the schema locations, and "no new error code" in `.github/instructions/12-contracts-and-errors.instructions.md`
+- [X] T050 [P] Add a playbook "Change the coach agent (prompt, tool, limits)" to `.github/instructions/07-common-tasks.instructions.md`
+- [X] T051 [P] Add the agent's security rules (allowlist, untrusted arguments, read-only, caller-only, no opponent data, run log without content) to `.github/instructions/05-security.instructions.md`
+- [X] T052 [P] `COACH_RUNS_PER_VISITOR_HOUR` in `.env.example`; the coach in `README.md`; `docs/GAME_SPEC.md` Amendment 8 status to "built"; status in `specs/README.md`
 
 **Exit (W5-10)**: `npm run verify`
 

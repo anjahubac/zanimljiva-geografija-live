@@ -4,8 +4,8 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
-**Amendment 8 — 2026-10-07, at the product owner's request. Approved, not
-yet built.** After a round's results, a human player may ask a **round coach**
+**Amendment 8 — 2026-10-07, at the product owner's request. Approved; Core
+built 2026-10-07 on `feature/round-coach`.** After a round's results, a human player may ask a **round coach**
 (_Trener partije_) what they could have written in the categories where they
 scored 0. Server-side, an AI proposes words, the game's own letter rule checks
 them, and the AI may revise once; the player then gets a short report, in
