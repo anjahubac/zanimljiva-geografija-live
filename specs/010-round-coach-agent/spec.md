@@ -1,6 +1,6 @@
 # Feature Specification: Round coach (_Trener partije_)
 
-**Feature Branch**: `claude/exciting-newton-sjjrhg` (no feature branch; the owner has not asked for one)
+**Feature Branch**: `feature/round-coach` (renamed from the session branch at the owner's request, 2026-10-07)
 
 **Created**: 2026-10-07
 

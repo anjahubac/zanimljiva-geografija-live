@@ -1,6 +1,6 @@
 # Implementation Plan: Round coach (_Trener partije_)
 
-**Branch**: `claude/exciting-newton-sjjrhg` (no feature branch) | **Date**: 2026-10-07 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/round-coach` | **Date**: 2026-10-07 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/010-round-coach-agent/spec.md`. Decisions of record: `Plan.md` §2C (design) and §2C.16 (owner's decisions, 2026-10-07).
 
