@@ -102,7 +102,7 @@ export async function generate<T>(
   // Every model is out of daily quota: say so without spending a request.
   if (usable.length === 0) return fail("quota_exhausted");
 
-  for (const [modelIndex, model] of usable.entries()) {
+  chain: for (const [modelIndex, model] of usable.entries()) {
     for (let onModel = 0; onModel < budget.maxAttemptsPerModel; onModel++) {
       if (callerSignal?.aborted) return fail("cancelled");
 
@@ -159,6 +159,8 @@ export async function generate<T>(
       deps.health?.report(model, code, now(), result.error.retryAfterMs);
 
       if (!canFallBack(code)) return fail(code); // 400, 401/403, refusal, truncation, cancelled
+      // The interaction's attempt cap is spent: stop before any backoff or fallback.
+      if (budget.maxAttempts !== undefined && attempts.length >= budget.maxAttempts) break chain;
       if (!canRetrySameModel(code)) break; // 404 or timeout: go to the next model at once
       if (onModel + 1 >= budget.maxAttemptsPerModel) break;
 

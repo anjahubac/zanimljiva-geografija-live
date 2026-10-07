@@ -51,12 +51,12 @@
 
 ### W5-6 — gateway, budget, prompt, service (tests first)
 
-- [ ] T012 Add failing cases to `tests/unit/gateway.test.ts`: with `budget.maxAttempts = 2` and three transient failures scripted, the adapter is called exactly twice and the last failure code is returned; with `maxAttempts = 1` a retryable failure is not retried. Every existing case must pass unchanged
-- [ ] T013 In `src/server/ai/types.ts` add `"coach-step"` to `AiOperation` and optional `maxAttempts` to `RetryBudget`; in `src/server/ai/gateway.ts` stop before an attempt when `attempts.length >= budget.maxAttempts` (absent = today's behaviour)
-- [ ] T014 [P] Add `BUDGETS["coach-step"]` to `src/server/ai/retry-policy.ts`: 6 000 ms per attempt, 10 000 ms total, 2 per model, backoff 300–1 500 ms, 2 000 ms minimum, `maxAttempts` 2
-- [ ] T015 [P] Create `src/server/prompts/coach-step.v1.ts`: `COACH_STEP_PROMPT_VERSION`, the system instruction of research R17 (letter rule text per alphabet from `src/server/prompts/category-rules.ts`), and `buildCoachStepContent()` producing the JSON of `contracts/model-step.md` with control characters stripped from answers
-- [ ] T016 In `src/server/ai/service.ts` add `coachStep(input, { interactionId, budget, signal })` returning `{ ok: true, envelope, attempts, model, provider, usage } | { ok: false, code, attempts }`; its `validate` does JSON parse and `coachStepSchema` only. Add cases to `tests/unit/ai-features.test.ts`: a valid envelope parses; non-JSON is `invalid_output:json` with one attempt (no blind retry); `action: "delete_room"` passes the envelope
-- [ ] T017 [P] Extend `tests/fakes/fake-ai.ts` with `coachCalls` and a scriptable `onCoachStep` (default: a two-step success), and a placeholder `onVerifyTerms` for Phase 7
+- [X] T012 Add failing cases to `tests/unit/gateway.test.ts`: with `budget.maxAttempts = 2` and three transient failures scripted, the adapter is called exactly twice and the last failure code is returned; with `maxAttempts = 1` a retryable failure is not retried. Every existing case must pass unchanged
+- [X] T013 In `src/server/ai/types.ts` add `"coach-step"` to `AiOperation` and optional `maxAttempts` to `RetryBudget`; in `src/server/ai/gateway.ts` stop before an attempt when `attempts.length >= budget.maxAttempts` (absent = today's behaviour)
+- [X] T014 [P] Add `BUDGETS["coach-step"]` to `src/server/ai/retry-policy.ts`: 6 000 ms per attempt, 10 000 ms total, 2 per model, backoff 300–1 500 ms, 2 000 ms minimum, `maxAttempts` 2
+- [X] T015 [P] Create `src/server/prompts/coach-step.v1.ts`: `COACH_STEP_PROMPT_VERSION`, the system instruction of research R17 (letter rule text per alphabet from `src/server/prompts/category-rules.ts`), and `buildCoachStepContent()` producing the JSON of `contracts/model-step.md` with control characters stripped from answers
+- [X] T016 In `src/server/ai/service.ts` add `coachStep(input, { interactionId, budget, signal })` returning `{ ok: true, envelope, attempts, model, provider, usage } | { ok: false, code, attempts }`; its `validate` does JSON parse and `coachStepSchema` only. Add cases to `tests/unit/ai-features.test.ts`: a valid envelope parses; non-JSON is `invalid_output:json` with one attempt (no blind retry); `action: "delete_room"` passes the envelope
+- [X] T017 [P] Extend `tests/fakes/fake-ai.ts` with `coachCalls` and a scriptable `onCoachStep` (default: a two-step success), and a placeholder `onVerifyTerms` for Phase 7
 
 **Exit (W5-6)**: `npm run typecheck && npx vitest run tests/unit/gateway.test.ts tests/unit/ai-features.test.ts`
 

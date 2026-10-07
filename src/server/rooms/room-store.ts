@@ -205,6 +205,11 @@ function countedAi(ai: AiService, limits: UsageLimits, clock: Clock): AiService 
       limits.countCall(clock.now());
       return ai.hint(letter, alphabet, category, language);
     },
+    // Each coach model step is one call, whatever its retries (§2C.8).
+    coachStep(input, options) {
+      limits.countCall(clock.now());
+      return ai.coachStep(input, options);
+    },
   };
 }
 
