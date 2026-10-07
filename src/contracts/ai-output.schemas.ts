@@ -154,7 +154,7 @@ export type CoachStep = z.infer<typeof coachStepSchema>;
 export const COACH_STEP_JSON_SCHEMA = {
   type: "object",
   properties: {
-    action: { type: "string", enum: ["check_candidates", "final"] },
+    action: { type: "string", enum: ["check_candidates", "verify_terms", "final"] },
     candidates: {
       type: "array",
       maxItems: 8,
@@ -168,7 +168,12 @@ export const COACH_STEP_JSON_SCHEMA = {
         additionalProperties: false,
       },
     },
-    evidenceIds: { type: "array", maxItems: 8, items: { type: "string" } },
+    evidenceIds: {
+      type: "array",
+      maxItems: 8,
+      items: { type: "string" },
+      description: "verify_terms only: ids of passing checked items to send to the referee.",
+    },
     summary: { type: "string", description: 'One or two sentences for the player, or "".' },
     tips: {
       type: "array",

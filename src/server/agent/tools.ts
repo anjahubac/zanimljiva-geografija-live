@@ -1,11 +1,15 @@
 import { z } from "zod";
 import type { MissReason } from "@contracts/coach.schemas";
 import {
+  CATEGORIES,
   MAX_ANSWER_LENGTH,
   categorySchema,
+  rejectReasonSchema,
   type Category,
   type Language,
   type Letter,
+  type PlayerSlot,
+  type RejectReason,
 } from "@contracts/game.schemas";
 import { compactFold } from "@domain/fold-letters";
 import { checkAnswerLocally } from "@domain/validate-answer";
@@ -40,6 +44,8 @@ export type EvidenceItem = {
   term: string;
   passes: boolean;
   failure: CandidateFailure | null;
+  /** O1: what the referee said, once `verify_terms` asked it; absent until then. */
+  referee?: "accepted" | "rejected" | "not_checked";
 };
 
 export type ToolScope = {
@@ -51,8 +57,11 @@ export type ToolScope = {
 
 export type ToolRefusal = "invalid_tool_args" | "repeated_call" | "tool_failed";
 
-/** A passing item: the letter rule accepted it and it is not the caller's own answer. */
-export const isPassing = (item: EvidenceItem): boolean => item.passes;
+/**
+ * A passing item: the letter rule accepted it, it is not the caller's own
+ * answer, and the referee (O1) did not reject it.
+ */
+export const isPassing = (item: EvidenceItem): boolean => item.passes && item.referee !== "rejected";
 
 /** The repeat guard's key: the same folding as scoring, so "Sava" and " sava" are one candidate. */
 const checkedKey = (category: Category, term: string): string => `${category}:${compactFold(term)}`;
@@ -195,11 +204,110 @@ export function checkCandidates(proposal: unknown, scope: ToolScope, deps: ToolD
   return { ok: true, result: result.data };
 }
 
+/* ------------------------------------------------------ verify_terms (O1) */
+
+/** contracts/tools.md: at most 8 items and 1 KB. */
+const MAX_VERIFY_RESULT_BYTES = 1_024;
+
+const verifyArgsSchema = z
+  .object({ evidenceIds: z.array(z.string().max(8)).min(1).max(RUN_LIMITS.maxCandidatesPerCall) })
+  .strict();
+
+const verifyResultSchema = z
+  .object({
+    callId: z.string().regex(/^t\d$/),
+    items: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(/^c\d{1,2}$/),
+            verdict: z.enum(["accepted", "rejected", "unverified"]),
+            reason: rejectReasonSchema.nullable(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(RUN_LIMITS.maxCandidatesPerCall),
+  })
+  .strict();
+export type VerifyResult = z.infer<typeof verifyResultSchema>;
+
+/** Two sheets of at most one word per category: the shape the W04 checker judges. */
+export type RefereeSheets = Record<PlayerSlot, Record<Category, string>>;
+export type RefereeVerdict = { valid: true } | { valid: false; reason: RejectReason };
+
+export type VerifyDeps = {
+  now: () => number;
+  /**
+   * The existing referee (`check-round.v3`), bound by the orchestrator to the
+   * run's budget and signal. Null when it failed: every word stays unverified.
+   */
+  referee: (sheets: RefereeSheets) => Promise<((slot: PlayerSlot, category: Category) => RefereeVerdict | undefined) | null>;
+};
+
+export type VerifyOutcome = { ok: true; result: VerifyResult } | { ok: false; reason: ToolRefusal };
+
+/**
+ * The only way `verify_terms` runs. It takes ids, never text, so nothing but
+ * words that already passed `check_candidates` can reach the referee. A
+ * referee failure is not a tool failure: the words stay "letter rule only".
+ */
+export async function verifyTerms(proposal: unknown, scope: ToolScope, deps: VerifyDeps): Promise<VerifyOutcome> {
+  const parsed = verifyArgsSchema.safeParse(proposal);
+  if (!parsed.success) return { ok: false, reason: "invalid_tool_args" };
+  const ids = parsed.data.evidenceIds;
+  if (scope.toolCallsUsed >= RUN_LIMITS.maxToolCalls || new Set(ids).size !== ids.length) {
+    return { ok: false, reason: "invalid_tool_args" };
+  }
+
+  // Passing words of this run, not yet judged; at most two per category (two sheets).
+  const cited: EvidenceItem[] = [];
+  for (const id of ids) {
+    const item = scope.evidence.find((each) => each.id === id);
+    const judged = item?.referee === "accepted" || item?.referee === "rejected";
+    if (!item || !isPassing(item) || judged) return { ok: false, reason: "invalid_tool_args" };
+    cited.push(item);
+  }
+  const sheets: RefereeSheets = {
+    1: Object.fromEntries(CATEGORIES.map((category) => [category, ""])) as Record<Category, string>,
+    2: Object.fromEntries(CATEGORIES.map((category) => [category, ""])) as Record<Category, string>,
+  };
+  const slotOf = new Map<string, PlayerSlot>();
+  for (const item of cited) {
+    const slot: PlayerSlot | null = sheets[1][item.category] === "" ? 1 : sheets[2][item.category] === "" ? 2 : null;
+    if (slot === null) return { ok: false, reason: "invalid_tool_args" };
+    sheets[slot][item.category] = item.term;
+    slotOf.set(item.id, slot);
+  }
+
+  let verdictOf: Awaited<ReturnType<VerifyDeps["referee"]>> = null;
+  try {
+    verdictOf = await deps.referee(sheets);
+  } catch {
+    verdictOf = null;
+  }
+
+  const raw: VerifyResult = {
+    callId: `t${scope.toolCallsUsed + 1}`,
+    items: cited.map((item) => {
+      const verdict = verdictOf?.(slotOf.get(item.id)!, item.category);
+      if (!verdict) return { id: item.id, verdict: "unverified" as const, reason: null };
+      return verdict.valid
+        ? { id: item.id, verdict: "accepted" as const, reason: null }
+        : { id: item.id, verdict: "rejected" as const, reason: verdict.reason };
+    }),
+  };
+  if (new TextEncoder().encode(JSON.stringify(raw)).length > MAX_VERIFY_RESULT_BYTES) return { ok: false, reason: "tool_failed" };
+  const result = verifyResultSchema.safeParse(raw);
+  return result.success ? { ok: true, result: result.data } : { ok: false, reason: "tool_failed" };
+}
+
 /* --------------------------------------------------------------- allowlist */
 
 /** The allowlist. `final` is the terminal action, not a tool. */
 export const TOOLS = Object.freeze({
   check_candidates: checkCandidates,
+  verify_terms: verifyTerms,
 });
 export type ToolName = keyof typeof TOOLS;
 

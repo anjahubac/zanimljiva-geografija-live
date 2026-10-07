@@ -1,5 +1,5 @@
 import type { CandidateFailure, FocusEntry } from "@server/agent/tools";
-import type { Category, Language, Letter } from "@contracts/game.schemas";
+import type { Category, Language, Letter, RejectReason } from "@contracts/game.schemas";
 import { CATEGORY_RULES, LETTER_RULES } from "./category-rules";
 
 /*
@@ -23,11 +23,19 @@ export type CoachStepInput = {
   toolCallsLeft: number;
   allowedActions: string[];
   focus: readonly FocusEntry[];
-  toolResults: Array<{
-    tool: "check_candidates";
-    callId: string;
-    items: Array<{ id: string; category: Category; term: string; passes: boolean; failure: CandidateFailure | null }>;
-  }>;
+  toolResults: Array<
+    | {
+        tool: "check_candidates";
+        callId: string;
+        items: Array<{ id: string; category: Category; term: string; passes: boolean; failure: CandidateFailure | null }>;
+      }
+    | {
+        /** O1: the referee's verdict on passing items, by id. */
+        tool: "verify_terms";
+        callId: string;
+        items: Array<{ id: string; verdict: "accepted" | "rejected" | "unverified"; reason: RejectReason | null }>;
+      }
+  >;
 };
 
 const systemInstruction = (alphabet: Language): string => `You coach a player of the Serbian word game "Zanimljiva geografija" after a round.
@@ -45,6 +53,10 @@ Each step you reply with exactly one action, and only one listed in "allowedActi
   "confidence" "". The game checks each term with its letter rule and returns, in "toolResults",
   an id per term, whether it passes, and if not why: "too_short", "wrong_letter", or
   "same_as_yours" (the player's own answer).
+- "verify_terms" (only when listed): fill "evidenceIds" with ids of passing items that the
+  referee has not judged yet. The game's answer referee says whether each is a real term of its
+  category: "accepted", "rejected" or "unverified". Never cite a rejected item. Leave every other
+  field empty.
 - "final": fill "tips" with every focus category exactly once. Its "evidenceId" is the id of a
   passing item of that same category from "toolResults", or "" when you have no passing term.
   Never cite an item that failed. Write "summary": one or two sentences, at most 280 characters,
@@ -82,16 +94,24 @@ export function buildCoachStepContent(input: CoachStepInput): string {
       yourAnswer: stripControl(entry.yourAnswer),
       whyMissed: entry.whyMissed,
     })),
-    toolResults: input.toolResults.map((result) => ({
-      tool: result.tool,
-      callId: result.callId,
-      items: result.items.map((item) => ({
-        id: item.id,
-        category: item.category,
-        term: item.term,
-        passes: item.passes,
-        failure: item.failure,
-      })),
-    })),
+    toolResults: input.toolResults.map((result) =>
+      result.tool === "check_candidates"
+        ? {
+            tool: result.tool,
+            callId: result.callId,
+            items: result.items.map((item) => ({
+              id: item.id,
+              category: item.category,
+              term: item.term,
+              passes: item.passes,
+              failure: item.failure,
+            })),
+          }
+        : {
+            tool: result.tool,
+            callId: result.callId,
+            items: result.items.map((item) => ({ id: item.id, verdict: item.verdict, reason: item.reason })),
+          },
+    ),
   });
 }

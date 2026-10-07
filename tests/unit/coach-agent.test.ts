@@ -134,7 +134,8 @@ describe("C1 — a normal run: propose, revise, final", () => {
     expect(report.tips.find((tip) => tip.category === "country")?.checkedBy).toBeNull();
     expect(recordOf(log).totals).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 3 });
     expect(allowedAt(adapter, 0)).toEqual(["check_candidates"]);
-    expect(allowedAt(adapter, 1)).toEqual(["check_candidates", "final"]);
+    // With O1 built, passing words not yet judged also allow verify_terms (FR-016).
+    expect(allowedAt(adapter, 1)).toEqual(["check_candidates", "verify_terms", "final"]);
     expect(allowedAt(adapter, 2)).toEqual(["final"]);
   });
 
@@ -148,11 +149,13 @@ describe("C1 — a normal run: propose, revise, final", () => {
 });
 
 describe("C2 — every step-1 candidate passes", () => {
-  it("offers only final at step 2 and completes with 2 steps and 1 tool call", async () => {
+  it("no longer offers check_candidates at step 2, and completes with 2 steps and 1 tool call", async () => {
     const { adapter, log, run } = harness([STEP1_ALL_PASS, final([["river", "c1"], ["animal", "c2"], ["country", "c3"]])]);
     const report = reportOf(await run());
     expect(report.status).toBe("completed");
-    expect(allowedAt(adapter, 1)).toEqual(["final"]);
+    // Core: ["final"]. With O1 built, the owner chose FR-016 over C2's Core wording
+    // (2026-10-07): step 2 also offers verify_terms for the unjudged passing words.
+    expect(allowedAt(adapter, 1)).toEqual(["verify_terms", "final"]);
     expect(recordOf(log).totals).toMatchObject({ modelSteps: 2, toolCalls: 1 });
   });
 });
@@ -394,5 +397,71 @@ describe("the run log (T032)", () => {
     for (const word of ["Ljubljanica", "Lisica", "Lihtenštajn", "Ljuskavac", "Ljubljana", "Lav", "Za reku"]) {
       expect(line).not.toContain(word);
     }
+  });
+});
+
+/* ------------------------------------------------------ O1, W5-10a: C17 */
+
+describe("C17 — the referee (verify_terms)", () => {
+  /** Step 1: river and animal pass the letter rule, country fails. */
+  const CHECK = check(["river", "Ljubljanica"], ["animal", "Ljuskavac"], ["country", "Lihtenštajn"]);
+  const verify = (...ids: string[]) => reply({ action: "verify_terms", evidenceIds: ids });
+  /** The referee's reply (check-round.v3): river is a0, animal a1, in category order. */
+  const referee = (animal: "accepted" | "rejected") => ({
+    text: JSON.stringify({
+      items: [
+        { id: "a0", verdict: "accepted", recognizedSr: "Ljubljanica", recognizedEn: "Ljubljanica", reason: "" },
+        { id: "a1", verdict: animal, recognizedSr: animal === "accepted" ? "Ljuskavac" : "", recognizedEn: "", reason: animal === "accepted" ? "" : "not_real" },
+      ],
+    }),
+  });
+
+  it("offers verify_terms next to check and final after a check with passing words", async () => {
+    const { adapter, run } = harness([CHECK, verify("c1", "c2"), referee("accepted"), final([["river", "c1"], ["animal", "c2"], ["country", ""]])]);
+    await run();
+    expect(allowedAt(adapter, 1)).toEqual(["check_candidates", "verify_terms", "final"]);
+    // Check + verify used both tool calls: step 3 offers only final.
+    expect(allowedAt(adapter, 3)).toEqual(["final"]);
+  });
+
+  it("marks an accepted suggestion as checked by the letter rule and the referee", async () => {
+    const { log, run } = harness([CHECK, verify("c1", "c2"), referee("rejected"), final([["river", "c1"], ["animal", ""], ["country", ""]])]);
+    const report = reportOf(await run());
+    expect(report.status).toBe("completed");
+    expect(report.tips.find((tip) => tip.category === "river")).toMatchObject({
+      suggestion: "Ljubljanica",
+      checkedBy: "letter_rule_and_referee",
+    });
+    const record = recordOf(log);
+    expect(record.totals).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 4 });
+    expect(record.steps[1]!.tool).toMatchObject({ name: "verify_terms", items: 2, passed: 1 });
+  });
+
+  it("rejects a final that cites a suggestion the referee rejected", async () => {
+    const { run } = harness([CHECK, verify("c1", "c2"), referee("rejected"), final([["river", "c1"], ["animal", "c2"], ["country", ""]])]);
+    const report = reportOf(await run());
+    expect(report.stopReason).toBe("final_invalid");
+    // The rejected word is not passing any more, so it is not shown.
+    expect(suggestions(report)).toEqual({ country: null, river: "Ljubljanica", animal: null });
+  });
+
+  it("keeps going when the referee fails: the suggestions stay 'letter rule only'", async () => {
+    const { run } = harness([CHECK, verify("c1", "c2"), { code: "invalid_request", httpStatus: 400 }, final([["river", "c1"], ["animal", "c2"], ["country", ""]])]);
+    const report = reportOf(await run());
+    expect(report.status).toBe("completed");
+    expect(report.tips.filter((tip) => tip.suggestion !== null).map((tip) => tip.checkedBy)).toEqual(["letter_rule", "letter_rule"]);
+  });
+
+  it.each([
+    ["a failing id", ["c3"]],
+    ["an unknown id", ["c9"]],
+    ["the same id twice", ["c1", "c1"]],
+    ["no id", []],
+  ])("refuses %s: invalid_tool_args, nothing sent to the referee", async (_name, ids) => {
+    const { adapter, log, run } = harness([CHECK, verify(...ids)]);
+    const report = reportOf(await run());
+    expect(report.stopReason).toBe("invalid_tool_args");
+    expect(adapter.calls).toHaveLength(2);
+    expect(recordOf(log).totals.toolCalls).toBe(1);
   });
 });

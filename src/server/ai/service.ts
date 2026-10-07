@@ -34,6 +34,11 @@ export type CoachStepResult =
   | { ok: true; envelope: CoachStep; attempts: ProviderAttempt[]; model: string; provider: AiProvider; usage?: TokenUsage }
   | { ok: false; code: AiFailureCode; attempts: ProviderAttempt[] };
 
+/** O1: the referee on the coach's passing words; failures are values, as everywhere. */
+export type VerifyTermsResult =
+  | { ok: true; verdicts: CheckVerdicts; attempts: ProviderAttempt[] }
+  | { ok: false; code: AiFailureCode; attempts: ProviderAttempt[] };
+
 /** JSON parse and the envelope schema only (contracts/model-step.md). Exported for tests. */
 export function validateCoachStep(text: string): Validation<CoachStep> {
   let json: unknown;
@@ -55,6 +60,8 @@ export type AiService = {
   hint(letter: Letter, alphabet: Language, category: Category, language: Language): Promise<HintResult>;
   /** Week 5 (§2C): one model step of the round coach, with the run's budget and signal. */
   coachStep(input: CoachStepInput, options: CoachStepOptions): Promise<CoachStepResult>;
+  /** O1 (§2C.16): the W04 checker (`check-round.v3`, unchanged) on the coach's cited words only. */
+  verifyTerms(letter: Letter, alphabet: Language, sheets: Sheets, options: CoachStepOptions): Promise<VerifyTermsResult>;
 };
 
 export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<Pick<GatewayDeps, "telemetry">>): AiService {
@@ -107,6 +114,17 @@ export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<P
         provider: last?.provider ?? deps.adapter.provider,
         ...(result.usage ? { usage: result.usage } : {}),
       };
+    },
+    async verifyTerms(letter, alphabet, sheets, options) {
+      const deps = { ...gateway(), interactionId: options.interactionId };
+      const result = await runCheck(letter, alphabet, sheets, deps, {
+        budget: options.budget,
+        ...(options.signal ? { signal: options.signal } : {}),
+      }).catch(() => null);
+      if (!result) return { ok: false, code: "transport", attempts: [] };
+      return result.ok
+        ? { ok: true, verdicts: result.value, attempts: result.attempts }
+        : { ok: false, code: result.code, attempts: result.attempts };
     },
   };
 }

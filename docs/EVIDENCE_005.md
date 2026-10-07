@@ -96,6 +96,7 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | W5-8 store, limits, socket | 2026-10-07 | after `22607b5` | `npm test` | red first (8 cases: no handler, acks timed out); then 33 files, 594 tests passed, A1–A6 included | implementation session |
 | W5-9 client | 2026-10-07 | after `2bdba5b` | `npm run verify` | red first (panel module missing); then typecheck, lint, build clean; 34 files, 607 tests passed | implementation session |
 | W5-10 docs | 2026-10-07 | after `75ccc54` | `npm run verify` | pass — 34 files, 607 tests; typecheck, lint, build clean (documentation only) | implementation session |
+| W5-10a O1 `verify_terms` | 2026-10-07 | after `8fdf755` | `npx vitest run tests/unit/coach-agent.test.ts && npm run verify` | red first (18 cases); C2 conflicted with FR-016 once O1 was built — the owner chose FR-016, noted in `AGENT_EVALS.md` under C2; then 37 loop tests and verify passed — 34 files, 625 tests | implementation session |
 | After W5-4 … W5-10b | — | — | `npm run verify` | **not run** | — |
 | Live, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:coach` | **not run** | — |
 | Live, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:coach` | **not run** | — |

@@ -7,13 +7,22 @@ import {
   type CoachTip,
 } from "@contracts/coach.schemas";
 import type { Language } from "@contracts/game.schemas";
+import { answerKey } from "@server/features/check-round";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiService, CoachStepResult } from "@server/ai/service";
 import type { AiFailureCode } from "@server/ai/types";
 import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v1";
 import { RUN_LIMITS } from "./limits";
 import type { AgentRunRecord, RunLogSink, StepRecord } from "./run-log";
-import { TOOLS, isPassing, isToolName, type EvidenceItem, type RoundSnapshot, type ToolDeps } from "./tools";
+import {
+  TOOLS,
+  isPassing,
+  isToolName,
+  type EvidenceItem,
+  type RefereeVerdict,
+  type RoundSnapshot,
+  type ToolDeps,
+} from "./tools";
 
 /*
  * The round coach's bounded loop (`Plan.md` §2C.4, contracts/model-step.md).
@@ -39,7 +48,7 @@ export type CoachRunContext = {
 };
 
 export type CoachRunDeps = {
-  ai: Pick<AiService, "coachStep">;
+  ai: Pick<AiService, "coachStep" | "verifyTerms">;
   now: () => number;
   /** Aborted when the player leaves or the room is reaped. */
   signal: AbortSignal;
@@ -51,7 +60,7 @@ export type CoachRunDeps = {
 /** A cancelled run sends nothing (§2C.9). */
 export type CoachRunOutcome = { cancelled: true } | { cancelled: false; report: CoachReport };
 
-type Action = "check_candidates" | "final";
+type Action = "check_candidates" | "verify_terms" | "final";
 
 const CONFIDENCE = ["low", "medium", "high"] as const;
 
@@ -66,14 +75,22 @@ function stopReasonFor(code: AiFailureCode): CoachStopReason | "cancelled" {
   return "provider_unavailable";
 }
 
-/** Research R7: what a step may do, from the run's state alone. */
+/** Research R7 (with O1): what a step may do, from the run's state alone. */
 function allowedActions(step: number, toolCalls: number, snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): Action[] {
   if (step === 1) return ["check_candidates"];
+  const toolLeft = step < RUN_LIMITS.maxModelSteps && toolCalls < RUN_LIMITS.maxToolCalls;
   const solved = new Set(evidence.filter(isPassing).map((item) => item.category));
   const unsolved = snapshot.focus.some((entry) => !solved.has(entry.category));
-  const canCheck = step < RUN_LIMITS.maxModelSteps && toolCalls < RUN_LIMITS.maxToolCalls && unsolved;
-  return canCheck ? ["check_candidates", "final"] : ["final"];
+  const unverified = evidence.some((item) => isPassing(item) && item.referee !== "accepted" && item.referee !== "rejected");
+  const actions: Action[] = [];
+  if (toolLeft && unsolved) actions.push("check_candidates");
+  if (toolLeft && unverified) actions.push("verify_terms");
+  actions.push("final");
+  return actions;
 }
+
+const checkedByOf = (item: EvidenceItem): "letter_rule" | "letter_rule_and_referee" =>
+  item.referee === "accepted" ? "letter_rule_and_referee" : "letter_rule";
 
 /** The final's tips, if the final is valid (contracts/model-step.md "Final validation"). */
 function validateFinal(envelope: CoachStep, snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): CoachReport | null {
@@ -103,12 +120,13 @@ function validateFinal(envelope: CoachStep, snapshot: RoundSnapshot, evidence: r
       if (!item || !isPassing(item) || item.category !== entry.category) return null;
       suggestion = item.term;
     }
+    const item = evidenceId === "" ? undefined : evidence.find((each) => each.id === evidenceId);
     tips.push({
       category: entry.category,
       yourAnswer: entry.yourAnswer,
       whyMissed: entry.whyMissed,
       suggestion,
-      checkedBy: suggestion === null ? null : "letter_rule",
+      checkedBy: suggestion === null || !item ? null : checkedByOf(item),
     });
   }
 
@@ -124,7 +142,7 @@ function evidenceReport(stopReason: CoachStopReason, snapshot: RoundSnapshot, ev
       yourAnswer: entry.yourAnswer,
       whyMissed: entry.whyMissed,
       suggestion: item ? item.term : null,
-      checkedBy: item ? "letter_rule" : null,
+      checkedBy: item ? checkedByOf(item) : null,
     };
   });
   const anyPassed = tips.some((tip) => tip.suggestion !== null);
@@ -235,6 +253,78 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
       if (!report) return reject("final_invalid");
       step.decision = "allowed";
       return finish("goal_completed", report);
+    }
+
+    if (envelope.action === "verify_terms") {
+      // 2. The shape of a verify call: ids only.
+      const verifyShaped =
+        envelope.candidates.length === 0 &&
+        envelope.summary === "" &&
+        envelope.tips.length === 0 &&
+        envelope.confidence === "";
+      if (!verifyShaped) return reject("invalid_tool_args");
+
+      // 3. Ids checked inside the tool; the referee shares the run's time, attempts and signal.
+      const toolStarted = deps.now();
+      const refereeAttempts: StepRecord["attempts"] = [];
+      const outcome = await TOOLS.verify_terms(
+        { evidenceIds: envelope.evidenceIds },
+        { snapshot, evidence, toolCallsUsed: toolCalls },
+        {
+          now: deps.now,
+          referee: async (sheets) => {
+            const timeLeft = deadlineAt - deps.now();
+            const attemptsNow = RUN_LIMITS.maxAttemptsPerRun - attemptsUsed;
+            if (timeLeft < RUN_LIMITS.minStepMs || attemptsNow <= 0) return null;
+            const verified = await deps.ai
+              .verifyTerms(snapshot.letter, snapshot.alphabet, sheets, {
+                interactionId: `${context.runId}:s${n}:verify`,
+                budget: {
+                  ...BUDGETS["check-round"],
+                  totalMs: Math.min(RUN_LIMITS.perStepMs, timeLeft),
+                  maxAttempts: Math.min(RUN_LIMITS.maxAttemptsPerStep, attemptsNow),
+                },
+                signal: deps.signal,
+              })
+              .catch(() => null);
+            if (!verified) return null;
+            refereeAttempts.push(...verified.attempts);
+            attemptsUsed += verified.attempts.length;
+            if (!verified.ok) return null;
+            return (slot, category): RefereeVerdict | undefined => {
+              const verdict = verified.verdicts.get(answerKey(slot, category));
+              if (!verdict) return undefined;
+              return verdict.valid ? { valid: true } : { valid: false, reason: verdict.reason };
+            };
+          },
+        },
+      );
+      if (deps.signal.aborted) return finish("cancelled");
+      if (!outcome.ok) {
+        if (outcome.reason === "tool_failed") {
+          toolCalls += 1;
+          step.decision = "allowed";
+          step.tool = { name: "verify_terms", items: 0, passed: 0, latencyMs: deps.now() - toolStarted, attempts: refereeAttempts };
+          return finish("tool_failed");
+        }
+        return reject(outcome.reason);
+      }
+
+      toolCalls += 1;
+      step.decision = "allowed";
+      for (const verdict of outcome.result.items) {
+        const item = evidence.find((each) => each.id === verdict.id)!;
+        item.referee = verdict.verdict === "unverified" ? "not_checked" : verdict.verdict;
+      }
+      toolResults.push({ tool: "verify_terms", callId: outcome.result.callId, items: outcome.result.items });
+      step.tool = {
+        name: "verify_terms",
+        items: outcome.result.items.length,
+        passed: outcome.result.items.filter((item) => item.verdict === "accepted").length,
+        latencyMs: deps.now() - toolStarted,
+        attempts: refereeAttempts,
+      };
+      continue;
     }
 
     // 2. The shape of a tool call: candidates only.

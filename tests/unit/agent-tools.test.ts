@@ -4,6 +4,7 @@ import {
   TOOLS,
   checkCandidates,
   isToolName,
+  verifyTerms,
   type CandidateResult,
   type EvidenceItem,
   type RoundSnapshot,
@@ -56,7 +57,7 @@ function passed(result: ReturnType<typeof checkCandidates>): CandidateResult {
 
 describe("the allowlist", () => {
   it("holds check_candidates and nothing that writes", () => {
-    expect(Object.keys(TOOLS)).toEqual(["check_candidates"]);
+    expect(Object.keys(TOOLS)).toEqual(["check_candidates", "verify_terms"]);
     expect(isToolName("check_candidates")).toBe(true);
     for (const name of ["delete_room", "final", "set_score", "toString", "__proto__", "constructor"]) {
       expect(isToolName(name)).toBe(false);
@@ -274,5 +275,68 @@ describe("check_candidates — results (C6): a bad tool result stops the run", (
       },
     });
     expect(result).toEqual({ ok: false, reason: "tool_failed" });
+  });
+});
+
+describe("verify_terms (O1) — arguments, before the referee is asked", () => {
+  const evidence: EvidenceItem[] = [
+    { id: "c1", callId: "t1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+    { id: "c2", callId: "t1", category: "animal", term: "Lisica", passes: false, failure: "wrong_letter" },
+    { id: "c3", callId: "t1", category: "animal", term: "Ljuskavac", passes: true, failure: null, referee: "accepted" },
+  ];
+
+  it("is on the allowlist", () => {
+    expect(isToolName("verify_terms")).toBe(true);
+  });
+
+  it.each([
+    ["an already-verified id", ["c3"]],
+    ["a failing id", ["c2"]],
+    ["an unknown id", ["c7"]],
+    ["a repeated id", ["c1", "c1"]],
+    ["nine ids", Array.from({ length: 9 }, () => "c1")],
+    ["no id", []],
+  ])("refuses %s as invalid_tool_args without asking the referee", async (_name, ids) => {
+    let asked = 0;
+    const referee = async () => {
+      asked += 1;
+      return null;
+    };
+    const result = await verifyTerms({ evidenceIds: ids }, scope(evidence, 1), { now: () => 0, referee });
+    expect(result).toEqual({ ok: false, reason: "invalid_tool_args" });
+    expect(asked).toBe(0);
+  });
+
+  it("sends only the cited words, at most one per category per sheet", async () => {
+    const two: EvidenceItem[] = [
+      { id: "c1", callId: "t1", category: "river", term: "Ljubljanica", passes: true, failure: null },
+      { id: "c2", callId: "t1", category: "river", term: "Ljuta", passes: true, failure: null },
+    ];
+    let sent: unknown;
+    const result = await verifyTerms({ evidenceIds: ["c1", "c2"] }, scope(two, 1), {
+      now: () => 0,
+      referee: async (sheets) => {
+        sent = sheets;
+        return (slot) => (slot === 1 ? { valid: true } : { valid: false, reason: "not_real" });
+      },
+    });
+    expect((sent as Record<number, Record<string, string>>)[1]!.river).toBe("Ljubljanica");
+    expect((sent as Record<number, Record<string, string>>)[2]!.river).toBe("Ljuta");
+    expect(JSON.stringify(sent)).not.toContain("Ljubljana"); // the player's own answers are never sent
+    expect(result).toEqual({
+      ok: true,
+      result: {
+        callId: "t2",
+        items: [
+          { id: "c1", verdict: "accepted", reason: null },
+          { id: "c2", verdict: "rejected", reason: "not_real" },
+        ],
+      },
+    });
+  });
+
+  it("marks every word unverified when the referee fails", async () => {
+    const result = await verifyTerms({ evidenceIds: ["c1"] }, scope(evidence.slice(0, 1), 1), { now: () => 0, referee: async () => null });
+    expect(result).toEqual({ ok: true, result: { callId: "t2", items: [{ id: "c1", verdict: "unverified", reason: null }] } });
   });
 });

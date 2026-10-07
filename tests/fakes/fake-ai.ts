@@ -1,7 +1,7 @@
 import type { Category, Language, Letter } from "@contracts/game.schemas";
 import type { CoachStep } from "@contracts/ai-output.schemas";
-import type { AiService, CoachStepOptions, CoachStepResult, HintResult } from "@server/ai/service";
-import type { CheckVerdicts, Sheets } from "@server/features/check-round";
+import type { AiService, CoachStepOptions, CoachStepResult, HintResult, VerifyTermsResult } from "@server/ai/service";
+import { answerKey, type CheckVerdicts, type Sheets } from "@server/features/check-round";
 import type { CoachStepInput } from "@server/prompts/coach-step.v1";
 
 /**
@@ -16,10 +16,12 @@ export type FakeAi = AiService & {
   hintCalls: { letter: Letter; alphabet: Language; category: Category; language: Language }[];
   /** Every coach step input exactly as the model would receive it, with its options. */
   coachCalls: { input: CoachStepInput; options: CoachStepOptions }[];
+  verifyCalls: { letter: Letter; alphabet: Language; sheets: Sheets }[];
   onCheck: (letter: Letter, alphabet: Language, sheets: Sheets) => Promise<CheckVerdicts | null>;
   onBot: (letter: Letter, alphabet: Language) => Promise<Record<Category, string> | null>;
   onHint: (letter: Letter, alphabet: Language, category: Category, language: Language) => Promise<HintResult>;
   onCoachStep: (input: CoachStepInput, options: CoachStepOptions) => Promise<CoachStepResult>;
+  onVerifyTerms: (letter: Letter, alphabet: Language, sheets: Sheets) => Promise<VerifyTermsResult>;
 };
 
 export const DEFAULT_CLUE = "A clue that describes the term without naming it.";
@@ -60,7 +62,7 @@ async function defaultCoachStep(input: CoachStepInput): Promise<CoachStepResult>
       candidates: input.focus.map((entry) => ({ category: entry.category, term: `${input.letter}ava` })),
     });
   }
-  const items = input.toolResults.flatMap((result) => result.items);
+  const items = input.toolResults.flatMap((result) => (result.tool === "check_candidates" ? result.items : []));
   return coachReply({
     action: "final",
     summary: DEFAULT_COACH_SUMMARY,
@@ -78,6 +80,7 @@ export function fakeAi(botSheet?: Partial<Record<Category, string>>): FakeAi {
     botCalls: [],
     hintCalls: [],
     coachCalls: [],
+    verifyCalls: [],
     onCheck: async () => new Map(),
     onBot: async () =>
       ({
@@ -93,6 +96,18 @@ export function fakeAi(botSheet?: Partial<Record<Category, string>>): FakeAi {
       }) as Record<Category, string>,
     onHint: async () => ({ ok: true, outcome: { kind: "clue", clue: DEFAULT_CLUE } }),
     onCoachStep: defaultCoachStep,
+    // The referee accepts every word it is sent.
+    onVerifyTerms: async (_letter, _alphabet, sheets) => ({
+      ok: true,
+      verdicts: new Map(
+        ([1, 2] as const).flatMap((slot) =>
+          Object.entries(sheets[slot])
+            .filter(([, word]) => word !== "")
+            .map(([category, word]) => [answerKey(slot, category as Category), { valid: true as const, canonical: word.toLowerCase() }]),
+        ),
+      ),
+      attempts: [{ ...FAKE_ATTEMPT }],
+    }),
     checkRound(letter, alphabet, sheets) {
       fake.checkCalls.push({ letter, alphabet, sheets });
       return fake.onCheck(letter, alphabet, sheets);
@@ -108,6 +123,10 @@ export function fakeAi(botSheet?: Partial<Record<Category, string>>): FakeAi {
     coachStep(input, options) {
       fake.coachCalls.push({ input, options });
       return fake.onCoachStep(input, options);
+    },
+    verifyTerms(letter, alphabet, sheets) {
+      fake.verifyCalls.push({ letter, alphabet, sheets });
+      return fake.onVerifyTerms(letter, alphabet, sheets);
     },
   };
   return fake;

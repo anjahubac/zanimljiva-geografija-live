@@ -57,7 +57,11 @@ again for country is `same_as_yours`, not a pass.
 
 ---
 
-## `verify_terms` — O1 (built at W5-10a, after Core is green)
+## `verify_terms` — O1 (built at W5-10a on 2026-10-07, after Core was green)
+
+_Built as written below. Its model-facing result is `{ tool: "verify_terms",
+callId, items: [{ id, verdict, reason }] }` in the next step's `toolResults`;
+the referee's provider attempts are logged under that step's `tool.attempts`._
 
 | Field | Contract |
 | --- | --- |

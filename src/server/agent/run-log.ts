@@ -21,7 +21,8 @@ export type StepRecord = {
   decision: StepDecision | null;
   rejectReason?: StepRejectReason;
   attempts: ProviderAttempt[];
-  tool?: { name: string; items: number; passed: number; latencyMs: number };
+  /** `passed`: passing words for check_candidates, accepted words for verify_terms (O1). */
+  tool?: { name: string; items: number; passed: number; latencyMs: number; attempts?: ProviderAttempt[] };
   usage?: TokenUsage;
 };
 

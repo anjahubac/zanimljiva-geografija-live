@@ -8,7 +8,7 @@ import { answerKey } from "@server/features/check-round";
 import type { CoachStepResult } from "@server/ai/service";
 import { connectClient, emitAck, settle, waitFor } from "../helpers/socket-client";
 import { startTestServer, type TestContext } from "../helpers/test-server";
-import { deferred, fakeAi, type FakeAi } from "../fakes/fake-ai";
+import { coachReply, deferred, fakeAi, type FakeAi } from "../fakes/fake-ai";
 
 /*
  * The round coach over real sockets (W5-8): evals C3, C14, C15, single-flight
@@ -300,5 +300,33 @@ describe("cancellation — the caller leaves or the room is reaped", () => {
     run.held.resolve({ ok: false, code: "cancelled", attempts: [] });
     await settle(10);
     expect(run.acked()).toBe(false);
+  });
+});
+
+describe("C17 over the wire — the referee's call counts toward the daily budget (FR-028)", () => {
+  it("one coaching run with check, verify and final spends 3 coach calls and 1 referee call", async () => {
+    const ai = fakeAi();
+    // 1 (the round's referee) + 3 coach steps + 1 verify_terms = 5: the budget is then spent.
+    await startServer(ai, { aiDailyCallBudget: 5 });
+    const { p1, p2, roundId, reveal } = await playRound(ai);
+    const original = ai.onCoachStep;
+    ai.onCoachStep = async (input, options) => {
+      if (input.step === 2) {
+        const passing = input.toolResults.flatMap((result) =>
+          result.tool === "check_candidates" ? result.items.filter((item) => item.passes).map((item) => item.id) : [],
+        );
+        return coachReply({ action: "verify_terms", evidenceIds: passing });
+      }
+      return original(input, options);
+    };
+
+    const answered = await coach(p1, request(roundId));
+    expect(answered).toMatchObject({ ok: true, data: { status: "completed" } });
+    expect(ai.coachCalls).toHaveLength(3);
+    expect(ai.verifyCalls).toHaveLength(1);
+    expect(ai.checkCalls).toHaveLength(1);
+
+    const zero = reveal!.player2.filter((answer) => !answer.valid).map((answer) => answer.category);
+    expect(await coach(p2, request(roundId, zero))).toMatchObject({ ok: false, error: { code: "AI_LIMIT" } });
   });
 });

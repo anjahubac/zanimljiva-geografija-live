@@ -67,7 +67,10 @@ events. Adding one is a scope change (`Plan.md` §11) and starts in
 | S→C | `round:results` | `roundResultsSchema` (with `verified`, `botFailed`) | — |
 | S→C | `game:error` | `gameErrorSchema` | — |
 
-The round coach added **no error code**: its refusals reuse `INVALID_PAYLOAD`,
+The coach's tools are `check_candidates` and, since O1 (W5-10a),
+`verify_terms` (`src/server/agent/tools.ts`; contracts in
+`specs/010-round-coach-agent/contracts/tools.md`). Neither is an event: only
+the orchestrator calls them. The round coach added **no error code**: its refusals reuse `INVALID_PAYLOAD`,
 `NOT_IN_ROOM`, `ROUND_STALE`, `WRONG_PHASE`, `AI_UNAVAILABLE`, `AI_LIMIT`,
 `RATE_LIMITED` and `INTERNAL`, in the order of
 `specs/010-round-coach-agent/contracts/coach-socket.md`. Why a run stopped is a

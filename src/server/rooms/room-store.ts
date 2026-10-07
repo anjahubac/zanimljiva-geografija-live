@@ -230,6 +230,11 @@ function countedAi(ai: AiService, limits: UsageLimits, clock: Clock): AiService 
       limits.countCall(clock.now());
       return ai.coachStep(input, options);
     },
+    // O1: the referee's one call per verify_terms (FR-028).
+    verifyTerms(letter, alphabet, sheets, options) {
+      limits.countCall(clock.now());
+      return ai.verifyTerms(letter, alphabet, sheets, options);
+    },
   };
 }
 

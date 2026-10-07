@@ -12,7 +12,7 @@ import { editDistance, resembles } from "@domain/resemblance";
 import { checkAnswerLocally, startsWithLetter } from "@domain/validate-answer";
 import { generate, type GatewayDeps } from "@server/ai/gateway";
 import { BUDGETS } from "@server/ai/retry-policy";
-import type { AiResult, Validation, ValidationNotes } from "@server/ai/types";
+import type { AiResult, RetryBudget, Validation, ValidationNotes } from "@server/ai/types";
 import {
   buildCheckRoundContent,
   CHECK_ROUND_PROMPT_VERSION,
@@ -146,11 +146,16 @@ export function validateCheck(
   return { ok: true, value: verdicts, notes };
 }
 
+/**
+ * `options` is for the round coach's referee (O1, `Plan.md` §2C.16): its
+ * run's time, attempts and cancellation. Absent, the checker runs as always.
+ */
 export async function runCheck(
   letter: Letter,
   alphabet: Language,
   sheets: Sheets,
   deps: GatewayDeps & { interactionId: string },
+  options: { budget?: RetryBudget; signal?: AbortSignal } = {},
 ): Promise<AiResult<CheckVerdicts>> {
   const plan = planCheck(letter, alphabet, sheets);
   const toAnswers = (byItem: Map<string, AiVerdict>): CheckVerdicts =>
@@ -171,10 +176,11 @@ export async function runCheck(
       responseJsonSchema: CHECK_JSON_SCHEMA,
       temperature: 0,
       maxOutputTokens: 2_000,
-      budget: BUDGETS["check-round"],
+      budget: options.budget ?? BUDGETS["check-round"],
       validate: (text) => validateCheck(text, letter, alphabet, plan),
     },
     deps,
+    options.signal,
   );
   return result.ok ? { ...result, value: toAnswers(result.value) } : result;
 }
