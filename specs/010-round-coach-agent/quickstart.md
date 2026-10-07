@@ -27,7 +27,7 @@ or weakened.
 npx vitest run tests/unit/agent-tools.test.ts tests/unit/coach-agent.test.ts
 ```
 
-Expected: C1, C2, C4–C13, C16 pass (and C17 after W5-10a). The tests drive the
+Expected: C1, C2, C4–C13, C16 and C19 pass (and C17 after W5-10a). The tests drive the
 **real gateway** with `tests/fakes/fake-adapter.ts` and `fakeTime`, so a
 timeout, a retry and a fallback are the production code paths. Each test
 asserts the counts the run log records: model steps, tool calls, provider

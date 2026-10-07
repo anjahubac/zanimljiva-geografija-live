@@ -55,12 +55,12 @@ duplicating Spec Kit's documents:
 
 ## 3. Evals written before the code
 
-C1–C18 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
+C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 2026-10-07, before any code. Mutation checks pre-registered there too.
 
 | Eval group | Result |
 | --- | --- |
-| C1–C16 (Core) | not run — not built |
+| C1–C16, C19 (Core) | not run — not built |
 | C17 (O1), C18 (O6) | not run — not built |
 | Mutation checks | not run |
 | L1–L3 (live) | not run — needs W4-7 and the owner's key |
@@ -118,9 +118,9 @@ a run shows it.
 | Max steps | `RUN_LIMITS.maxModelSteps` = 3 | C10 | planned |
 | Deadline | 25 s, checked before every step, plus the run signal | C11 | planned |
 | Bounded retries | ≤ 2 attempts per step, ≤ 5 per run (gateway `maxAttempts`) | C7, C12 | planned |
-| Logs hold no keys | run log of typed fields only | T031 | planned |
-| Final output is validated | final validation of `contracts/model-step.md` | C13 | planned |
-| User-facing errors hide internals | stable codes → sentences in the client | T044 | planned |
+| Logs hold no keys | run log of typed fields only | T032 | planned |
+| Final output is validated | final validation of `contracts/model-step.md` | C13, C19 | planned |
+| User-facing errors hide internals | stable codes → sentences in the client | T045 | planned |
 
 ---
 

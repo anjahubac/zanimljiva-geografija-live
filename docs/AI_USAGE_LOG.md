@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **13 logged** (001–013; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **14 logged** (001–014; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -373,3 +373,32 @@ Live agent runs used: **0**.
   refused by the session's permission check in the previous turn.
 - **Next decision:** the owner approves the analyze remediation; then
   implementation from W5-4 when asked; W4-7 with keys before W5-11.
+
+## 014 — `/speckit-analyze` findings applied to feature 010 (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, still documents only (before W5-4).
+- **Reason:** the owner answered "Apply" to the 13 findings of the read-only
+  `/speckit-analyze` pass in entry 013.
+- **Expected:** every finding fixed in the documents; `Plan.md` gains lines
+  only; no expected result written earlier is changed; no source change.
+- **Actual (verified in-session):**
+  - I1: `round:coach` checks the round before the phase, so a request during
+    `judging` is `WRONG_PHASE`, as C3 expects (`contracts/coach-socket.md`,
+    `data-model.md`).
+  - G1: eval C19, malformed model output (a W05 §32 row), added to
+    `docs/AGENT_EVALS.md` as task T030; later tasks renumbered (63 tasks, all
+    well-formed and sequential) and the references in `docs/AGENT_FLOW.md` and
+    `docs/EVIDENCE_005.md` remapped. The Core gate is now C1–C16 and C19.
+  - U1, L1–L5: C3, C5, C13, C14 and C17 (and their tasks) gained the cases for
+    a final on step 1, a known tool the step does not offer, the exact step-input
+    keys, a 281-character summary, refused requests costing nothing, the
+    report's answer and reason, and the referee's daily-budget count.
+  - L6, L10: FR-023 names 30 seconds; FR-017 points to FR-015's limits.
+  - L7–L9: dated notes in `Plan.md` §2C.7, §2C.9 and §2C.16 (17 lines added, 0
+    removed).
+  - `npm run verify` after the fixes: **490 tests passed across 30 files**,
+    typecheck, lint and build clean; no file under `src/` or `tests/` changed.
+- **Not done:** no code; no push (the session's permission check refused it
+  earlier, and it is not retried).
+- **Next decision:** implementation from W5-4 when the owner asks; W4-7 with
+  keys before W5-11.

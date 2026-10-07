@@ -28,8 +28,8 @@ Example:
 | --- | --- | --- |
 | 1 | payload matches the schema (strict, distinct focus) | `INVALID_PAYLOAD` |
 | 2 | the socket is a player in a room | `NOT_IN_ROOM` |
-| 3 | `roundId` is that room's round and the round has a reveal | `ROUND_STALE` |
-| 4 | the room's phase is `results` | `WRONG_PHASE` |
+| 3 | `roundId` is that room's current round | `ROUND_STALE` |
+| 4 | the room's phase is `results` and the round has a reveal (so a request during `judging` is `WRONG_PHASE`, eval C3) | `WRONG_PHASE` |
 | 5 | every focus category is `valid: false` for the caller | `INVALID_PAYLOAD` |
 | 6 | an AI service is configured | `AI_UNAVAILABLE` |
 | 7 | the caller already has a report for this round → return it; a run is pending → await it | — (0 AI calls) |

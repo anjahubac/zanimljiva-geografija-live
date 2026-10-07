@@ -44,3 +44,6 @@
   `plan.md` and `contracts/`.
 - "Visitor", "AI attempt" and "backup provider" are used as the players and
   owner already meet them in Week 4 (`Plan.md` §2B.5, §2B.11).
+- Re-checked 2026-10-07 after the `/speckit-analyze` fixes (FR-017 now points
+  to FR-015's limits instead of restating them; FR-023 names 30 seconds).
+  Every item still passes.

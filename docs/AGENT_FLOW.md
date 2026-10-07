@@ -101,16 +101,16 @@ asked again. No `while (true)`: the step loop is `for n in 1..3`.
 | --- | --- | --- |
 | `goal_completed` | final validation | C1, C2 |
 | `unknown_tool` | allowlist | C4, C16 |
-| `invalid_tool_args` | argument schema and run scope | C5 |
+| `invalid_tool_args` | argument schema, run scope, a known tool the step does not offer | C5 |
 | `repeated_call` | repeat guard | C9 |
 | `tool_failed` | result validation | C6 |
 | `provider_timeout`, `provider_unavailable`, `rate_limited`, `quota_exhausted` | gateway result | C7, C8 |
-| `malformed_output` | envelope schema | covered in `ai-features.test.ts` (T016) |
-| `final_invalid` | final validation | C13, C17 |
+| `malformed_output` | envelope schema | C19; the envelope parse alone in `ai-features.test.ts` (T016) |
+| `final_invalid` | final validation (and a final on step 1) | C13, C17 |
 | `max_steps` | step limit | C10 |
 | `deadline` | time check before each step; run signal | C11 |
 | `call_budget` | attempts left in the run | C12 |
-| `cancelled` | run signal (disconnect, reap) | T038 |
+| `cancelled` | run signal (disconnect, reap) | T039 |
 
 ## Example run log (expected shape, C1)
 

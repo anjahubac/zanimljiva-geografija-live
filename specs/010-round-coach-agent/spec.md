@@ -193,7 +193,7 @@ exactly those fields with the right counts and nothing else.
 
 - **FR-015**: A coaching run MUST stop after at most 3 AI steps and 2 checks, after at most 2 AI attempts per step and 5 per run (a retry or a switch to the backup provider counts as an attempt, not a step), and within 25 seconds overall; no step may start with less than 2 seconds left.
 - **FR-016**: The first step MUST offer only `check_candidates`, so every completed coaching rests on at least one executed check. When every focus category already has a passing word, or no check is left, or the step is the last, the next step MUST NOT offer `check_candidates`; it offers the final answer and, with O1, `verify_terms` while a check is left and there are passing words not yet verified.
-- **FR-017**: The game, not the AI, MUST decide when to stop. Coaching MUST end on: a valid final answer; the step, check, attempt or time limit; a refused action; a failed check; an AI failure (timeout, unavailable, rate limit, daily quota, unreadable reply); or the player leaving or the room being cleared.
+- **FR-017**: The game, not the AI, MUST decide when to stop. Coaching MUST end on: a valid final answer; any limit of FR-015; a refused action; a failed check; an AI failure (timeout, unavailable, rate limit, daily quota, unreadable reply); or the player leaving or the room being cleared.
 - **FR-018**: An AI reply that does not have the expected shape MUST end the step without a blind retry.
 
 **The report**
@@ -202,7 +202,7 @@ exactly those fields with the right counts and nothing else.
 - **FR-020**: Each report entry MUST take the player's answer and the reason it did not count from the game's own record of the round, and the suggestion's text from the check's record, never from the AI's reply.
 - **FR-021**: The report MUST have one of three statuses: **completed** (a valid final answer); **incomplete**, shown as "partial" (any other ending after at least one word passed: only passed words, no summary); **failed**, shown as "could not complete safely" (any other ending with nothing passed). Its stop reason MUST be one of a fixed set of codes that the screen turns into a sentence in the player's language.
 - **FR-022**: The summary MUST be at most 280 characters, in the player's language, and MUST NOT contain the AI's reasoning.
-- **FR-023**: The screen MUST show a running status while coaching runs, then one of "completed", "partial" or "could not complete safely", never internal details, and MUST stop waiting after a little more than the coaching time limit.
+- **FR-023**: The screen MUST show a running status while coaching runs, then one of "completed", "partial" or "could not complete safely", never internal details, and MUST stop waiting 30 seconds after asking (5 seconds beyond the run's 25-second limit).
 
 **Privacy and authority**
 

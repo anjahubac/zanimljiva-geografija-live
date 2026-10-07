@@ -821,6 +821,10 @@ Every step's reply is one flat JSON object (Gemini takes no `anyOf`, as
 }
 ```
 
+_Extended 2026-10-07:_ the envelope also carries `evidenceIds`, used only by
+`verify_terms` (O1), so the Core fields above are unchanged
+(`specs/010-round-coach-agent/contracts/model-step.md`).
+
 `check_candidates` fills `candidates` only; `final` fills `summary`, `tips`
 (`[{ category, evidenceId }]`, `evidenceId: ""` meaning "no suggestion") and
 `confidence`. A reply mixing the two is `malformed_output`.
@@ -896,6 +900,11 @@ steps, 3 provider attempts" is visible as such (W05 §23).
 | `deadline` | under 2 s left before a step, or the deadline aborted a call |
 | `call_budget` | the run's provider attempts are spent |
 | `cancelled` | the player disconnected or the room was reaped; no ack is sent |
+
+_Refined 2026-10-07 (§2C.16):_ the `unknown_tool` row now covers only a name
+outside the allowlist. A known tool that the step does not offer is
+`max_steps` on the last step and `invalid_tool_args` otherwise, and a final on
+step 1 is `final_invalid`.
 
 Status follows from one rule: `goal_completed` → completed; any other stop →
 incomplete if a candidate passed, else failed. Rejections **before** a run
@@ -1065,6 +1074,14 @@ is green and C1–C16 pass.
   does not offer is `max_steps` on the last step (C10) and
   `invalid_tool_args` otherwise; a final on step 1 is `final_invalid`
   (`specs/010-round-coach-agent/contracts/model-step.md`).
+- **Also approved with the step list (§2C.10):** `scripts/coach-smoke.ts` and
+  its npm script `smoke:coach` for W5-11. A script only, no dependency.
+- **After `/speckit-analyze` (2026-10-07), still before any code:** eval C19
+  (malformed model output, a W05 §32 row) is added, so the evals are C1–C19
+  and the Core gate for O1 and O6 is **C1–C16 and C19**. Five earlier evals
+  gained cases, with no expected result changed. A request during `judging`
+  answers `WRONG_PHASE`: the round check now comes before the phase check
+  (`specs/010-round-coach-agent/contracts/coach-socket.md`).
 - **O6 adds one ack field, `run`:** model steps, tool calls, provider attempts,
   the last provider and model, elapsed time and the stop reason. No prompt,
   reply, candidate or answer. Shown under the report as "Detalji" / "Details".

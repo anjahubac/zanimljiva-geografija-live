@@ -237,7 +237,7 @@ these exits. Before a Week 5 step:
 1. Read `Plan.md` §2C, the spec and the contract for the part you touch
    (`specs/010-round-coach-agent/contracts/`: `coach-socket.md`,
    `model-step.md`, `tools.md`).
-2. The evals are already written (`docs/AGENT_EVALS.md`, C1–C18). Write the
+2. The evals are already written (`docs/AGENT_EVALS.md`, C1–C19). Write the
    test for the eval first and watch it fail; never change an expected result
    to match the code.
 3. Every test uses fakes. Loop tests drive the **real gateway** through
@@ -270,7 +270,7 @@ Rules particular to the agent:
 | W5-8 | Room store (reveal snapshot, `requestCoach`), usage limits, socket handler | `npm test` |
 | W5-9 | Client: `CoachPanel`, `requestCoach` with a 30 s ack timeout, SR/EN strings | `npm run verify` |
 | W5-10 | Modules 05, 07, 12; `.env.example`; README; GAME_SPEC Amendment 8 status | `npm run verify` |
-| W5-10a | O1 `verify_terms` (only once C1–C16 pass) | `npx vitest run tests/unit/coach-agent.test.ts && npm run verify` |
+| W5-10a | O1 `verify_terms` (only once C1–C16 and C19 pass) | `npx vitest run tests/unit/coach-agent.test.ts && npm run verify` |
 | W5-10b | O6 run details | `npm run verify` |
 | W5-11 | `npm run smoke:coach`, once per provider; ≤ 15 live runs | run logs in `docs/EVIDENCE_005.md` |
 | W5-12 | Evidence, security checklist, demo (≤ 3 live runs) | `npm run verify`; owner reviews the diff |

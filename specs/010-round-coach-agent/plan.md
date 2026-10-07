@@ -54,7 +54,7 @@ green. Design choices are in [research.md](research.md).
 | III. Hidden answers | Coaching starts only after `round:revealed`. The model gets only the caller's own answers; the opponent's sheet is never read by a tool or put in a prompt (FR-007, C14). The report is an ack to the caller only. | Pass |
 | IV. Close exactly once | `closeRound`/`completeRound` gain one line: keeping the already-parsed reveal on the round as a read-only snapshot. No new path to reveal or score; A1–A6 must still pass. | Pass |
 | V. Locked scope | Owner's decision recorded in `Plan.md` §2C.16 before this plan: the event `round:coach`, the config key, O1 and O6. No dependency, service, database or new error code. | Pass |
-| VI. Evidence, not claims | Evals C1–C18 pre-registered in `docs/AGENT_EVALS.md` before any code; mutation checks planned; live runs bounded (≤ 15 dev, ≤ 3 demo) and logged in `docs/EVIDENCE_005.md`. | Pass |
+| VI. Evidence, not claims | Evals C1–C19 pre-registered in `docs/AGENT_EVALS.md` before any code; mutation checks planned; live runs bounded (≤ 15 dev, ≤ 3 demo) and logged in `docs/EVIDENCE_005.md`. | Pass |
 
 Post-design re-check (after Phase 1): unchanged. The design adds one request
 schema, one ack schema, one model-step schema, a tool registry and an
@@ -79,7 +79,7 @@ specs/010-round-coach-agent/
 └── tasks.md                   # /speckit-tasks
 
 docs/AGENT_FLOW.md             # diagram and stop conditions (W05 §36)
-docs/AGENT_EVALS.md            # C1–C18, written before code (W05 §38)
+docs/AGENT_EVALS.md            # C1–C19, written before code (W05 §38)
 docs/EVIDENCE_005.md           # Week 5 evidence (W05 §39)
 ```
 
@@ -117,7 +117,7 @@ src/client/app.css                   # panel styles
 
 # Tests
 tests/unit/agent-tools.test.ts       # check_candidates, args, scope, repeats, result validation (C5, C6)
-tests/unit/coach-agent.test.ts       # loop with real gateway + fake adapter + fakeTime (C1, C2, C4, C7–C13, C16, C17)
+tests/unit/coach-agent.test.ts       # loop with real gateway + fake adapter + fakeTime (C1, C2, C4–C13, C16, C17, C19)
 tests/unit/gateway.test.ts           # + maxAttempts cases; existing cases unchanged
 tests/unit/contracts.test.ts         # + coach request/report/envelope valid and invalid
 tests/integration/coach.test.ts      # over the wire: C3, C14, C15, single-flight, abort

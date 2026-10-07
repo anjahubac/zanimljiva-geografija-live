@@ -84,7 +84,7 @@ lobby tells players this.
 | [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
 | [docs/EVIDENCE_005.md](docs/EVIDENCE_005.md) | Week 5: the round coach — scope change, baseline, runs, security checklist |
 | [docs/AGENT_FLOW.md](docs/AGENT_FLOW.md) | Week 5: the coach's flow, checks and stop conditions |
-| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: agent evals C1–C18 and live L1–L3, written before the code |
+| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: agent evals C1–C19 and live L1–L3, written before the code |
 | [specs/](specs/README.md) | Spec Kit features; Week 5 is `specs/010-round-coach-agent` (tool contracts in `contracts/tools.md`) |
 | [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
 | [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |

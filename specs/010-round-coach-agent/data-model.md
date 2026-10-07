@@ -21,7 +21,7 @@ Read-only afterwards.
 
 | Field | Rule |
 | --- | --- |
-| `roundId` | the room's current round, revealed (`ROUND_STALE` otherwise) |
+| `roundId` | the room's current round (`ROUND_STALE` otherwise); the phase must be `results`, with the round revealed (`WRONG_PHASE` otherwise) |
 | `goal` | `"fill_gaps"` (the only value) |
 | `focus` | 1–8 distinct categories, each one where the caller has `valid: false` (`INVALID_PAYLOAD` otherwise) |
 | `language` | `"sr"` or `"en"`; the summary's language |
