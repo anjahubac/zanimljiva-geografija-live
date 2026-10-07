@@ -7,7 +7,8 @@ evidence stays in `EVIDENCE_003.md`; the full Week 4 design is `Plan.md` §2B.
 **Current handoff (2026-10-07):** Week 4 is committed on main; W4-7 ran
 once per provider with `check-round.v3`, with 16/16 checker agreement on both. Its live details
 and bot/hint quality findings are in `docs/AI_EVALS.md`. W4-8's controlled
-change and W4-9's deployment remain open. Older dated observations below
+change remains open. W4-9: the owner reports (2026-10-07) that `main` is
+deployed; see the run table in §4. Older dated observations below
 are historical, not a claim that no live call has ever occurred.
 The shared Week 5 workspace now uses `check-round.v4`; its Serbian spelling
 and original-name guidance has passed fake tests but has no new live checker
@@ -133,7 +134,7 @@ anyone joins removes the room, and its code answers `ROOM_NOT_FOUND`.
 | After 009 (whole alphabet) | 2026-09-30 | uncommitted | `npm run verify` | pass — 490 tests, 30 files; baseline before the change 458, 29; three mutation checks failed as expected | `AI_USAGE_LOG.md` 011 |
 | Live AI, Gemini | 2026-10-07 | Week 5 baseline | `AI_PROVIDER_ORDER=gemini npm run smoke:ai` | 16/16 checker agreement; bot/hint observations | `AI_EVALS.md`, `AI_USAGE_LOG.md` 015 |
 | Live AI, Groq | 2026-10-07 | Week 5 baseline | `AI_PROVIDER_ORDER=groq npm run smoke:ai` | 16/16 checker agreement; factually wrong hints recorded | `AI_EVALS.md`, `AI_USAGE_LOG.md` 015 |
-| Deployed round | — | — | Render, one round per mode | **not run** | — |
+| Deployed | 2026-10-07 | `origin/main` `9af4c07` (PR #2, `feature/round-coach` at `3b4dc20`) | deploy of `main` | deployed; the owner checked the round coach on the deployed version. The URL and a two-computer round per mode are not recorded here | owner's report, not observed by the agent |
 
 ---
 
@@ -166,8 +167,9 @@ Write the claim, signal and hypothesis here **before** changing the prompt.
    errors and some bot answers were doubtful (`AI_EVALS.md`).
 3. **Leave game has not been clicked through in a browser**; only automated
    tests and the render tests cover it.
-4. **Committed, not deployed.** Week 4 is on main (`6232482`, `4dea3b5`);
-   W4-9 and its physical two-computer checks are still open.
+4. **Deployed, two-computer checks not recorded.** Week 4 and Week 5 are on
+   main and deployed (owner's report, 2026-10-07, §4); W4-9's physical
+   two-computer checks are not recorded here.
 5. **Instructor approval** (`GAME_SPEC.md` §9) is still empty, and Week 4 is a
    larger scope change than the one it was requested for.
 6. **The resume token is still minted and unused** (`EVIDENCE_003.md` §5).

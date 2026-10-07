@@ -10,7 +10,9 @@ it has happened. Sources are named for every result.
 **State on 2026-10-07: built on `feature/round-coach`** (W5-0 → W5-11, Core
 plus O1 and O6), followed by v3–v5 checked words, backup and repair, then v6 spelling guidance. Six v1
 smoke runs are recorded; the full count including browser runs is awaiting
-owner reconciliation. Current-version live checks, actual human rehearsal and
+owner reconciliation. Merged to `main` (PR #2, `9af4c07`) and deployed; the owner
+checked the coach on the deployed version (owner's report, 2026-10-07, §4).
+Current-version live checks, actual human rehearsal and
 the contributions table (§8) remain open; §9 tracks this cleanup.
 
 ## Where each W05 artifact is
@@ -117,6 +119,7 @@ method; the fourth change now targets the rewritten final validation):
 | Only valid and checked answers, `coach-step.v3` | 2026-10-07 | after `40c033f` | `npx vitest run` and `npm run verify` | the owner saw an unchecked "Rosno more" in the model's summary and "Rtnj" for Rtanj; decision in `Plan.md` §2C.16; red first (19 loop, 8 contract/client/wire cases); a mis-attributed `call_budget` found and fixed on the way; then 34 files, 637 tests; mutation checks re-run, 4/4 | implementation session |
 | A suggestion for every category, `coach-step.v4` | 2026-10-07 | after `bba2f79` | `npx vitest run`, then `npm run verify` | the owner saw suggestions for only 4 categories; decision in `Plan.md` §2C.16 (backup word + repair); red first (17 new or amended cases); then 34 files, 654 tests; 4 new mutation checks, 4/4 caught (C20, C22); evals C20–C22 added, C1/C17/C18 amended in `AGENT_EVALS.md` | implementation session |
 | Systematic search, `coach-step.v5` | 2026-10-07 | after `1f82f6c` | `npx vitest run`, then `npm run verify` | the owner got no sea for H although the Halmahera Sea exists; prompt only, no search or word list (owner); red first (v5 missing), then 34 files, 655 tests; typecheck, lint, build clean. Whether it finds more terms can only be shown live | implementation session |
+| Deployed | 2026-10-07 | `origin/main` `9af4c07` (PR #2, `feature/round-coach` at `3b4dc20`, `coach-step.v6`) | deploy of `main` | deployed; the owner checked the round coach on the deployed version. URL, number of runs there and their outcomes not recorded | owner's report, not observed by the agent |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
 Recorded exact smoke count: **6** in development (3 Gemini, 3 Groq),
