@@ -100,5 +100,5 @@ the agent, judged by a person, so a disagreement is a finding, not a crash.
 
 | Date | Provider | Runs | Model steps | Provider attempts | Tool calls | L1 | L2 | L3 | Stop reasons | Notes |
 | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- |
-| _not run yet_ | Gemini | | | | | | | | | Needs W4-7 first and the owner's key |
-| _not run yet_ | Groq | | | | | | | | | Needs W4-7 first and the owner's key |
+| 2026-10-07 | Gemini (`gemini-3.5-flash-lite`) | 3 | 9 | 12 | 6 (3 check, 3 verify) | yes, 3/3 | yes, 3/3 | river "Ljutica" ×3 — not confirmed by a person; animal "Ljlama" (run 2) is **invented**, yet the referee accepted it | `goal_completed` ×3 | W4-7 ran first (`docs/AI_EVALS.md`). Run logs in `docs/EVIDENCE_005.md` §4 |
+| 2026-10-07 | Groq (`openai/gpt-oss-120b`, one fallback to `gpt-oss-20b`) | 3 | 6 | 8 | 3 (2 check, 1 verify) | yes: no unhandled error; every word shown starts with Lj | yes, 3/3 | river "Ljubljanica" (real), "Ljuta" (referee-accepted) | `invalid_tool_args` ×2, `final_invalid` ×1 | 0 of 3 completed: the fence refused bad arguments twice and a final citing referee-rejected words once; nothing unsupported was shown |

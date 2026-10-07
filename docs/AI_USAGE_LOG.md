@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **14 logged** (001–014; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **15 logged** (001–015; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -13,7 +13,7 @@ session, not during it.
 Week 5 (W05 §44): at most **15 live agent runs** in development and **3** in
 the demo. From W5-11 on, each entry keeps agent runs, model calls, retries and
 tool calls apart; the run logs themselves go in `docs/EVIDENCE_005.md` §4.
-Live agent runs used: **0**.
+Live agent runs used: **6** (entry 015).
 
 ---
 
@@ -402,3 +402,35 @@ Live agent runs used: **0**.
   earlier, and it is not retried).
 - **Next decision:** implementation from W5-4 when the owner asks; W4-7 with
   keys before W5-11.
+
+## 015 — Week 5 round coach built, W5-0 → W5-11 (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5 implementation, at the owner's request ("Implement the
+  Week 5 changes described in Plan.md §2C"), on `feature/round-coach`.
+- **Reason:** build the approved round coach step by step (module 10's Week 5
+  table), tests first, with each step's exit command run and committed.
+- **Expected:** Core (W5-4 → W5-10) passing C1–C16 and C19 on fakes; then O1
+  and O6 (C17, C18); the four mutation checks failing their evals; W4-7 and at
+  most 3 live coaching runs per provider.
+- **Actual (verified in-session):**
+  - W5-0: `npm run verify` 490 tests / 30 files; W4-7 `smoke:ai` once per
+    provider, 5 requests each, checker 16/16 on both (`docs/AI_EVALS.md`).
+  - W5-4 → W5-10b: one commit per step; final `npm run verify` 629 tests / 34
+    files, typecheck, lint and build clean. Exit outputs: `docs/EVIDENCE_005.md` §4.
+  - Mutation checks 4/4 caught (`docs/EVIDENCE_005.md` §3).
+  - One conflict stopped the work and went to the owner: with O1 built, C2's
+    "step 2 offers only final" contradicted FR-016. The owner chose FR-016; a
+    dated note sits under C2 and its expected text is unchanged.
+  - W5-11 live: **6 agent runs** (3 Gemini, 3 Groq), **15 model steps**,
+    **20 provider attempts** (1 rate-limited attempt then a fallback; no other
+    retry), **9 tool calls** (5 `check_candidates`, 4 `verify_terms`; the
+    referee's 5 provider attempts are part of the 20). Gemini 3/3
+    completed; Groq 0/3 completed (2 refused arguments, 1 refused final).
+  - The 10 W4-7 requests (2 × 5) are model calls outside the agent and are not
+    counted above.
+- **Findings:** the referee accepted an invented word ("Ljlama"); Groq's agent
+  often sends arguments the tool refuses, and the content-free run log does
+  not say which.
+- **Not done:** W5-12's demo rehearsal (≤ 3 live runs) and the contributions
+  table; W4-8 and W4-9; no push, deploy or pull request.
+- **Next decision:** the owner reviews the diff on `feature/round-coach`.

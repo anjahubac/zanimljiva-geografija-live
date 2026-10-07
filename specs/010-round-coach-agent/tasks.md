@@ -4,7 +4,7 @@
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/coach-socket.md](contracts/coach-socket.md), [contracts/model-step.md](contracts/model-step.md), [contracts/tools.md](contracts/tools.md), [quickstart.md](quickstart.md)
 
-**Status**: written 2026-10-07; the `/speckit-analyze` findings of the same day are applied (C19 added as T030, later tasks renumbered, eval cases extended); **no task started**. The owner asked for no implementation yet. Steps W5-1 to W5-3 of `Plan.md` §2C.10 (spec, plan, evals) are done as documents. Start at Phase 1 only when the owner asks.
+**Status**: written 2026-10-07; the `/speckit-analyze` findings of the same day are applied (C19 added as T030, later tasks renumbered, eval cases extended). _Update 2026-10-07:_ T001–T062 done on `feature/round-coach`, except that T017's `onVerifyTerms` came with T055, T060's contributions table is left to the owners, and T062's second `/speckit-analyze` pass was not run; T063 (demo rehearsal) is open. The owner asked for no implementation yet. Steps W5-1 to W5-3 of `Plan.md` §2C.10 (spec, plan, evals) are done as documents. Start at Phase 1 only when the owner asks.
 
 **Tests**: required. Module 10's definition of done needs a success case and a rejection or edge case for every behaviour change, written before the code, and W05 needs a fake-provider test path. The evals are pre-registered in [`docs/AGENT_EVALS.md`](../../docs/AGENT_EVALS.md) (C1–C19); each test task names the eval it implements.
 
@@ -176,8 +176,8 @@
 
 ## Phase 9: Limited live runs (W5-11) — needs T002
 
-- [ ] T058 Create `scripts/coach-smoke.ts` (the fixed Lj round of quickstart §5; at most 3 runs per invocation; prints each run log, never answers or keys) and add `"smoke:coach"` to the scripts in `package.json` (no dependency)
-- [ ] T059 Run `AI_PROVIDER_ORDER=gemini npm run smoke:coach` and `AI_PROVIDER_ORDER=groq npm run smoke:coach`; record every run log in `docs/EVIDENCE_005.md` §4 and the live table of `docs/AGENT_EVALS.md`; count agent runs, model calls, retries and tool calls in `docs/AI_USAGE_LOG.md`. At most 15 live runs in development
+- [X] T058 Create `scripts/coach-smoke.ts` (the fixed Lj round of quickstart §5; at most 3 runs per invocation; prints each run log, never answers or keys) and add `"smoke:coach"` to the scripts in `package.json` (no dependency)
+- [X] T059 Run `AI_PROVIDER_ORDER=gemini npm run smoke:coach` and `AI_PROVIDER_ORDER=groq npm run smoke:coach`; record every run log in `docs/EVIDENCE_005.md` §4 and the live table of `docs/AGENT_EVALS.md`; count agent runs, model calls, retries and tool calls in `docs/AI_USAGE_LOG.md`. At most 15 live runs in development
 
 **Exit (W5-11)**: run logs recorded; live-run count ≤ 15.
 
@@ -185,9 +185,9 @@
 
 ## Phase 10: Evidence and demo (W5-12)
 
-- [ ] T060 Fill `docs/EVIDENCE_005.md`: architecture, flow, provider and model, tool registry, a success run log, rejected-tool evidence (C4 output), a failure run, stop reasons, `npm run verify` output, known limitations, both members' contributions
-- [ ] T061 Map W05's §41 security checklist to the code and tests that enforce each line, in `docs/EVIDENCE_005.md` §6
-- [ ] T062 Run `/speckit-analyze` again; add a dated status line to `Plan.md` §2C (additive) and update `specs/README.md`
+- [X] T060 Fill `docs/EVIDENCE_005.md`: architecture, flow, provider and model, tool registry, a success run log, rejected-tool evidence (C4 output), a failure run, stop reasons, `npm run verify` output, known limitations, both members' contributions
+- [X] T061 Map W05's §41 security checklist to the code and tests that enforce each line, in `docs/EVIDENCE_005.md` §6
+- [X] T062 Run `/speckit-analyze` again; add a dated status line to `Plan.md` §2C (additive) and update `specs/README.md`
 - [ ] T063 Final `npm run verify`; rehearse the 7-minute demo of W05 §47 with at most 3 live runs
 
 **Exit (W5-12)**: `npm run verify` green; the owner reviews the diff. Stop.

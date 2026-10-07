@@ -649,6 +649,11 @@ everything already built. When approved, it becomes Spec Kit feature
 §2C.15; the decisions of record are §2C.16. The section below is now the design
 of record for Week 5. Nothing is built yet.
 
+**Update 2026-10-07, later: built** on `feature/round-coach`, W5-0 → W5-11:
+Core, O1 and O6, C1–C19 passing on fakes (629 tests), 4/4 mutation checks
+caught, W4-7 done, 6 live coaching runs (`docs/EVIDENCE_005.md`). Open: W5-12's
+demo rehearsal, the contributions table, W4-8, W4-9.
+
 ### 2C.1 Status check before Week 5 (2026-10-07)
 
 Checked in the planning session, so Week 5 starts from known ground:
