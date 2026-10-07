@@ -18,6 +18,7 @@ describe("serverConfigSchema", () => {
       aiRoomsPerVisitorHour: 10,
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
+      coachRunsPerVisitorHour: 6,
       trustProxyHops: 0,
     });
   });
@@ -50,6 +51,9 @@ describe("serverConfigSchema", () => {
     ["zero AI rooms per visitor", { aiRoomsPerVisitorHour: "0" }],
     ["zero hints per visitor", { hintsPerVisitorHour: "0" }],
     ["a zero daily AI budget", { aiDailyCallBudget: "0" }],
+    ["zero coaching runs per visitor", { coachRunsPerVisitorHour: "0" }],
+    ["more than 10 000 coaching runs per visitor", { coachRunsPerVisitorHour: "10001" }],
+    ["a fractional coaching run count", { coachRunsPerVisitorHour: "2.5" }],
     ["a negative proxy hop count", { trustProxyHops: "-1" }],
     ["more than 5 proxy hops", { trustProxyHops: "6" }],
   ];
@@ -79,6 +83,7 @@ describe("loadConfig", () => {
       aiRoomsPerVisitorHour: 10,
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
+      coachRunsPerVisitorHour: 6,
       trustProxyHops: 0,
     });
   });
@@ -95,6 +100,7 @@ describe("loadConfig", () => {
         AI_ROOMS_PER_VISITOR_HOUR: "4",
         HINTS_PER_VISITOR_HOUR: "8",
         AI_DAILY_CALL_BUDGET: "900",
+        COACH_RUNS_PER_VISITOR_HOUR: "3",
         TRUST_PROXY_HOPS: "1",
       }),
     ).toEqual({
@@ -107,6 +113,7 @@ describe("loadConfig", () => {
       aiRoomsPerVisitorHour: 4,
       hintsPerVisitorHour: 8,
       aiDailyCallBudget: 900,
+      coachRunsPerVisitorHour: 3,
       trustProxyHops: 1,
     });
   });
@@ -117,6 +124,7 @@ describe("loadConfig", () => {
     expect(Object.keys(config).sort()).toEqual([
       "aiDailyCallBudget",
       "aiRoomsPerVisitorHour",
+      "coachRunsPerVisitorHour",
       "completedRoomTtlMs",
       "countdownMs",
       "hintsPerVisitorHour",
@@ -138,6 +146,7 @@ describe("loadConfig", () => {
     ["a countdown above the ceiling", { COUNTDOWN_MS: "30001" }, "COUNTDOWN_MS"],
     ["a completed-room TTL below the floor", { COMPLETED_ROOM_TTL_MS: "9999" }, "COMPLETED_ROOM_TTL_MS"],
     ["a waiting-room TTL below the floor", { WAITING_ROOM_TTL_MS: "59999" }, "WAITING_ROOM_TTL_MS"],
+    ["zero coaching runs per visitor (Plan.md §2C.8)", { COACH_RUNS_PER_VISITOR_HOUR: "0" }, "COACH_RUNS_PER_VISITOR_HOUR"],
   ];
 
   it.each(rejected)("throws on %s, naming the variable", (_name, env, variable) => {

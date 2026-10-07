@@ -127,3 +127,64 @@ export const HINT_JSON_SCHEMA = {
   required: ["term", "termEn", "clue", "noKnownTerm"],
   additionalProperties: false,
 } as const;
+
+/* ------------------------------------------------------- round coach step */
+
+/*
+ * One reply per coach step (`Plan.md` §2C.7, contracts/model-step.md). Flat,
+ * with every field required and unused ones empty, because Gemini takes no
+ * `anyOf`. Deliberately loose: `action` is any short string and the arguments
+ * have wide bounds, so an unknown tool reaches the allowlist (`unknown_tool`)
+ * and a bad argument reaches the tool's own check (`invalid_tool_args`). Only
+ * a reply that is not this shape at all is `malformed_output`.
+ */
+export const coachStepSchema = z
+  .object({
+    action: z.string().min(1).max(40),
+    candidates: z.array(z.object({ category: z.string().max(20), term: z.string().max(60) }).strict()).max(16),
+    evidenceIds: z.array(z.string().max(8)).max(16),
+    summary: z.string().max(400),
+    tips: z.array(z.object({ category: z.string().max(20), evidenceId: z.string().max(8) }).strict()).max(16),
+    confidence: z.string().max(10),
+  })
+  .strict();
+export type CoachStep = z.infer<typeof coachStepSchema>;
+
+/** Stricter than the zod envelope, as a hint to the provider only; the allowlist is the fence. */
+export const COACH_STEP_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    action: { type: "string", enum: ["check_candidates", "final"] },
+    candidates: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: [...CATEGORIES] },
+          term: { type: "string", description: "One word or name to check, as a player would write it." },
+        },
+        required: ["category", "term"],
+        additionalProperties: false,
+      },
+    },
+    evidenceIds: { type: "array", maxItems: 8, items: { type: "string" } },
+    summary: { type: "string", description: 'One or two sentences for the player, or "".' },
+    tips: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: [...CATEGORIES] },
+          evidenceId: { type: "string", description: 'The id of a passing checked item, or "" for no suggestion.' },
+        },
+        required: ["category", "evidenceId"],
+        additionalProperties: false,
+      },
+    },
+    confidence: { type: "string", enum: ["low", "medium", "high", ""] },
+  },
+  required: ["action", "candidates", "evidenceIds", "summary", "tips", "confidence"],
+  additionalProperties: false,
+} as const;

@@ -8,6 +8,7 @@ import {
   ALPHABETS,
   ENGLISH_LETTERS,
   SERBIAN_LETTERS,
+  REJECT_REASONS,
   answerValueSchema,
   categorySchema,
   displayNameSchema,
@@ -25,6 +26,8 @@ import {
   ok,
 } from "@contracts/errors";
 import {
+  CLIENT_EVENTS,
+  SERVER_EVENTS,
   clientReadyRequestSchema,
   createRoomRequestSchema,
   draftAckSchema,
@@ -41,6 +44,16 @@ import {
   roundRevealedSchema,
   roundScheduledSchema,
 } from "@contracts/socket.schemas";
+import { COACH_STEP_JSON_SCHEMA, coachStepSchema } from "@contracts/ai-output.schemas";
+import {
+  COACH_GOALS,
+  COACH_SUMMARY_MAX,
+  coachReportSchema,
+  coachRequestSchema,
+  coachStopReasonSchema,
+  missReasonSchema,
+  runDetailsSchema,
+} from "@contracts/coach.schemas";
 
 const ROUND_ID = randomUUID();
 const ROOM_CODE = "ABC234";
@@ -361,5 +374,160 @@ describe("error registry and ack envelope", () => {
       error: { code: "ROOM_FULL", message: ERROR_MESSAGES.ROOM_FULL },
     });
     expect(ackSchema(draftAckSchema).safeParse(result).success).toBe(true);
+  });
+});
+
+/* ------------------------------------------- round coach (Plan.md §2C, W5-4) */
+
+describe("round coach — request (contracts/coach-socket.md)", () => {
+  const example = { roundId: ROUND_ID, goal: "fill_gaps", focus: ["river", "animal", "country"], language: "sr" };
+
+  it("accepts the documented example", () => {
+    expect(coachRequestSchema.safeParse(example).success).toBe(true);
+    expect(COACH_GOALS).toEqual(["fill_gaps"]);
+  });
+
+  const rejected: Array<[string, unknown]> = [
+    ["an extra key", { ...example, letter: "Lj" }],
+    ["a smuggled player id", { ...example, playerId: "p2" }],
+    ["an unknown goal", { ...example, goal: "x" }],
+    ["the unplanned goal stand_out", { ...example, goal: "stand_out" }],
+    ["an empty focus", { ...example, focus: [] }],
+    ["nine categories", { ...example, focus: [...CATEGORIES, "city"] }],
+    ["a repeated category", { ...example, focus: ["river", "river"] }],
+    ["an unknown category", { ...example, focus: ["lake"] }],
+    ["a language outside sr/en", { ...example, language: "de" }],
+    ["a round id that is not a uuid", { ...example, roundId: "round-1" }],
+  ];
+
+  it.each(rejected)("rejects %s", (_name, payload) => {
+    expect(coachRequestSchema.safeParse(payload).success).toBe(false);
+  });
+});
+
+describe("round coach — report, the caller's ack (contracts/coach-socket.md)", () => {
+  const completed = {
+    status: "completed",
+    summary: "Za reku na Lj prolazi Ljubljanica. Za životinju nisam našao reč na Lj koja prolazi pravilo slova.",
+    tips: [
+      { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule" },
+      { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter", suggestion: null, checkedBy: null },
+    ],
+    confidence: "medium",
+    stopReason: "goal_completed",
+  };
+  const incomplete = {
+    status: "incomplete",
+    summary: null,
+    confidence: null,
+    tips: [
+      { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule" },
+      { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter", suggestion: null, checkedBy: null },
+    ],
+    stopReason: "repeated_call",
+  };
+
+  it("accepts the completed and incomplete examples", () => {
+    expect(coachReportSchema.safeParse(completed).success).toBe(true);
+    expect(coachReportSchema.safeParse(incomplete).success).toBe(true);
+  });
+
+  it("accepts a failed report with no suggestion", () => {
+    const failed = {
+      ...incomplete,
+      status: "failed",
+      tips: incomplete.tips.map((tip) => ({ ...tip, suggestion: null, checkedBy: null })),
+      stopReason: "unknown_tool",
+    };
+    expect(coachReportSchema.safeParse(failed).success).toBe(true);
+  });
+
+  it("rejects completed without a summary, and incomplete with one", () => {
+    expect(coachReportSchema.safeParse({ ...completed, summary: null }).success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...completed, confidence: null }).success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...incomplete, summary: "Nešto." }).success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...incomplete, confidence: "high" }).success).toBe(false);
+  });
+
+  it("never carries the log-only stop reason cancelled", () => {
+    expect(coachStopReasonSchema.safeParse("cancelled").success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...incomplete, stopReason: "cancelled" }).success).toBe(false);
+  });
+
+  it("bounds the summary to 280 characters and rejects extra keys on a tip", () => {
+    expect(COACH_SUMMARY_MAX).toBe(280);
+    expect(coachReportSchema.safeParse({ ...completed, summary: "x".repeat(281) }).success).toBe(false);
+    const smuggled = { ...completed, tips: [{ ...completed.tips[0], points: 10 }] };
+    expect(coachReportSchema.safeParse(smuggled).success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...completed, score: 999 }).success).toBe(false);
+  });
+
+  it("knows every miss reason: blank plus the existing reject reasons", () => {
+    expect(missReasonSchema.options).toEqual(["empty", ...REJECT_REASONS]);
+  });
+
+  it("accepts the O6 run details with exactly their fields", () => {
+    const run = {
+      modelSteps: 3,
+      toolCalls: 2,
+      providerAttempts: 4,
+      provider: "gemini",
+      model: "gemini-3.5-flash-lite",
+      elapsedMs: 5_400,
+      stopReason: "goal_completed",
+    };
+    expect(coachReportSchema.safeParse({ ...completed, run }).success).toBe(true);
+    expect(runDetailsSchema.safeParse({ ...run, provider: null, model: null }).success).toBe(true);
+    expect(runDetailsSchema.safeParse({ ...run, prompt: "system" }).success).toBe(false);
+    expect(runDetailsSchema.safeParse({ ...run, toolCalls: 3 }).success).toBe(false);
+  });
+});
+
+describe("round coach — the model-step envelope (contracts/model-step.md)", () => {
+  const step = {
+    action: "check_candidates",
+    candidates: [{ category: "river", term: "Ljubljanica" }],
+    evidenceIds: [],
+    summary: "",
+    tips: [],
+    confidence: "",
+  };
+
+  it("accepts the documented step", () => {
+    expect(coachStepSchema.safeParse(step).success).toBe(true);
+  });
+
+  it("accepts an unknown action name: the allowlist judges it, not the envelope (research R3)", () => {
+    expect(coachStepSchema.safeParse({ ...step, action: "delete_room" }).success).toBe(true);
+  });
+
+  it("passes malformed arguments through, so the tool's own validation records them", () => {
+    const nine = Array.from({ length: 9 }, (_, n) => ({ category: "river", term: `Lj${n}` }));
+    expect(coachStepSchema.safeParse({ ...step, candidates: nine }).success).toBe(true);
+    expect(coachStepSchema.safeParse({ ...step, candidates: [{ category: "lake", term: "x".repeat(41) }] }).success).toBe(true);
+  });
+
+  it("rejects a missing or an extra field", () => {
+    const { tips: _tips, ...withoutTips } = step;
+    expect(coachStepSchema.safeParse(withoutTips).success).toBe(false);
+    expect(coachStepSchema.safeParse({ ...step, reasoning: "because" }).success).toBe(false);
+    expect(coachStepSchema.safeParse({ ...step, action: "" }).success).toBe(false);
+  });
+
+  it("sends the provider a flat JSON schema with enums, as a hint only", () => {
+    const schema = COACH_STEP_JSON_SCHEMA;
+    expect(JSON.stringify(schema)).not.toContain("anyOf");
+    expect(schema.required).toEqual(["action", "candidates", "evidenceIds", "summary", "tips", "confidence"]);
+    expect(schema.properties.action.enum).toContain("check_candidates");
+    expect(schema.properties.action.enum).toContain("final");
+    expect(schema.properties.candidates.maxItems).toBe(8);
+    expect(schema.properties.candidates.items.properties.category.enum).toEqual([...CATEGORIES]);
+  });
+});
+
+describe("round coach — event name", () => {
+  it("adds one client event and no server event", () => {
+    expect(CLIENT_EVENTS.coach).toBe("round:coach");
+    expect(Object.values(SERVER_EVENTS)).not.toContain("round:coach");
   });
 });
