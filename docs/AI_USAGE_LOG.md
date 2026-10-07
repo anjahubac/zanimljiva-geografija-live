@@ -308,3 +308,27 @@ session, not during it.
   honour the digraph rule and find terms for Q, X, Đ, Nj … is untested. Not
   clicked through in a browser.
 - **Next decision:** the live AI run (W4-7), now including an English W sheet.
+
+## 012 — Week 5 planning: a bounded agentic feature (Claude Code, 2026-10-07)
+
+- **Phase:** before Week 5; planning only, no application code.
+- **Reason:** the owner shared the W05 assignment ("Bounded Agentic Feature")
+  and asked for an implementation plan that fits the current state of the
+  repository, appended to `Plan.md` without rewriting anything in it.
+- **Expected:** a status check of Week 4, one recommended agentic scenario
+  that the game's data can support, tool contracts, limits, stop rules, evals
+  and a step order, with every scope change left as an open decision.
+- **Actual (verified in-session):**
+  - `npm ci && npm run verify` on `4dea3b5`: typecheck, lint and build clean,
+    **490 tests passed across 30 files**, matching `Plan.md` §2B.6 step 11.
+  - Read `CLAUDE.md`, `.github/` modules 00 and 10, `Plan.md` §1, §2, §2B, §4
+    and §19–§22, `docs/EVIDENCE_004.md`, `docs/AI_EVALS.md`, `specs/README.md`,
+    the constitution, and the AI layer (`src/server/ai/*`, `features/*`,
+    `ai-output.schemas.ts`, the room store's hint and close paths, the fakes).
+  - Added `Plan.md` §2C (proposed, not approved) and one status bullet in §1;
+    `git diff --numstat` shows 389 lines added and 0 removed.
+- **Not done:** no spec, contract or code for the feature; no live AI call.
+  The out-of-date statements found (§2B's header, §1's date, this file's
+  header count) are listed in §2C.1, not corrected.
+- **Next decision:** the owner answers §2C.15; then W5-0 (W4-7 with keys) and
+  W5-1 (`/speckit-specify` for `specs/010-round-coach-agent`).
