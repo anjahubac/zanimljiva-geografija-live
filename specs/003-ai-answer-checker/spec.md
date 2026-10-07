@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-30 — **reconstructed after the build**
 
-**Status**: Implemented locally (commit `6232482`). Live eval against the real APIs not yet run (`Plan.md` §2B.6 step 7).
+**Status**: Implemented locally (commit `6232482`). Live eval ran on 2026-10-07 with `check-round.v3`: 16/16 agreement per provider on the fixed checker cases (`docs/AI_EVALS.md`). The current Week 5 workspace uses `check-round.v4`; its live recheck is not recorded.
 
 **Source of truth**: `Plan.md` §2B.2 (checker, close path, safety) and §2B.5 (providers, fallback). This file summarizes and links; where it differs, the sources win.
 
@@ -35,4 +35,4 @@ round letter. Scoring (§6) is applied to that validity.
 
 ## Success Criteria
 
-Agreement score of the live smoke eval, recorded in `docs/AI_EVALS.md` (pending).
+Agreement score of the live smoke eval, recorded in `docs/AI_EVALS.md` (16/16 per provider, 2026-10-07; small fixed sample).

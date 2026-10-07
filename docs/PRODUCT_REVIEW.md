@@ -1,5 +1,11 @@
 # Product review — 2026-09-22
 
+**Historical review.** Accounts were removed in Week 4, matchmaking and AI
+checking were built, and Week 3 baseline/controlled-change evidence was
+completed after this review. Current status: `Plan.md` §1, §2B and §2C.17;
+current Week 5 evidence: `docs/EVIDENCE_005.md`. Recommendations below are
+archived observations, not authorization to restore accounts or add features.
+
 Reviewed against `Plan.md`, `docs/GAME_SPEC.md`, the implementation and tests.
 The starting working tree was clean at commit
 `481535a9065852ad9001719f96de2a73ebe399b3`.

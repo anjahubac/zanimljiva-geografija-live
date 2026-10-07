@@ -1,5 +1,11 @@
 # Research: Round coach
 
+Historical Phase 0 decisions for [plan.md](plan.md), preserved as written.
+The current design is `Plan.md` §2C.17 and `contracts/`; v3 removed model text
+from the report, v4 added backup/repair limits, v5 changed recall guidance,
+and current v6/checker-v4 prompts add Serbian spelling guidance.
+The figures and fallback behavior below describe the original design.
+
 Phase 0 of [plan.md](plan.md). There were no open unknowns once the owner
 decided `Plan.md` §2C.15 (recorded in §2C.16); each entry records a design
 choice, why, and what was rejected. Facts about the existing code were read

@@ -7,7 +7,7 @@ with Groq as a backup) checks that every answer is a real term of its category.
 
 Built for Weeks 3–4 of the Serbian AI Bootcamp. Week 5 adds a **round
 coach** — after the results, a bounded AI agent shows what would have counted
-where you scored 0 — approved and specified, not built yet
+where you scored 0 — built on `feature/round-coach`
 ([Plan.md §2C](Plan.md), [specs/010](specs/010-round-coach-agent/spec.md)).
 
 ## Three ways to play
@@ -46,12 +46,13 @@ If the AI is unavailable, the round is scored on the starting letter only, and
 the results say so. The game never waits on the AI for more than 20 seconds.
 
 7. On the results sheet, the **round coach** (_Trener partije_) offers the
-   categories where you scored 0. Ask, and within about half a minute you get
+   categories where you scored 0. Ask, and within up to 35 seconds you get
    one suggestion per category, or an honest "no checked suggestion". Every
    word shown passed the game's letter rule **and** was accepted by the AI
    referee, in the referee's spelling; the short summary is written by the
    game, not the AI. An AI proposes words, the game checks them, the AI may
-   revise once, and the referee confirms them before you see them; it never
+   revise once; after the referee check, one bounded repair may try empty
+   categories, and only accepted words are shown; it never
    changes your points, only you see the report, and it never uses your
    opponent's answers. One analysis per round (`Plan.md` §2C).
 
@@ -71,6 +72,7 @@ npm run build      # dist/client + dist/server
 npm start          # serve the built SPA, /healthz and Socket.IO from one origin
 npm run verify     # typecheck + lint + test + build — the gate before any handoff
 npm run smoke:ai   # opt-in: 5 real AI requests with fixed, pre-written expectations
+npm run smoke:coach -- 1  # opt-in: one live agent run; reconcile usage before running
 ```
 
 Copy `.env.example` to `.env` and set `GEMINI_API_KEY` (free, from
@@ -94,7 +96,7 @@ lobby tells players this.
 | [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
 | [docs/EVIDENCE_005.md](docs/EVIDENCE_005.md) | Week 5: the round coach — scope change, baseline, runs, security checklist |
 | [docs/AGENT_FLOW.md](docs/AGENT_FLOW.md) | Week 5: the coach's flow, checks and stop conditions |
-| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: agent evals C1–C19 and live L1–L3, written before the code |
+| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5: original evals C1–C19, approved amendments, C20–C22 and live L1–L3 |
 | [specs/](specs/README.md) | Spec Kit features; Week 5 is `specs/010-round-coach-agent` (tool contracts in `contracts/tools.md`) |
 | [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
 | [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |

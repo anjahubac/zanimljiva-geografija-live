@@ -1,52 +1,13 @@
 # Contract: one model step
 
-What the orchestrator sends the model in each step, and what the model must
-return. Prompt `coach-step.v1` (`src/server/prompts/coach-step.v1.ts`, research
-R17). Everything the model returns is **untrusted input** and passes through
-four checks in order: JSON parse → envelope schema → per-step allowlist →
-arguments or final validation.
+**Current prompt: `coach-step.v6`**, in `src/server/prompts/coach-step.v6.ts`.
+The request is built by the server. Every response is untrusted and passes
+JSON parse → envelope schema → current-step allowlist → action shape →
+argument/scope or final-evidence validation. The model never chooses a provider.
 
+## Request
 
-_Update 2026-10-07: the prompt is now `coach-step.v2`
-(`src/server/prompts/coach-step.v2.ts`). v1 did not say which language a
-proposed term should be in, so a Serbian player was shown "Euphrates" instead
-of "Eufrat". v2 asks for the name the player would write in their interface
-language, and the other language only when that name misses the round letter.
-The request and response shapes are unchanged. This is a prompt hint: the game
-accepts both languages, so code does not enforce it._
-
-_Update 2026-10-07, `coach-step.v3` (owner: "only valid and checked
-answers"): a final's `summary` must be `""` (any text is `final_invalid`); the
-summary is the game's. After the final, or any other stop, the game sends the
-words it would show to the referee itself before the report; only accepted
-words are shown, in the referee's spelling. That check is not a tool call, but
-its attempts count toward the run's 5. The model never sees the referee's
-spelling._
-
-_Update 2026-10-07, `coach-step.v4` (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): up to 16
-candidates per `check_candidates` (≤ 2 per category), so each category can
-have a backup. A final's `""` citation no longer means "no suggestion": the
-game uses a passing word of that category, if any. The game's own check sends
-the chosen word and one backup per category. After a completed run whose check
-left categories with no accepted word, a **repair step**: `step` = next,
-`stepsLeft: 0`, `toolCallsLeft: 1`, `allowedActions: ["check_candidates"]`,
-`focus` = those categories only, and `toolResults` ending with
-`{ tool: "referee_check", items: [{ id, verdict, reason }] }`. One provider
-attempt; no final after it; the game sends its passing words to the referee
-(one attempt, interaction id `<runId>:repair`). A refused or failed repair
-leaves the report unchanged._
-
-_Update 2026-10-07, `coach-step.v5` (owner: "if there is an answer for a
-category, find it"): prompt only. A term for every focus category; when no
-well-known term comes to mind, a systematic pass through the category (where
-to look, per category) for a lesser-known term that really exists, never an
-invented one; the repair step is told the obvious terms have failed. Request,
-response and limits unchanged._
-## Request (built by the server per step)
-
-The system instruction is fixed per prompt version. The user content is one
-JSON object; the player's answers appear only as JSON string values, with
-control characters stripped:
+One JSON user message per decision:
 
 ```json
 {
@@ -57,83 +18,123 @@ control characters stripped:
   "step": 2,
   "stepsLeft": 1,
   "toolCallsLeft": 1,
-  "allowedActions": ["check_candidates", "final"],
+  "allowedActions": ["check_candidates", "verify_terms", "final"],
   "focus": [
-    { "category": "river",   "yourAnswer": "",          "whyMissed": "empty" },
-    { "category": "animal",  "yourAnswer": "Lav",       "whyMissed": "wrong_letter" },
-    { "category": "country", "yourAnswer": "Ljubljana", "whyMissed": "wrong_category" }
+    { "category": "river", "yourAnswer": "", "whyMissed": "empty" },
+    { "category": "animal", "yourAnswer": "Lav", "whyMissed": "wrong_letter" }
   ],
   "toolResults": [
     { "tool": "check_candidates", "callId": "t1", "items": [
-      { "id": "c1", "category": "river",   "term": "Ljubljanica", "passes": true,  "failure": null },
-      { "id": "c2", "category": "animal",  "term": "Lisica",      "passes": false, "failure": "wrong_letter" },
-      { "id": "c3", "category": "country", "term": "Lihtenštajn", "passes": false, "failure": "wrong_letter" }
+      { "id": "c1", "category": "river", "term": "Ljubljanica", "passes": true, "failure": null },
+      { "id": "c2", "category": "animal", "term": "Lisica", "passes": false, "failure": "wrong_letter" }
     ] }
   ]
 }
 ```
 
-Never included: the opponent's answers or name, scores, room code, round id,
-socket ids, tokens, configuration, earlier model replies (FR-007).
+`yourAnswer` is ≤ 40 characters; control characters are stripped and answers
+are JSON data. Never included: opponent answers/name, scores, room/round/socket
+ids, tokens, settings, other rooms or earlier raw model replies.
 
-Gateway settings per step: operation `coach-step`, `interactionId =
-<runId>:s<n>`, temperature 0.2, max 600 output tokens, budget
-`BUDGETS["coach-step"]` with `totalMs = min(10 s, time left in run)` and
-`maxAttempts = min(2, attempts left in run)`, and the run's `AbortSignal`.
+Normalized evidence is one of:
+
+- `check_candidates`: `tool`, `callId`, items with `id`, `category`, `term`,
+  `passes`, `failure`.
+- `verify_terms`: `tool`, `callId`, items with `id`, `verdict`, `reason`.
+- `referee_check` (repair only): `tool`, items with `id`, `verdict`, `reason`.
+
+Referee spelling is never sent back to the model. Each main decision uses
+operation `coach-step`, interaction id `<runId>:s<n>`, temperature 0.2,
+600 output tokens, ≤ 6 s per attempt, ≤ min(10 s, time left) per interaction,
+and ≤ min(2, remaining attempts) attempts. All main decisions and referee
+interactions share 5 attempts and the original start + 25 s deadline.
 
 ## Response envelope
 
-One flat object (Gemini takes no `anyOf`). All fields required; unused ones
-empty.
+Defined once in `src/contracts/ai-output.schemas.ts`:
 
 ```ts
 coachStepSchema = z.object({
-  action: z.string().min(1).max(40),       // NOT an enum: the allowlist judges it (research R3)
-  candidates: z.array(z.object({ category: z.string().max(20), term: z.string().max(60) }).strict()).max(16),
-  evidenceIds: z.array(z.string().max(8)).max(16),          // verify_terms (O1)
+  action: z.string().min(1).max(40),
+  candidates: z.array(z.object({ category: z.string().max(20), term: z.string().max(60) }).strict()).max(32),
+  evidenceIds: z.array(z.string().max(8)).max(32),
   summary: z.string().max(400),
   tips: z.array(z.object({ category: z.string().max(20), evidenceId: z.string().max(8) }).strict()).max(16),
   confidence: z.string().max(10),
 }).strict();
 ```
 
-The envelope is deliberately loose (wide maxima, strings not enums) so that
-every malformed **argument** reaches the tool's own validation and is recorded
-as `invalid_tool_args`, not as `malformed_output`. `malformed_output` is only
-for a reply that is not JSON or not this shape.
+All fields required. The loose envelope lets unknown actions and invalid
+arguments reach the application's own checks. The provider JSON schema is a
+hint with enums and tighter maxima: 16 candidates/ids, 8 tips. Neither schema
+allows the model to execute anything directly.
 
-The JSON schema sent to the provider is stricter (enums for `action`,
-`category`, `confidence`; `maxItems` 8), as a hint only.
+Examples (unused fields empty):
 
-## Checks after the envelope
+```json
+{"action":"check_candidates","candidates":[{"category":"river","term":"Ljubljanica"}],"evidenceIds":[],"summary":"","tips":[],"confidence":""}
+```
 
-1. **Allowlist.** `action` must be in this step's `allowedActions`
-   (research R7). Otherwise nothing runs, and the stop reason says why:
-   - not a name in `TOOLS` and not `final` → `unknown_tool`;
-   - a tool in `TOOLS` that this step does not offer, on the last step or with
-     no tool call left → `max_steps` (the limit removed it, eval C10);
-   - a tool in `TOOLS` that this step does not offer for any other reason
-     (`check_candidates` after every focus category passed, `verify_terms`
-     with nothing to verify) → `invalid_tool_args`;
-   - `final` when not offered (step 1) → `final_invalid`.
-2. **Shape per action.**
-   - `check_candidates`: `candidates` non-empty; `evidenceIds`, `summary`,
-     `tips` empty; `confidence` empty.
-   - `verify_terms` (O1): `evidenceIds` non-empty; everything else empty.
-   - `final`: `summary`, `tips` and `confidence` set; `candidates` and
-     `evidenceIds` empty.
-   A mismatch → `invalid_tool_args` for a tool, `final_invalid` for a final.
-3. **Arguments** — see [tools.md](tools.md).
-4. **Final** — every rule below.
+```json
+{"action":"verify_terms","candidates":[],"evidenceIds":["c1"],"summary":"","tips":[],"confidence":""}
+```
 
-## Final validation (FR-019, research R9)
+```json
+{"action":"final","candidates":[],"evidenceIds":[],"summary":"","tips":[{"category":"river","evidenceId":"c1"},{"category":"animal","evidenceId":""}],"confidence":"medium"}
+```
 
-- `tips` lists every focus category exactly once and nothing else;
-- each `evidenceId` is `""` (no suggestion) or the id of a **passing** evidence
-  item of this run in the **same category** (with O1, not rejected by the
-  referee);
-- `summary`: 1–280 characters after trim, no control characters;
-- `confidence`: `low`, `medium` or `high`.
+## Allowlist and action shape
 
-Any failure rejects the whole final (`final_invalid`). On success the report's
-suggestion text is copied from the evidence item, never from the model.
+- Main step 1: `check_candidates` only.
+- Later main steps: `final`; `check_candidates` only before step 3 with a
+  tool execution left and an unsolved focus category; `verify_terms` only
+  before step 3 with a tool execution left and unjudged passing items.
+- Main step 3: `final` only.
+- Optional repair: `check_candidates` only, no final afterwards.
+
+Name outside `TOOLS` and not `final` → `unknown_tool`. A known tool removed
+by the step/tool limit → `max_steps`; otherwise a known tool not offered →
+`invalid_tool_args`. A final on step 1 or in repair → `final_invalid`.
+Refused proposals cause 0 executions for that proposal.
+
+`check_candidates` fills only candidates; `verify_terms` fills only evidenceIds;
+`final` fills only tips and confidence. `summary` MUST always be empty.
+Mixed/invalid action shapes produce `invalid_tool_args` for tools or
+`final_invalid` for final. Arguments then pass [tools.md](tools.md).
+
+## Final validation and application check
+
+- Every focus category appears exactly once, with no extra category.
+- Citation is empty or references a passing item of this run in that category;
+  a referee-rejected item cannot be cited.
+- Summary is exactly `""`; confidence is `low`, `medium` or `high`.
+
+Failure rejects the whole final. An empty citation permits the application to
+choose an existing passing candidate; it does not guarantee an empty report tip.
+Before any report, the application sends unjudged chosen words and one backup
+per category to the existing referee, within the main time/attempt budget.
+Only accepted words are displayed, in the referee's spelling when supplied
+and still matching the letter. No model-written prose reaches the report.
+
+## Optional repair
+
+Only after a valid final without an application-check failure, for categories
+still empty and with no passing unjudged item. Its request has `step` equal
+to the next model decision, `stepsLeft: 0`, `toolCallsLeft: 1`,
+`allowedActions: ["check_candidates"]`, focus restricted to those categories,
+and prior normalized evidence plus `referee_check` verdicts when available.
+
+It starts only with ≥ 4 s remaining before original start + 35 s. It gets
+one model attempt, one extra tool execution and one referee attempt, no retry
+or fallback, no next final. Failed/refused repair leaves the earlier report
+intact; accepted words are added. Overall maxima: 4 model decisions, 3 tool
+executions, 7 attempts, 35 s. Client wait: 45 s.
+
+## Version history
+
+v1: original Core/O1 flow. v2: prefer names in the player's language. v3: empty
+model summary, application referee check, accepted spelling. v4: 16 candidates,
+backup and one repair. v5: systematic category recall guidance; no web search
+or word list. v6: Serbian transcription guidance and regional recall order;
+the shared referee prompt is now `check-round.v4`. These prompt changes do not
+change the schemas or limits. Historical expectations remain in `docs/AGENT_EVALS.md` and git.

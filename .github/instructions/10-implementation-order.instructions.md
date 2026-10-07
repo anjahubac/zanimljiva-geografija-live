@@ -229,8 +229,10 @@ The AI usage limit (§2B.11) was accepted and built on 2026-09-30.
 
 ## Week 5 — the round coach (bounded agentic feature)
 
-**Approved 2026-10-07; Core built the same day on `feature/round-coach`
-(W5-4 → W5-10), at the owner's request.** Design of record: `Plan.md` §2C and its decisions in §2C.16. The task
+**Approved 2026-10-07; Core, O1, O6 and bounded backup/repair built on
+`feature/round-coach`.** Current design of record: `Plan.md` §2C.17; the
+original decisions are in §2C.16. The table below preserves the original build
+order; current amendments are recorded in the feature tasks and evals. The task
 list is `specs/010-round-coach-agent/tasks.md`; it follows this order and
 these exits. Before a Week 5 step:
 
@@ -254,7 +256,7 @@ Rules particular to the agent:
 - The application stops the run, never only the model: steps, tool calls,
   attempts and time come from `RUN_LIMITS` and are checked before every step.
 - A suggestion shown to a player is copied from a passing tool result of the
-  same run, never from the model's text.
+  same run and accepted by the referee, never from the model's text.
 - Read-only: no tool or code path of the coach may write answers, validity,
   points, phase or timers, or read the opponent's sheet.
 - Adding a tool, a limit, an event or a field the contracts do not list is a
@@ -268,7 +270,7 @@ Rules particular to the agent:
 | W5-6 | Gateway `maxAttempts`, `BUDGETS["coach-step"]`, prompt `coach-step.v1`, `AiService.coachStep`, fakes | `npm run typecheck && npx vitest run tests/unit/gateway.test.ts tests/unit/ai-features.test.ts` |
 | W5-7 | `agent/coach-agent.ts`, `agent/run-log.ts`; mutation checks | `npx vitest run tests/unit/agent-tools.test.ts tests/unit/coach-agent.test.ts` |
 | W5-8 | Room store (reveal snapshot, `requestCoach`), usage limits, socket handler | `npm test` |
-| W5-9 | Client: `CoachPanel`, `requestCoach` with a 30 s ack timeout, SR/EN strings | `npm run verify` |
+| W5-9 | Client: `CoachPanel`, `requestCoach` with a 45 s ack timeout (current amendment), SR/EN strings | `npm run verify` |
 | W5-10 | Modules 05, 07, 12; `.env.example`; README; GAME_SPEC Amendment 8 status | `npm run verify` |
 | W5-10a | O1 `verify_terms` (only once C1–C16 and C19 pass) | `npx vitest run tests/unit/coach-agent.test.ts && npm run verify` |
 | W5-10b | O6 run details | `npm run verify` |

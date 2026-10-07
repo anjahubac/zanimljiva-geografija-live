@@ -13,6 +13,11 @@ The Week 4 AI features (`Plan.md` §2B) are covered by two kinds of evaluation:
 This file is where the live results go (`Plan.md` §2B.6, step 7). Nothing is
 written in the run log that was not actually observed.
 
+Current-source note, 2026-10-07: the recorded 16/16 results below used
+`check-round.v3`. The shared workspace now imports `check-round.v4`, with
+Serbian spelling/original-name guidance. A v4 live rerun is not recorded;
+keep the historical results separate from current prompt quality.
+
 ## How to run
 
 ```bash

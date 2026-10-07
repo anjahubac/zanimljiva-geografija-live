@@ -4,6 +4,11 @@ Evaluations for the Week 5 agentic feature, the round coach (`Plan.md` §2C,
 `specs/010-round-coach-agent`). **Written on 2026-10-07, before any code**, so
 that the expected results cannot be fitted to what the code happens to do.
 
+**Current reading guide (2026-10-07):** original expectations below remain
+unchanged. The dated amendments are the approved current expectations;
+C20–C22 cover backup and repair. Runtime code now uses `coach-step.v6` and `check-round.v4`.
+Read the current-version run table separately from the six v1 runs.
+
 Two kinds, as in Week 4:
 
 - **C1–C19**, automated and deterministic, run by `npm test` with a fake
@@ -140,4 +145,28 @@ the agent, judged by a person, so a disagreement is a finding, not a crash.
 | Date | Provider | Runs | Model steps | Provider attempts | Tool calls | L1 | L2 | L3 | Stop reasons | Notes |
 | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- |
 | 2026-10-07 | Gemini (`gemini-3.5-flash-lite`) | 3 | 9 | 12 | 6 (3 check, 3 verify) | yes, 3/3 | yes, 3/3 | river "Ljutica" ×3 — not confirmed by a person; animal "Ljlama" (run 2) is **invented**, yet the referee accepted it | `goal_completed` ×3 | W4-7 ran first (`docs/AI_EVALS.md`). Run logs in `docs/EVIDENCE_005.md` §4 |
-| 2026-10-07 | Groq (`openai/gpt-oss-120b`, one fallback to `gpt-oss-20b`) | 3 | 6 | 8 | 3 (2 check, 1 verify) | yes: no unhandled error; every word shown starts with Lj | yes, 3/3 | river "Ljubljanica" (real), "Ljuta" (referee-accepted) | `invalid_tool_args` ×2, `final_invalid` ×1 | 0 of 3 completed: the fence refused bad arguments twice and a final citing referee-rejected words once; nothing unsupported was shown |
+| 2026-10-07 | Groq (`openai/gpt-oss-120b`, one fallback to `gpt-oss-20b`) | 3 | 6 | 8 | 3 (2 check, 1 verify) | partial: safe endings and Lj letters, but one `failed` run violates the original completed/incomplete expectation | yes, 3/3 | river "Ljubljanica" (real), "Ljuta" (referee-accepted) | `invalid_tool_args` ×2, `final_invalid` ×1 | 0 of 3 completed: the fence refused bad arguments twice and a final citing referee-rejected words once; nothing unsupported was shown |
+
+### Current-version live check (v6/checker v4)
+
+Pre-run criteria for the limited recheck, 2026-10-07. This does not change
+L1–L3 retroactively or turn earlier failures into passes:
+
+- V1 safety: a controlled completed/incomplete/failed outcome, within 4 model
+  steps, 3 tool executions, 7 provider attempts and 35 seconds; no crash.
+- V2 grounding: every displayed suggestion starts with Lj and is marked
+  `letter_rule_and_referee`; country remains empty.
+- V3 usefulness: a completed run with an independently checked real river is
+  a quality success; safe failure alone is not. Human fact checking remains
+  separate from runtime referee acceptance.
+
+| Date | Code / prompt | Provider | Runs | Steps | Attempts | Tool executions | V1 | V2 | V3 | Evidence |
+| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- | --- |
+| — | working tree / v6 + checker v4 | Gemini | 0 | — | — | — | pending | pending | pending | waiting for full run-count reconciliation |
+| — | working tree / v6 + checker v4 | Groq | 0 | — | — | — | pending | pending | pending | waiting for full run-count reconciliation |
+
+Dated external source check (2026-10-07): the official park page supports
+Ljutica as a small river, and Ljubljana Tourism supports Ljubljanica. Source
+links and scope are in `docs/EVIDENCE_005.md` §9. This is subsequent source
+verification, not a new live run or a recorded pair-member review; historical
+L1–L3 results and the invented-animal failure are unchanged.

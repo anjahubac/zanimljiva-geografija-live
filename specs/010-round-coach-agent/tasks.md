@@ -4,7 +4,13 @@
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/coach-socket.md](contracts/coach-socket.md), [contracts/model-step.md](contracts/model-step.md), [contracts/tools.md](contracts/tools.md), [quickstart.md](quickstart.md)
 
-**Status**: written 2026-10-07; the `/speckit-analyze` findings of the same day are applied (C19 added as T030, later tasks renumbered, eval cases extended). _Update 2026-10-07:_ T001–T062 done on `feature/round-coach`, except that T017's `onVerifyTerms` came with T055, T060's contributions table is left to the owners, and T062's second `/speckit-analyze` pass was not run; T063 (demo rehearsal) is open. The owner asked for no implementation yet. Steps W5-1 to W5-3 of `Plan.md` §2C.10 (spec, plan, evals) are done as documents. Start at Phase 1 only when the owner asks.
+**Status**: Core, O1, O6 and the approved v3–v5 changes and current v6/checker-v4 prompts are built on
+`feature/round-coach`. Original implementation tasks T001–T059 are historical
+build records; their original limits/examples are superseded by the current
+spec and contracts. T060 remains open until actual pair contributions are
+recorded. T062's final read-only analysis is complete; T063's human demo rehearsal
+remains open. Phase 11 tracks this submission-readiness cleanup.
+
 
 **Tests**: required. Module 10's definition of done needs a success case and a rejection or edge case for every behaviour change, written before the code, and W05 needs a fake-provider test path. The evals are pre-registered in [`docs/AGENT_EVALS.md`](../../docs/AGENT_EVALS.md) (C1–C19); each test task names the eval it implements.
 
@@ -185,14 +191,29 @@
 
 ## Phase 10: Evidence and demo (W5-12)
 
-- [X] T060 Fill `docs/EVIDENCE_005.md`: architecture, flow, provider and model, tool registry, a success run log, rejected-tool evidence (C4 output), a failure run, stop reasons, `npm run verify` output, known limitations, both members' contributions
+- [ ] T060 Fill `docs/EVIDENCE_005.md`: architecture, flow, provider and model, tool registry, a success run log, rejected-tool evidence (C4 output), a failure run, stop reasons, `npm run verify` output, known limitations, both members' actual contributions (awaiting their names/work, not the planned split)
 - [X] T061 Map W05's §41 security checklist to the code and tests that enforce each line, in `docs/EVIDENCE_005.md` §6
-- [X] T062 Run `/speckit-analyze` again; add a dated status line to `Plan.md` §2C (additive) and update `specs/README.md`
+- [X] T062 Run the repository's read-only `speckit-analyze` workflow again against the current spec/plan/tasks; add a dated status line to `Plan.md` §2C (additive) and update `specs/README.md`
 - [ ] T063 Final `npm run verify`; rehearse the 7-minute demo of W05 §47 with at most 3 live runs
 
 **Exit (W5-12)**: `npm run verify` green; the owner reviews the diff. Stop.
 
 ---
+
+## Phase 11: Current-version submission alignment (W5-12, authorized 2026-10-07)
+
+These tasks implement the review findings without new application behavior.
+They follow the built changes recorded in `Plan.md` §2C.16–§2C.17.
+
+- [X] T064 Align spec FR-001–FR-030 and SC-001–SC-008, plan, contracts, data model, flow and quickstart with the actual current implementation: accepted words only, client summary, final referee check, backup and one repair; update current status in Plan/README and label historical records
+- [ ] T065 Record one current-version smoke run per configured provider, after the complete run count is reconciled and has room within the recommended 15-run development budget; record every attempt, result and quality limitation in evidence/evals/usage log (FR-029, SC-008)
+- [ ] T066 Reconcile the six recorded v1 smoke runs with the owner's browser-run count; distinguish recorded exact totals from estimates and unknown attempt/tool counts; do not claim a proven budget total while browser history is unknown (SC-008)
+- [X] T067 Prepare the seven-minute demo run sheet, commands for success/rejected-tool/provider failure and a checklist each member can use to explain the boundaries, in `docs/EVIDENCE_005.md` §10 (supports T063; preparation is not rehearsal)
+- [X] T068 Run `npm run verify` and documentation checks, capture real output, recheck the requirements-to-task map, and record current handoff status; T060/T063 remain open if human evidence is missing
+
+**Exit**: current docs match runtime code; verification passes; T062 analysis
+reported; live count/status and missing human evidence stated honestly. No
+push, deployment or PR. Final submission still needs T060/T063.
 
 ## Dependencies & Execution Order
 
@@ -247,7 +268,7 @@ results sheet, with C1–C16 and C19 passing on the fake provider. **Stop and va
 
 Person A drives Phases 2–3 while B reviews tool contracts, stop rules, budget
 and security; B drives Phases 4–10 while A reviews. Both must be able to
-explain why these tools, why 3 steps, where a proposal is validated, where a
+explain why these tools, why the 3-step main loop and one bounded repair, where a proposal is validated, where a
 run stops, and how a test shows a refused tool never ran (W05 §45).
 
 ## Notes

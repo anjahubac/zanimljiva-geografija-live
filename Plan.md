@@ -8,24 +8,22 @@
   (§2C) follow the bootcamp's weekly schedule.
 - Players: exactly two people on two separate computers
 - Deployment: one public browser URL backed by one real-time Node.js service
-- Plan status: Core gameplay implemented; baseline/evidence and deployed two-computer acceptance remain incomplete. See the 2026-09-22 review in `docs/PRODUCT_REVIEW.md`.
-- Primary objective: deliver the smallest reliable synchronized round and the evidence required for Week 3
-- **Week 4 revision (2026-09-30): see §2B.** Accounts are removed; a Gemini
-  answer checker, a third way to play (against an AI opponent), hints, and a
-  Serbian/English interface are added. Where §2B contradicts an older section,
-  §2B wins, and the older text is marked. A **Leave game** button on the
-  waiting screen followed the same day (§2B.10). Week 4 evidence is in
-  `docs/EVIDENCE_004.md`. An AI usage limit per visitor and per day was
-  accepted and built the same day (§2B.11). Spec Kit was added afterwards,
-  with specs reconstructed for the features already built (§2B.12).
-- **Week 5 proposal (2026-10-07): see §2C.** A bounded, read-only agentic
-  feature — the round coach (_Trener partije_) — proposed from the W05
-  assignment. **Not approved and not built**; the owner's open decisions are
-  listed in §2C.15.
-- **Week 5 approved (2026-10-07): see §2C.16.** The owner accepted every
-  recommendation in §2C.15. The Spec Kit feature
-  `specs/010-round-coach-agent` is written through `tasks.md`, and the Week 5
-  docs exist. **No application code is written yet.**
+- Plan status: local gameplay and the Week 5 coach are implemented; deployment,
+  instructor approval, actual pair contributions and demo rehearsal remain
+  evidence gates. Week 3 baseline and controlled-change evidence are recorded
+  in `docs/EVIDENCE_003.md`.
+- Primary objective: preserve the synchronized game while completing the
+  Week 5 bounded-agent submission (`docs/EVIDENCE_005.md`).
+- **Week 4 (2026-09-30): §2B.** Guest friend/random/AI modes, checker, hints,
+  SR/EN interface, usage limits and full alphabets are built. W4-7 live checks
+  ran on 2026-10-07 with `check-round.v3`: 16/16 agreement per provider; quality
+  limitations are recorded in `docs/AI_EVALS.md`. W4-8 and W4-9 remain open.
+- **Week 5 (2026-10-07): §2C.** Core, O1 and O6 are built on
+  `feature/round-coach`, followed by checked spelling, backup/repair and
+  `coach-step.v6` (current shared workspace). Current design: §2C.17. Earlier proposals/decisions are
+  retained as history; submission status is tracked in feature 010's tasks
+  and `docs/EVIDENCE_005.md`.
+
 
 ## 2. How the source documents are used
 
@@ -158,13 +156,12 @@ If two higher-priority sources conflict, pause and resolve the conflict in `GAME
 
 ## 2B. Week 4 revision — no accounts, Gemini checker, AI opponent, hints, two languages (2026-09-30)
 
-**Status: implemented locally on 2026-09-30. Not yet committed, pushed or deployed.**
-`npm run verify` passes (437 tests, 27 files, after §2B.10). Not yet run against the real Gemini or Groq APIs,
-because no key was available in the session; see §2B.6 step 7.
-
-_Correction 2026-10-07:_ Week 4 is committed and on `main` (`6232482`, then
-`4dea3b5`); `npm run verify` there passes with 490 tests in 30 files (§2C.1).
-It is still **not deployed**, and still not run against the real APIs.
+**Current status (2026-10-07): Week 4 is committed on main (`6232482`,
+then `4dea3b5`), with its 490-test baseline preserved. W4-7 live checks ran
+once per provider: both agreed with 16/16 checker expectations. Bot/hint
+quality findings are in `docs/AI_EVALS.md`; W4-8's controlled change and
+W4-9's deployment are still open.** Original build outputs below are dated
+historical evidence, not the current branch's test count.
 
 The owner's decisions, recorded before any code changes:
 
@@ -382,11 +379,11 @@ Groq.
 | 5 | Client: three-mode lobby, hints on the sheet, judging screen, reasons and hint marks on results, SR/EN | Done. `tests/unit/client-ai.test.ts`; played in a browser against a scripted AI |
 | 6 | Docs: this section, `.env.example`, `.github` modules 09/12 and the always-on guardrails | Done |
 | 6b | Groq adapter and Gemini ⇄ Groq fallback (§2B.5) | Done. `tests/unit/groq-and-fallback.test.ts`: Gemini quota spent → Groq answers, and Gemini is skipped next round; Groq down → Gemini answers; both down → letter rule |
-| 7 | **Live eval against real Gemini and Groq:** `npm run smoke:ai` (once per provider, with `AI_PROVIDER_ORDER=gemini` / `=groq`) — 16 fixed answers (Serbian, English, invented, wrong category, injection) with expected verdicts written first, plus bot answers and hints in both languages | **Not run yet** — needs the owner's key in `.env`. Record the agreement score in `docs/AI_EVALS.md` |
+| 7 | **Live eval against real Gemini and Groq:** `npm run smoke:ai` (once per provider, with `AI_PROVIDER_ORDER=gemini` / `=groq`) — 16 fixed answers (Serbian, English, invented, wrong category, injection) with expected verdicts written first, plus bot answers and hints in both languages | Done 2026-10-07 — 16/16 checker agreement on each provider; bot/hint findings in `docs/AI_EVALS.md` |
 | 8 | Deploy (§2B.7) and run the production checks | Not started |
 | 9 | Leave game on the waiting screen (§2B.10) | Done. `verify` green, 437 tests, 27 files |
 | 10 | AI usage limit per visitor and per day (§2B.11) | Done. `verify` green, 456 tests, 29 files |
-| 11 | Letters from the whole alphabet (§2B.13, `specs/009-full-alphabet-letters`) | Done. `verify` green, 490 tests, 30 files (baseline before the step: 458, 29). Live smoke not run |
+| 11 | Letters from the whole alphabet (§2B.13, `specs/009-full-alphabet-letters`) | Done. `verify` green, 490 tests, 30 files (baseline before the step: 458, 29). Live smoke ran 2026-10-07 (`docs/AI_EVALS.md`) |
 
 **Evals, written before running** (`tests/integration/ai-round.test.ts`, fake AI):
 
@@ -635,24 +632,19 @@ terms; the owner accepted that. Tracked as Spec Kit feature
 - Known effect: answers typed without diacritics fail the local rule on the
   new letters with them (Č, Ć, Đ, Dž, Š, Ž), as "Sabac" already failed on S.
 
-## 2C. Week 5 — a bounded agentic feature: the round coach (proposed 2026-10-07)
+## 2C. Week 5 — the bounded round coach
 
-**Status: proposed. Not approved, nothing built.** Written on 2026-10-07 from
-the W05 assignment ("Bounded Agentic Feature"). Rule 5 and constitution
-principle V apply: the event, settings and files named below are **not in
-scope** until the owner records a decision on each open question in §2C.15.
-Until then this section is a plan, and §2B stays the design of record for
-everything already built. When approved, it becomes Spec Kit feature
-`specs/010-round-coach-agent`, and that spec links back here.
+**Built on `feature/round-coach` (2026-10-07): Core, O1 and O6, followed by
+`coach-step.v6` and the approved backup/repair changes.** Current behavior and
+limits are consolidated in §2C.17. §2C.1–§2C.15 preserve the original planning
+snapshot; their proposed figures, summary and letter-only fallback are
+historical and superseded by §2C.16–§2C.17. The original eval expectations stay
+in `docs/AGENT_EVALS.md`, with explicit approved amendments.
 
-**Update 2026-10-07: approved.** The owner accepted every recommendation in
-§2C.15; the decisions of record are §2C.16. The section below is now the design
-of record for Week 5. Nothing is built yet.
-
-**Update 2026-10-07, later: built** on `feature/round-coach`, W5-0 → W5-11:
-Core, O1 and O6, C1–C19 passing on fakes (629 tests), 4/4 mutation checks
-caught, W4-7 done, 6 live coaching runs (`docs/EVIDENCE_005.md`). Open: W5-12's
-demo rehearsal, the contributions table, W4-8, W4-9.
+W4-7 and six v1 coaching smoke runs are recorded. W5-12 tracks document
+alignment, current-version live evidence, the full development-run ledger,
+actual pair contributions and demo rehearsal in `docs/EVIDENCE_005.md`.
+Production deployment is not a W05 requirement.
 
 ### 2C.1 Status check before Week 5 (2026-10-07)
 
@@ -1015,9 +1007,9 @@ list finds each item.
   progress (that would need a second event).
 - **Shared addresses** share one per-visitor limit, as §2B.11.
 
-### 2C.15 Open decisions for the owner
+### 2C.15 Original open decisions (resolved in §2C.16)
 
-Each has a recommendation; none is decided.
+Historical recommendations, preserved from before approval:
 
 1. **Scenario:** the round coach (recommended), or another from §2C.2.
 2. **Goals in Core:** `fill_gaps` only (recommended); `stand_out` (rarer
@@ -1052,7 +1044,7 @@ accepted:
 | 4 | The figures in §2C.8: 3 model steps, 2 tool calls, 2 provider attempts per step and 5 per run, 6 s per attempt, 10 s per step, 25 s per run, no step with under 2 s left, ≤ 8 candidates per call (≤ 2 per category), 1 run per player per round, `COACH_RUNS_PER_VISITOR_HOUR` = 6, every model step counted in `AI_DAILY_CALL_BUDGET` |
 | 5 | A final that cites bad evidence is rejected whole (`final_invalid`) |
 | 6 | Options O1 (`verify_terms`) and O6 (run details) are approved; see below |
-| 7 | The pair split in §2C.15 item 7. Names go in `docs/EVIDENCE_005.md` §7 |
+| 7 | The pair split in §2C.15 item 7. Names go in `docs/EVIDENCE_005.md` §8 |
 | 8 | Week 5 evidence goes in `docs/EVIDENCE_005.md` |
 | 9 | W4-7 first. W4-8 and W4-9 come after Week 5 Core if time allows; W05 does not need them |
 
@@ -1151,6 +1143,89 @@ accepts it". Decided ("backup word + repair"):
   maxima per run: **4** model steps, **3** tool calls, **7** provider
   attempts, **35 s** (25 s + 10 s for the repair); the client waits **45 s**.
   No new event, error code, stop reason or tool (`coach-step.v4`).
+
+
+### 2C.17 Current design and submission handoff (2026-10-07)
+
+**Cleanup verification, 2026-10-07:** `npm run verify` passed with 657 tests
+in 34 files, typecheck, lint and both builds. Nine contract JSON examples
+validated against current runtime code. Read-only SpecKit analysis: 38
+requirements, 68 tasks, all mapped, no critical design conflict. T062/T068
+are complete; current live rechecks, browser-inclusive run accounting, actual
+pair contributions and the timed human demo remain open. See
+`docs/EVIDENCE_005.md` §9–§10.
+
+The current shared workspace uses `coach-step.v6` and `check-round.v4`: Serbian
+transcription and regional recall guidance, with the same runtime contracts
+and budgets described below. These separate source edits appeared during the
+submission cleanup; current-version live evidence remains pending.
+
+This consolidates the decisions of §2C.16 into the built behavior. It does
+not expand scope. Runtime schemas in `src/contracts` and `RUN_LIMITS` in
+`src/server/agent/limits.ts` define the actual boundaries.
+
+**Goal and context.** After results, a human seat requests `fill_gaps` for
+1–8 distinct categories where its own revealed answer was invalid. The
+server binds identity and reads only that seat's reveal, letter, alphabet and
+language. No opponent data, scores, identifiers or settings reach the model.
+A repeat returns the cached report; concurrent requests join one logical run.
+
+**Controlled actions.** Step 1 offers only `check_candidates`. Later main
+steps offer `final`, and before the last step may offer `check_candidates`
+for unsolved categories or `verify_terms` for passing, unjudged ids, with a
+tool execution left. Main step 3 offers only `final`. Every proposal passes
+its envelope, per-step allowlist, action shape, arguments, scope and repeat
+guard before execution; every tool result is normalized and validated.
+
+**Final and referee.** A final covers every focus category exactly once,
+citing a passing same-run item of that category or an empty citation;
+summary must be empty and confidence low/medium/high. Invalid final is
+rejected whole. The application fills an empty citation from passing evidence
+when possible and asks the W04 referee about unjudged chosen words, with one
+backup per category, before display. This check is a provider interaction,
+not a model-proposed tool execution. Only referee-accepted suggestions are
+shown, in the accepted spelling when supplied and matching the letter. No
+model prose is in the report; the client writes a summary from checked counts.
+
+**Repair.** After a valid final without an application-check failure, one
+optional decision may try categories still empty with no passing unjudged
+candidate. It offers only `check_candidates`, receives prior verdicts by id,
+gets one provider attempt, and its passing words get one referee attempt.
+There is no final after repair. Failure/refusal preserves the prior report;
+cancellation still aborts it. No repair follows a main-loop refusal/failure.
+
+| Limit | Main loop + application check | Overall including repair |
+| --- | --- | --- |
+| Model decisions | 3 | 4 |
+| Tool executions | 2 | 3 |
+| Provider attempts (including referee) | 5 | 7 |
+| Deadline from original start | 25 s | 35 s |
+| Attempts per interaction | ≤ 2 | repair model/referee each ≤ 1 |
+| Per attempt / interaction | 6 s / ≤ 10 s and remaining time | same time bounds |
+| Minimum time before interaction | 2 s | repair starts only with ≥ 4 s left |
+| Candidates / result size | ≤ 16, ≤ 2 per category / ≤ 4 KB | same |
+| Candidate term / local execution | ≤ 40 chars, no controls / ≤ 100 ms | same |
+| Client ack timeout | — | 45 s |
+
+**Status.** A valid final without an application-check failure is completed,
+even if some categories remain empty. Other stops are incomplete when an
+accepted suggestion is shown, failed otherwise. Failed repair does not change
+the prior status. Disconnect/reap logs cancelled and sends no report.
+
+**Usage and evidence.** One run/player/round, six/visitor/hour by default.
+Every model/referee interaction counts toward the shared daily budget;
+retries/fallbacks count as provider attempts, not model decisions. Content-free
+`agent.run` logs link all steps, the application check and optional repair.
+O6 shows counts, last successful provider/model, elapsed time and stop reason.
+Original six live runs used v1; current-version runs must be recorded
+separately, with browser runs reconciled in `docs/AI_USAGE_LOG.md`. AI-referee
+acceptance is not independent factual proof.
+
+**W5-12 remediation authorized by the owner:** align current docs, correct
+checkboxes, rerun verification and the read-only SpecKit consistency analysis,
+prepare the seven-minute demo and record a bounded current-version live check.
+Pair contribution details, the historical browser-run count and an actual
+human rehearsal must come from observed work, not inferred names or activity.
 
 ## 2A. Execution contract for the implementation model
 
