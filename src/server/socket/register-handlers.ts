@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import type { z } from "zod";
 import { type Ack, fail, ok } from "@contracts/errors";
+import { coachRequestSchema } from "@contracts/coach.schemas";
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
@@ -71,9 +72,11 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
       schema: S,
       raw: unknown,
       ack: unknown,
-      run: (input: z.infer<S>) => Ack<T> | Promise<Ack<T>>,
+      run: (input: z.infer<S>) => Ack<T> | Promise<Ack<T> | null>,
     ): void => {
-      const respond = (response: Ack<T>): void => {
+      const respond = (response: Ack<T> | null): void => {
+        // Null: a cancelled coach run, which answers nobody (§2C.9).
+        if (response === null) return;
         if (typeof ack === "function") {
           (ack as AckCallback)(response);
           return;
@@ -104,7 +107,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
       };
 
       try {
-        // Only a hint awaits the AI; every other handler answers synchronously.
+        // Only a hint and the coach await the AI; every other handler answers synchronously.
         void Promise.resolve(run(parsed.data as z.infer<S>)).then(respond, failed);
       } catch (error) {
         failed(error);
@@ -208,6 +211,11 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
 
     socket.on(CLIENT_EVENTS.hint, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.hint, hintRequestSchema, raw, ack, (input) => store.requestHint(input, socket.id, visitor));
+    });
+
+    // Week 5 (§2C): the round coach. The report is this ack, so it reaches only the caller.
+    socket.on(CLIENT_EVENTS.coach, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.coach, coachRequestSchema, raw, ack, (input) => store.requestCoach(input, socket.id, visitor));
     });
 
     socket.on("disconnect", () => {

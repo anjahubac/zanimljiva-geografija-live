@@ -93,6 +93,7 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | W5-5 tool | 2026-10-07 | after `b052998` | `npx vitest run tests/unit/agent-tools.test.ts` | red first (module missing); then 1 file, 27 tests passed | implementation session |
 | W5-6 gateway, budget, prompt, service | 2026-10-07 | after `26f80a6` | `npm run typecheck && npx vitest run tests/unit/gateway.test.ts tests/unit/ai-features.test.ts` | red first (3 gateway cases, prompt module missing); then typecheck clean, 2 files, 58 tests passed; every existing gateway case unchanged | implementation session |
 | W5-7 loop | 2026-10-07 | after `8a06ea3` | `npx vitest run tests/unit/agent-tools.test.ts tests/unit/coach-agent.test.ts` | red first (module missing); then 2 files, 56 tests passed; 4/4 mutation checks caught | implementation session |
+| W5-8 store, limits, socket | 2026-10-07 | after `22607b5` | `npm test` | red first (8 cases: no handler, acks timed out); then 33 files, 594 tests passed, A1–A6 included | implementation session |
 | After W5-4 … W5-10b | — | — | `npm run verify` | **not run** | — |
 | Live, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:coach` | **not run** | — |
 | Live, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:coach` | **not run** | — |

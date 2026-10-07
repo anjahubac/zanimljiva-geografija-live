@@ -106,18 +106,18 @@
 
 ### Tests first (`tests/integration/coach.test.ts`)
 
-- [ ] T036 [US2] C3: an extra key, `goal: "x"`, a focus category the caller scored in, a request during `judging` (checker held by `deferred()`), a stale `roundId`, a socket in no room → `INVALID_PAYLOAD`, `INVALID_PAYLOAD`, `INVALID_PAYLOAD`, `WRONG_PHASE`, `ROUND_STALE`, `NOT_IN_ROOM`; `fake.coachCalls.length === 0` after each, and the visitor's hourly coach count is unchanged (FR-027)
-- [ ] T037 [US1] C14: a completed run over the wire. The report arrives only in the caller's ack, and the other socket receives no event. Room projections and results are identical before and after. Every recorded step input lacks the opponent's raw answers, the room code and any resume token, and its top-level keys are exactly those of `contracts/model-step.md` (FR-006). Each tip's `yourAnswer` and `whyMissed` equal the caller's revealed `raw` and `reason` (FR-020). A second request returns a deep-equal report with no new coach call. Two concurrent requests produce one run
-- [ ] T038 [US3] C15: a visitor's 7th coaching run within an hour → `RATE_LIMITED`, 0 coach calls; with the daily budget spent → `AI_LIMIT`, and a round closed afterwards is still checked (`checkCalls` grows by one)
-- [ ] T039 [P] [US1] Cancellation: the caller disconnects while `onCoachStep` is held → the run's signal is aborted and nothing throws; the same when the finished room is reaped by `cleanup()`
-- [ ] T040 [US1] Re-run `tests/integration/ai-round.test.ts`: A1–A6 still pass with the reveal snapshot in place
+- [X] T036 [US2] C3: an extra key, `goal: "x"`, a focus category the caller scored in, a request during `judging` (checker held by `deferred()`), a stale `roundId`, a socket in no room → `INVALID_PAYLOAD`, `INVALID_PAYLOAD`, `INVALID_PAYLOAD`, `WRONG_PHASE`, `ROUND_STALE`, `NOT_IN_ROOM`; `fake.coachCalls.length === 0` after each, and the visitor's hourly coach count is unchanged (FR-027)
+- [X] T037 [US1] C14: a completed run over the wire. The report arrives only in the caller's ack, and the other socket receives no event. Room projections and results are identical before and after. Every recorded step input lacks the opponent's raw answers, the room code and any resume token, and its top-level keys are exactly those of `contracts/model-step.md` (FR-006). Each tip's `yourAnswer` and `whyMissed` equal the caller's revealed `raw` and `reason` (FR-020). A second request returns a deep-equal report with no new coach call. Two concurrent requests produce one run
+- [X] T038 [US3] C15: a visitor's 7th coaching run within an hour → `RATE_LIMITED`, 0 coach calls; with the daily budget spent → `AI_LIMIT`, and a round closed afterwards is still checked (`checkCalls` grows by one)
+- [X] T039 [P] [US1] Cancellation: the caller disconnects while `onCoachStep` is held → the run's signal is aborted and nothing throws; the same when the finished room is reaped by `cleanup()`
+- [X] T040 [US1] Re-run `tests/integration/ai-round.test.ts`: A1–A6 still pass with the reveal snapshot in place
 
 ### Implementation
 
-- [ ] T041 In `src/server/rooms/room-store.ts`: set `Round.reveal` once in `completeRound` from the already-parsed `RoundRevealed`; add `Player.coach` (`null` / running / done); add `requestCoach(input, socketId, visitor)` with the check order of `contracts/coach-socket.md`; build the focus from the reveal (`whyMissed` = `reason`, or `empty` for a blank `raw`); single-flight; abort in `markDisconnected` and `dropRoom`; add `coachStep` to `countedAi`
-- [ ] T042 [P] In `src/server/usage-limits.ts` add `"coach"` to `LimitedAction` with `coachRunsPerVisitorHour`; add a coach case to `tests/unit/usage-limits.test.ts`
-- [ ] T043 In `src/server/socket/register-handlers.ts` register `CLIENT_EVENTS.coach` through `handle()` with `coachRequestSchema` → `store.requestCoach(input, socket.id, visitor)`
-- [ ] T044 In `src/server/index.ts` confirm the limits receive `coachRunsPerVisitorHour` and the AI service exposes `coachStep`; no other wiring change
+- [X] T041 In `src/server/rooms/room-store.ts`: set `Round.reveal` once in `completeRound` from the already-parsed `RoundRevealed`; add `Player.coach` (`null` / running / done); add `requestCoach(input, socketId, visitor)` with the check order of `contracts/coach-socket.md`; build the focus from the reveal (`whyMissed` = `reason`, or `empty` for a blank `raw`); single-flight; abort in `markDisconnected` and `dropRoom`; add `coachStep` to `countedAi`
+- [X] T042 [P] In `src/server/usage-limits.ts` add `"coach"` to `LimitedAction` with `coachRunsPerVisitorHour`; add a coach case to `tests/unit/usage-limits.test.ts`
+- [X] T043 In `src/server/socket/register-handlers.ts` register `CLIENT_EVENTS.coach` through `handle()` with `coachRequestSchema` → `store.requestCoach(input, socket.id, visitor)`
+- [X] T044 In `src/server/index.ts` confirm the limits receive `coachRunsPerVisitorHour` and the AI service exposes `coachStep`; no other wiring change
 
 **Exit (W5-8)**: `npm test`
 
