@@ -2,6 +2,7 @@ import { CATEGORIES } from "@contracts/game.schemas";
 import type { Category, PlayerSlot, RejectReason } from "@contracts/game.schemas";
 import type { RoundResults, RoundRevealed } from "@contracts/socket.schemas";
 import { useI18n } from "@client/i18n";
+import { CoachPanel, type CoachAnswer } from "./CoachPanel";
 
 type Props = {
   you: PlayerSlot;
@@ -9,6 +10,8 @@ type Props = {
   results: RoundResults;
   opponentIsBot?: boolean;
   onLeave: () => void;
+  /** The round coach (§2C); without it the panel is not shown. */
+  onCoach?: (focus: Category[]) => Promise<CoachAnswer>;
 };
 
 type SheetCell = {
@@ -37,7 +40,7 @@ type SheetRow = {
  *  same height and shape it had while the round was being played. */
 const BLANK_SHEET_ROWS = [1, 2, 3];
 
-export function ResultsScreen({ you, revealed, results, opponentIsBot = false, onLeave }: Props) {
+export function ResultsScreen({ you, revealed, results, opponentIsBot = false, onLeave, onCoach }: Props) {
   const { t, labels } = useI18n();
 
   const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
@@ -67,6 +70,11 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
 
   const opponent: PlayerSlot = you === 1 ? 2 : 1;
   const rows = [buildRow(you, t.you), buildRow(opponent, opponentIsBot ? t.aiOpponent : t.opponent)];
+
+  // The categories where you scored 0: a valid answer always scores at least 5.
+  const missed = CATEGORIES.filter(
+    (category) => !(you === 1 ? revealed.player1 : revealed.player2).find((entry) => entry.category === category)?.valid,
+  );
 
   const yourTotal = you === 1 ? results.player1Total : results.player2Total;
   const theirTotal = you === 1 ? results.player2Total : results.player1Total;
@@ -169,6 +177,8 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
           </tbody>
         </table>
       </div>
+
+      {onCoach ? <CoachPanel key={revealed.roundId} focus={missed} onCoach={onCoach} /> : null}
 
       {/* The closing note and the way out share one line: the round is over and
           a room holds exactly one round, so the way on is a new room rather

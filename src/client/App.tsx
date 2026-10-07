@@ -10,6 +10,7 @@ import { AnswerScreen } from "@client/screens/AnswerScreen";
 import { SearchingScreen } from "@client/screens/SearchingScreen";
 import { WaitingForOpponentScreen } from "@client/screens/WaitingForOpponentScreen";
 import { ResultsScreen } from "@client/screens/ResultsScreen";
+import type { CoachAnswer } from "@client/screens/CoachPanel";
 import { JudgingScreen } from "@client/screens/JudgingScreen";
 import { useI18n } from "@client/i18n";
 import type { GameError } from "@contracts/errors";
@@ -249,6 +250,16 @@ export function App({ onLeave }: AppProps) {
     });
   }, [dispatch, say]);
 
+  // The round coach (§2C): one request; the report comes back in the ack only.
+  const handleCoach = useCallback(async (focus: Category[]): Promise<CoachAnswer> => {
+    const roundId = roundIdRef.current;
+    const gameSocket = socketRef.current;
+    if (!roundId || !gameSocket) return { kind: "timeout" };
+    const ack = await gameSocket.requestCoach({ roundId, goal: "fill_gaps", focus, language: languageRef.current });
+    if (ack === null) return { kind: "timeout" };
+    return ack.ok ? { kind: "report", report: ack.data } : { kind: "error", message: say(ack.error) };
+  }, [say]);
+
   const handleCancelSearch = useCallback(() => {
     dispatch({ type: "busy", busy: true });
     void socketRef.current?.cancelQuickPlay().then(() => {
@@ -272,6 +283,7 @@ export function App({ onLeave }: AppProps) {
         onQuickPlay: handleQuickPlay,
         onPlayAi: handlePlayAi,
         onHint: handleHint,
+        onCoach: handleCoach,
         onCancelSearch: handleCancelSearch,
         onLeave,
         onChange: handleChange,
@@ -301,6 +313,7 @@ type RenderArgs = {
   onQuickPlay: (displayName: string) => void;
   onPlayAi: (displayName: string) => void;
   onHint: (category: Category) => void;
+  onCoach: (focus: Category[]) => Promise<CoachAnswer>;
   onCancelSearch: () => void;
   onLeave: () => void;
   onChange: (category: Category, value: string) => void;
@@ -384,6 +397,7 @@ function renderScreen(args: RenderArgs) {
           results={state.results}
           opponentIsBot={state.opponentIsBot}
           onLeave={args.onLeave}
+          onCoach={args.onCoach}
         />
       ) : (
         <JudgingScreen />

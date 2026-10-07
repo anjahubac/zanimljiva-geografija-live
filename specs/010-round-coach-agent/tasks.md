@@ -129,10 +129,10 @@
 
 **Independent test**: `tests/unit/client-coach.test.ts` (render tests, as `tests/unit/client-ai.test.ts`).
 
-- [ ] T045 [US1] Create failing `tests/unit/client-coach.test.ts`: the panel lists only the caller's 0-point categories, all ticked, and is absent when there are none; while pending it shows the status in an `aria-live="polite"` region; a completed report shows each entry's answer, reason text, suggestion and "checked against the letter rule"; an incomplete one shows the "partial" text and no summary; a failed one and an ack timeout show "could not complete safely"; no stop-reason code is ever rendered; Serbian and English
-- [ ] T046 [US1] Add `requestCoach` to `src/client/socket/game-socket.ts` with a 30 s ack timeout (research R14), parsed with `ackSchema(coachReportSchema)`
-- [ ] T047 [US1] Create `src/client/screens/CoachPanel.tsx` (a real `<label>` per checkbox, a button, a status region, the report list) and mount it in `src/client/screens/ResultsScreen.tsx` for the human player
-- [ ] T048 [P] [US1] Add SR/EN strings to `src/client/strings.ts` (panel, button, statuses, reason texts, stop-reason sentences, `checkedBy` labels) and styles to `src/client/app.css` (works at 360 px without horizontal scroll)
+- [X] T045 [US1] Create failing `tests/unit/client-coach.test.ts`: the panel lists only the caller's 0-point categories, all ticked, and is absent when there are none; while pending it shows the status in an `aria-live="polite"` region; a completed report shows each entry's answer, reason text, suggestion and "checked against the letter rule"; an incomplete one shows the "partial" text and no summary; a failed one and an ack timeout show "could not complete safely"; no stop-reason code is ever rendered; Serbian and English
+- [X] T046 [US1] Add `requestCoach` to `src/client/socket/game-socket.ts` with a 30 s ack timeout (research R14), parsed with `ackSchema(coachReportSchema)`
+- [X] T047 [US1] Create `src/client/screens/CoachPanel.tsx` (a real `<label>` per checkbox, a button, a status region, the report list) and mount it in `src/client/screens/ResultsScreen.tsx` for the human player
+- [X] T048 [P] [US1] Add SR/EN strings to `src/client/strings.ts` (panel, button, statuses, reason texts, stop-reason sentences, `checkedBy` labels) and styles to `src/client/app.css` (works at 360 px without horizontal scroll)
 
 **Exit (W5-9)**: `npm run verify`
 
