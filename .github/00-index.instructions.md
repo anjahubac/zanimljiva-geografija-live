@@ -39,6 +39,11 @@ Stop and report a conflict instead of guessing when two higher-priority sources 
 
 ## Reading order for an implementation model
 
+For current W05 coach implementation, the ordered driver is still module 10,
+but follow its Week 5 pointer to `specs/010-post-round-coach/tasks.md` and the
+approved contract/impact documents before applying task-sized edits. Preserve
+the historical W03/W04 routes below for work in those features.
+
 If you are about to write application code, read exactly these, in this order,
 and nothing else first:
 
@@ -67,7 +72,8 @@ sends you there, not by default.
 | Change hidden/public room projections | Security | Architecture, testing, review |
 | Change a React screen | Architecture | Conventions, testing |
 | Change answer normalization or validity | `GAME_SPEC.md`, Conventions | Testing, common tasks |
-| Change an AI prompt, the checker, the bot or hints | `Plan.md` §2B, Common tasks | Security, testing, `docs/AI_EVALS.md` |
+| Change the W04 checker, bot or hints | `Plan.md` §2B, Common tasks | Security, testing, `docs/AI_EVALS.md` |
+| Change the W05 post-round coach | `specs/010-post-round-coach/tasks.md`, `Plan.md` §2C and `impact-analysis.md` | Security, testing, `docs/AGENT_EVALS.md`, `docs/EVIDENCE_W05.md` |
 | Change AI providers, models or keys | External services, `Plan.md` §2B.5 | Security, build and commands |
 | Run/build/lint/test | Build and commands | Testing, workflow |
 | Deploy or change hosting | External services | Build and commands, security, workflow |

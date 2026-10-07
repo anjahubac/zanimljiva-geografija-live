@@ -1061,6 +1061,26 @@ button.link:hover:not(:disabled) {
   text-decoration-thickness: 2px;
 }
 
+.coach-panel {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+}
+
+.coach-panel h2,
+.coach-panel h3 {
+  margin: 0.5rem 0;
+}
+
+.coach-result li {
+  margin: 0.3rem 0;
+}
+
+.coach-result details {
+  margin-top: 0.8rem;
+}
+
 .theme-toggle {
   display: flex;
   align-items: center;

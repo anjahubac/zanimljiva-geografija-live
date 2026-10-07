@@ -1,0 +1,42 @@
+{
+  "observedAt": "2026-10-07T12:58:34.949Z",
+  "scenario": "deadline",
+  "status": "stopped",
+  "stopReason": "deadline",
+  "stepCount": 1,
+  "toolCallCount": 0,
+  "providerAttemptCount": 1,
+  "adapterCallCount": 1,
+  "elapsedMs": 30000,
+  "trace": [
+    {
+      "event": "ai.coach",
+      "runId": "e56ac339-bbb8-406a-94ab-8103e9e73941",
+      "status": "stopped",
+      "stopReason": "deadline",
+      "stepCount": 1,
+      "toolCallCount": 0,
+      "providerAttemptCount": 1,
+      "elapsedMs": 30000,
+      "toolName": null,
+      "validations": [],
+      "attemptUsage": {
+        "usageReportedAttempts": 0,
+        "unknownAttempts": 1
+      },
+      "attempts": [
+        {
+          "step": 1,
+          "attempt": 1,
+          "kind": "initial",
+          "provider": "gemini",
+          "model": "fake-model",
+          "status": "cancelled",
+          "latencyMs": 30000
+        }
+      ]
+    }
+  ],
+  "result": null,
+  "usageKind": "scripted fake-provider usage, not live billing usage"
+}

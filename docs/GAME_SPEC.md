@@ -235,3 +235,13 @@ server environment, and the game never depends on it: if it fails, the round
 is scored by the letter rule. The same backend is what makes this possible;
 answers could not be sent to an AI from the browser without exposing the key
 and the opponent's answers.
+
+_Week 5 (Amendment 6, automated verification complete):_ after a completed round, a
+human may request a private review of their own recorded results. The review
+uses the exact canonical score/checker facts, a read-only analysis tool and a
+fixed vocabulary of evidence-linked observations and practice suggestions.
+It cannot change answers, validity, points, totals, reveal events or the
+opponent's results. Raw answers are not sent into the coach context. The UI
+renders checked facts and localized Serbian/English copy; model prose and
+geography answers are never shown. This addendum describes implemented
+behavior under verification, not live-provider or browser-validated quality.

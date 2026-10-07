@@ -308,3 +308,54 @@ session, not during it.
   honour the digraph rule and find terms for Q, X, Đ, Nj … is untested. Not
   clicked through in a browser.
 - **Next decision:** the live AI run (W4-7), now including an English W sheet.
+
+## 012 — W05 post-round coach specification (Codex, 2026-10-07)
+
+- **Owner request:** start the specification for the accepted post-round coach
+  using Spec Kit; cover the complete assignment and required artifacts; create
+  a local branch from Anja's main, no push, final local commit later.
+- **Method/context:** local `speckit-specify` instructions, spec/checklist
+  templates, constitution, project guardrails, supplied W05 assignment and
+  reliability addendum; read existing result/lifecycle/provider/usage/client
+  consumers before writing the feature specification.
+- **Git:** fetched `origin/main`, confirmed no divergence and created local
+  `010-post-round-coach` from
+  `4dea3b59e35c5dc89a09776cea43bb5e8487ad5e`; removed upstream tracking.
+  Initial sandbox fetch could not connect; the approved retry succeeded.
+- **Decision:** one completed round, own structured evidence only, one
+  deterministic `analyze_round` tool and two model steps. Controlled
+  recommendations/fact rendering, exact captured final-result source, strict
+  run-wide attempt/deadline guard, duplicate reuse and separate coach limits.
+  Record shared W04 logical-call accounting as a limitation rather than
+  silently rewriting its semantics.
+- **Artifacts:** canonical `specs/010-post-round-coach/spec.md`, quality and
+  assignment-coverage checklists, consumer/before-after impact review, all
+  six assignment doc paths, feature pointer and Plan/agent-entry updates.
+- **Actual runtime usage in this pass:** agent runs **0**, provider/model
+  calls **0**, retries **0**, fallback calls **0**, tool executions **0**.
+  Assistant-assisted document authoring is recorded here separately from
+  application-provider usage; assistant token usage is unavailable.
+- **Verification scope:** document consistency/link/coverage checks and git
+  whitespace checks only. Runtime implementation/tests, W04 live readiness,
+  W05 live demo and human pair contributions remain pending; see
+  `docs/EVIDENCE_W05.md` for actual check results.
+- **Next phase:** owner spec review, `/speckit-plan`, tasks and approval before
+  runtime contract/permission/usage work. No commit, push, PR or deployment
+  in this specification pass.
+
+## 013 — W05 post-round coach implementation (Codex, 2026-10-07)
+
+- **Authorization/scope:** User explicitly authorized implementation of the previously approved two-decision, one-read-only-tool design. Root consistency review passed. No added model step, tool, history, game write, or external deployment action.
+- **Implementation:** Added strict shared schemas, exact canonical own-round snapshots, deterministic `analyze_round`, guarded real provider adapter calls, per-attempt quota charging, sanitized telemetry, private terminal ack, cancellation/cache lifecycle and Serbian/English evidence rendering. Existing W04 behavior remains under regression verification.
+- **Actual provider usage:** Live provider calls **0**; retries **0**; live fallback calls **0**. No `.env`; credential-presence check found neither provider key variable. No secret values were read or logged. `npm.cmd run coach:smoke` was not opted into; it reported not run.
+- **Fake evidence:** `npm.cmd run coach:fake-e2e` exercised the real engine/tool/validators with scripted model/transport. Observed success: 2 decisions/1 tool/2 adapter calls; unknown-tool: 1/0/1; provider-failure and deadline: 1/0/1. These are scripted fake-provider runs and fake usage values, not live provider billing evidence. Sanitized outputs are under `docs/runs/w05/`.
+- **Verification:** `npm.cmd run typecheck` passed. Focused coach unit/integration run passed 147 tests across 13 files. Full current `npm.cmd run verify` is pending. Browser QA is unavailable in this environment (`apps:[]`, `browsers:[]`; documented IAB tab creation reports browser unavailable). Pair participation has not been recorded.
+- **Token accounting:** Provider token usage for live calls is not applicable (no live calls); assistant token usage is unavailable.
+- **Outstanding:** full regression suite, live opt-in run when credentials are supplied, interactive browser/accessibility review in an available browser, actual pair contribution/explanation, and the agreed final local commit. See `docs/EVIDENCE_W05.md` and `specs/010-post-round-coach/review-log.md`.
+
+## 014 — W05 final automated verification (Codex, 2026-10-07)
+
+- **Result:** Root ran final `npm.cmd run verify`; exit 0. Typecheck and lint passed; Vitest passed **555 tests across 40 files** (7.01 s); Vite client build succeeded (90 modules, 1.74 s); tsup server build succeeded (142.09 KB, 286 ms). `git diff --check` and the documentation/link/C-map check also passed.
+- **Initial lint correction:** The first final-verification attempt found three unused imports and two explicit `any` values in test-only HTTP payload captures. Those imports were removed and payload schemas/types were added; no lint rule or test assertion was weakened. The complete rerun passed.
+- **Provider usage:** No W05 live provider calls, retries or fallbacks. Both smoke readiness paths exited 0 with no configured credentials and made no calls. Fake-provider usage values remain scripted test data only; no real token or billing usage is claimed. Assistant token usage is unavailable.
+- **Remaining evidence:** Interactive browser QA remains unavailable in this environment; live provider demo and pair contribution/explanation remain pending. No commit, push, PR or deployment has occurred in this phase.

@@ -1,6 +1,8 @@
 import { useReducer } from "react";
+import type { GameErrorCode } from "@contracts/errors";
 import { CATEGORIES, HINTS_PER_ROUND, type Category, type PlayerSlot } from "@contracts/game.schemas";
 import type {
+  CoachAck,
   HintAck,
   PlayerFinished,
   RoomState,
@@ -8,6 +10,12 @@ import type {
   RoundRevealed,
   RoundScheduled,
 } from "@contracts/socket.schemas";
+
+export type CoachUiState =
+  | { roundId: string; status: "pending" }
+  | { roundId: string; status: "terminal"; view: CoachAck }
+  | { roundId: string; status: "unavailable"; code: GameErrorCode }
+  | null;
 
 /** Per-field synchronization status, shown next to every input. */
 export type DraftStatus = "empty" | "pending" | "saved" | "rejected";
@@ -55,6 +63,7 @@ export type GameState = {
   opponentConnected: boolean;
   revealed: RoundRevealed | null;
   results: RoundResults | null;
+  coach: CoachUiState;
   errorMessage: string | null;
   /** Error shown next to a specific field, not only as a banner. */
   fieldError: Partial<Record<Category, string>>;
@@ -70,6 +79,9 @@ export type GameAction =
   | { type: "player-finished"; payload: PlayerFinished }
   | { type: "revealed"; payload: RoundRevealed }
   | { type: "results"; payload: RoundResults }
+  | { type: "coach-started"; roundId: string }
+  | { type: "coach-completed"; roundId: string; payload: CoachAck }
+  | { type: "coach-unavailable"; roundId: string; code: GameErrorCode }
   | { type: "answer-changed"; category: Category; value: string }
   | { type: "draft-sent"; category: Category; revision: number }
   | { type: "draft-accepted"; category: Category; revision: number }
@@ -105,6 +117,7 @@ export const initialGameState: GameState = {
   opponentConnected: true,
   revealed: null,
   results: null,
+  coach: null,
   errorMessage: null,
   fieldError: {},
   busy: false,
@@ -122,6 +135,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         connected: action.connected,
+        coach: !action.connected && state.coach?.status === "pending" ? null : state.coach,
         errorMessage: action.connected
           ? state.errorMessage
           : (action.message ?? "Veza sa serverom je prekinuta."),
@@ -165,6 +179,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         results: null,
         hintsLeft: HINTS_PER_ROUND,
         hints: {},
+        coach: null,
       };
 
     case "player-finished":
@@ -177,6 +192,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "results":
       return { ...state, results: action.payload };
+
+    case "coach-started":
+      return state.round?.roundId === action.roundId ? { ...state, coach: { roundId: action.roundId, status: "pending" } } : state;
+
+    case "coach-completed":
+      return state.round?.roundId === action.roundId && state.coach?.roundId === action.roundId && state.coach.status === "pending" && action.payload.roundId === action.roundId
+        ? { ...state, coach: { roundId: action.roundId, status: "terminal", view: action.payload } }
+        : state;
+
+    case "coach-unavailable":
+      return state.round?.roundId === action.roundId && state.coach?.roundId === action.roundId && state.coach.status === "pending"
+        ? { ...state, coach: { roundId: action.roundId, status: "unavailable", code: action.code } }
+        : state;
 
     case "answer-changed":
       return {

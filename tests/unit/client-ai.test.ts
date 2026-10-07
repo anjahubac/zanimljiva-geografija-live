@@ -3,8 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CATEGORIES, CATEGORY_LABELS_EN, HINTS_PER_ROUND, type Category } from "@contracts/game.schemas";
 import { GAME_ERROR_CODES } from "@contracts/errors";
+import { coachRunViewSchema } from "@contracts/coach.schemas";
 import { roomStateSchema, type RoomState, type RoundResults, type RoundRevealed } from "@contracts/socket.schemas";
-import { browserLanguage, parseLanguage } from "@client/i18n";
+import { browserLanguage, I18nProvider, parseLanguage } from "@client/i18n";
 import { AnswerScreen } from "@client/screens/AnswerScreen";
 import { ResultsScreen } from "@client/screens/ResultsScreen";
 import { WaitingScreen } from "@client/screens/WaitingScreen";
@@ -105,6 +106,19 @@ describe("the reducer's hint state", () => {
     expect(selectScreen(state)).toBe("judging");
     expect(state.opponentIsBot).toBe(true);
   });
+
+  it("accepts only a pending coach ack for the current round and clears it when the round changes", () => {
+    let state = gameReducer(initialGameState, scheduled);
+    state = gameReducer(state, { type: "coach-started", roundId: ROUND_ID });
+    expect(state.coach).toEqual({ roundId: ROUND_ID, status: "pending" });
+    const view = coachRunViewSchema.parse({ runId: "69ecddaa-95fb-4dc5-a6f6-4e567c814823", roundId: ROUND_ID, status: "failed", stopReason: "provider_failed", stepCount: 1, toolCallCount: 0, providerAttemptCount: 1, elapsedMs: 8, result: null });
+    state = gameReducer(state, { type: "coach-completed", roundId: "99999999-2222-4333-8444-555555555555", payload: view });
+    expect(state.coach?.status).toBe("pending");
+    state = gameReducer(state, { type: "coach-completed", roundId: ROUND_ID, payload: view });
+    expect(state.coach).toEqual({ roundId: ROUND_ID, status: "terminal", view });
+    state = gameReducer(state, { ...scheduled, payload: { ...scheduled.payload, roundId: "99999999-2222-4333-8444-555555555555" } });
+    expect(state.coach).toBeNull();
+  });
 });
 
 describe("the answer sheet with hints", () => {
@@ -197,6 +211,43 @@ describe("the results sheet after an AI check", () => {
   });
 
   const render = (element: ReactElement) => renderToStaticMarkup(element);
+
+  const completedCoachView = coachRunViewSchema.parse({
+    runId: "69ecddaa-95fb-4dc5-a6f6-4e567c814823", roundId: ROUND_ID, status: "completed", stopReason: "completed", stepCount: 2, toolCallCount: 1, providerAttemptCount: 2, elapsedMs: 10,
+    result: {
+      summary: { findingIds: ["cell:country"] },
+      recommendations: [{ code: "practice_recall", category: "country", evidenceIds: ["cell:country"] }],
+      evidence: [
+        ...CATEGORIES.map((category) => ({ id: `cell:${category}`, kind: "cell" as const, category, blank: true, accepted: false, rejectReason: null, hinted: false, points: 0 as const, scoringReason: "neither" as const })),
+        { id: "totals", kind: "totals" as const, blank: 8, accepted: 0, rejectedNonblank: 0, hinted: 0, acceptedDuplicates: 0, ownPoints: 0 },
+        { id: "verification", kind: "verification" as const, verified: false },
+      ],
+      confidence: "low", limitations: ["single_round", "local_rule_only"], completed: true,
+    },
+  });
+
+  it("renders evidence-based advice and limitations in Serbian and English from the same view", () => {
+    const props = { you: 1 as const, revealed, results: results(false), coachView: completedCoachView, onLeave: () => {} };
+    const sr = render(createElement(I18nProvider, { initialLanguage: "sr", children: createElement(ResultsScreen, props) }));
+    const en = render(createElement(I18nProvider, { initialLanguage: "en", children: createElement(ResultsScreen, props) }));
+    expect(sr).toContain("Država: prazno, 0 poena.");
+    expect(sr).toContain("Pokušaj da se setiš odgovora za praznu kategoriju Država.");
+    expect(sr).toContain(UI_SR.coach.limitationLocal);
+    expect(en).toContain("Country: blank, 0 points.");
+    expect(en).toContain("Try recalling an answer for the blank Country category.");
+    expect(en).toContain(UI_EN.coach.limitationLocal);
+  });
+
+  it("announces completion and renders closed localized stop reasons", () => {
+    const props = { you: 1 as const, revealed, results: results(false), onLeave: () => {} };
+    const completed = render(createElement(I18nProvider, { initialLanguage: "en", children: createElement(ResultsScreen, { ...props, coachView: completedCoachView }) }));
+    expect(completed).toContain(UI_EN.coach.completed);
+    for (const [reason, language] of [["deadline", "en"], ["quota_exhausted", "sr"], ["invalid_final", "en"], ["cancelled", "sr"]] as const) {
+      const view = coachRunViewSchema.parse({ runId: "69ecddaa-95fb-4dc5-a6f6-4e567c814823", roundId: ROUND_ID, status: "stopped", stopReason: reason, stepCount: 1, toolCallCount: 0, providerAttemptCount: 1, elapsedMs: 10, result: null });
+      const markup = render(createElement(I18nProvider, { initialLanguage: language, children: createElement(ResultsScreen, { ...props, coachView: view }) }));
+      expect(markup).toContain((language === "en" ? UI_EN : UI_SR).coach.stopReasons[reason]);
+    }
+  });
 
   it("says why an answer did not count, marks hinted cells, and names the AI opponent", () => {
     const markup = render(

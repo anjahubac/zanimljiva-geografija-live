@@ -53,8 +53,8 @@ const I18nContext = createContext<I18n>({
   labels: CATEGORY_LABELS.sr,
 });
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => readStoredLanguage());
+export function I18nProvider({ children, initialLanguage }: { children: ReactNode; initialLanguage?: Language }) {
+  const [language, setLanguageState] = useState<Language>(() => initialLanguage ?? readStoredLanguage());
 
   useEffect(() => {
     document.documentElement.lang = language === "sr" ? "sr-Latn" : "en";

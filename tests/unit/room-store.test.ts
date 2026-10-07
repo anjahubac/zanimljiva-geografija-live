@@ -4,6 +4,8 @@ import type { Letter, ServerConfig } from "@contracts/game.schemas";
 import { SERVER_EVENTS } from "@contracts/socket.schemas";
 import { createRoomStore } from "@server/rooms/room-store";
 import type { Delivery, RoomStore } from "@server/rooms/room-store";
+import type { CoachCapability } from "@server/features/post-round-coach";
+import { createUsageLimits, type UsageLimits } from "@server/usage-limits";
 import { createTestClock } from "../helpers/test-clock";
 
 const P1 = "socket-1";
@@ -22,7 +24,7 @@ type Harness = {
   eventsTo: (socketId: string, event: string) => Delivery[];
 };
 
-function createHarness(overrides: Partial<Record<string, unknown>> = {}): Harness {
+function createHarness(overrides: Partial<Record<string, unknown>> = {}, extras: { coach?: CoachCapability; limits?: UsageLimits } = {}): Harness {
   const { clock, scheduler, advance, setNow } = createTestClock();
   const config = serverConfigSchema.parse(overrides);
   const deliveries: Delivery[] = [];
@@ -32,6 +34,8 @@ function createHarness(overrides: Partial<Record<string, unknown>> = {}): Harnes
     scheduler,
     selectLetter: () => LETTER,
     config,
+    ...(extras.coach ? { coach: extras.coach } : {}),
+    ...(extras.limits ? { limits: extras.limits } : {}),
     deliver: (delivery) => deliveries.push(delivery),
   });
 
@@ -421,6 +425,7 @@ describe("finish and closeRound", () => {
   it("closes once with reason both_finished and reveals to both players", () => {
     const harness = createHarness();
     const { roomCode, roundId } = openRound(harness);
+    expect(harness.store.getCoachSource(roundId, P1)).toBeNull();
 
     harness.store.applyDraft({ roundId, category: "country", value: "Srbija", revision: 1 }, P1);
     harness.store.applyDraft({ roundId, category: "country", value: "Slovenija", revision: 1 }, P2);
@@ -456,6 +461,14 @@ describe("finish and closeRound", () => {
     expect(results.player2Total).toBe(10);
     expect(results.outcome).toBe("draw");
     expect(harness.store.getRoomByCode(roomCode)?.phase).toBe("results");
+    const coach = harness.store.getCoachSource(roundId, P1);
+    expect(coach).not.toBeNull();
+    expect(coach?.source).toMatchObject({ letter: LETTER, alphabet: "sr", verified: false, total: 10 });
+    expect(coach?.source.cells[0]).toMatchObject({ category: "country", accepted: true, rejectReason: null, points: 10, scoringReason: "both_different" });
+    expect(Object.isFrozen(coach?.source)).toBe(true);
+    expect(Object.isFrozen(coach?.source.cells)).toBe(true);
+    expect(JSON.stringify(coach?.source)).not.toMatch(/Srbija|Slovenija|raw|normalized/i);
+    expect(harness.store.getCoachSource(roundId, P2)?.source.total).toBe(10);
   });
 
   it("closes once on the deadline when nobody finished", () => {
@@ -478,6 +491,97 @@ describe("finish and closeRound", () => {
     expect(results.player2Total).toBe(0);
     expect(results.outcome).toBe("player_1");
     expect(harness.store.getRoomByCode(roomCode)?.phase).toBe("results");
+  });
+
+  it("does not charge or start a coach run when the caller disconnects before queued work begins", async () => {
+    let admissions = 0;
+    let runs = 0;
+    const harness = createHarness();
+    const config = harness.config;
+    const baseLimits = createUsageLimits({ aiRoomsPerVisitorHour: config.aiRoomsPerVisitorHour, hintsPerVisitorHour: config.hintsPerVisitorHour, aiDailyCallBudget: config.aiDailyCallBudget, coachRunsPerVisitorHour: config.coachRunsPerVisitorHour });
+    const limits: UsageLimits = { ...baseLimits, admitCoachRun(visitor, now) { admissions += 1; return baseLimits.admitCoachRun(visitor, now); } };
+    const coach: CoachCapability = { async run() { runs += 1; throw new Error("must not run"); } };
+    const roundHarness = createHarness({}, { coach, limits });
+    const { roundId } = openRound(roundHarness);
+    roundHarness.store.finish(roundId, P1);
+    roundHarness.store.finish(roundId, P2);
+    const pending = roundHarness.store.reviewRound({ roundId, goalId: "review_round", language: "sr" }, P1, "visitor-1");
+    roundHarness.store.markDisconnected(P1);
+    const ack = await pending;
+    expect(ack.ok).toBe(true);
+    if (ack.ok) expect(ack.data).toMatchObject({ status: "stopped", stopReason: "cancelled", providerAttemptCount: 0 });
+    expect(admissions).toBe(0);
+    expect(runs).toBe(0);
+  });
+
+  it("reuses an admitted terminal failure for concurrent and later requests in the same seat and round", async () => {
+    let admissions = 0;
+    let runs = 0;
+    const harness = createHarness();
+    const config = harness.config;
+    const base = createUsageLimits({ aiRoomsPerVisitorHour: config.aiRoomsPerVisitorHour, hintsPerVisitorHour: config.hintsPerVisitorHour, aiDailyCallBudget: config.aiDailyCallBudget, coachRunsPerVisitorHour: config.coachRunsPerVisitorHour });
+    const limits: UsageLimits = { ...base, admitCoachRun(visitor, now) { admissions += 1; return base.admitCoachRun(visitor, now); } };
+    const coach: CoachCapability = { async run(input) {
+      runs += 1;
+      input.authorizeAndCharge();
+      return { runId: input.runId!, roundId: input.roundId, status: "failed", stopReason: "provider_failed", stepCount: 1, toolCallCount: 0, providerAttemptCount: 1, elapsedMs: 12, result: null };
+    } };
+    const store = createHarness({}, { coach, limits });
+    const { roundId } = openRound(store);
+    store.store.finish(roundId, P1);
+    store.store.finish(roundId, P2);
+    const request = { roundId, goalId: "review_round" as const, language: "sr" as const };
+    const [first, duplicate] = await Promise.all([
+      store.store.reviewRound(request, P1, "visitor-1"),
+      store.store.reviewRound(request, P1, "visitor-1"),
+    ]);
+    const later = await store.store.reviewRound(request, P1, "visitor-1");
+    expect(first).toEqual(duplicate);
+    expect(first).toEqual(later);
+    expect(first).toMatchObject({ ok: true, data: { status: "failed", stopReason: "provider_failed" } });
+    expect(admissions).toBe(1);
+    expect(runs).toBe(1);
+  });
+
+  it("returns a cancelled terminal view when a capability ignores abort and resolves after room TTL", async () => {
+    let resolveRun: ((value: Awaited<ReturnType<CoachCapability["run"]>>) => void) | undefined;
+    let signal: AbortSignal | undefined;
+    let runId: string | undefined;
+    const coach: CoachCapability = { run(input) {
+      signal = input.signal;
+      runId = input.runId;
+      input.authorizeAndCharge();
+      return new Promise((resolve) => { resolveRun = resolve; });
+    } };
+    const harness = createHarness({ completedRoomTtlMs: 10_000 }, { coach, limits: createUsageLimits({ aiRoomsPerVisitorHour: 3, hintsPerVisitorHour: 10, aiDailyCallBudget: 20, coachRunsPerVisitorHour: 5 }) });
+    const { roundId } = openRound(harness);
+    harness.store.finish(roundId, P1);
+    harness.store.finish(roundId, P2);
+    const pending = harness.store.reviewRound({ roundId, goalId: "review_round", language: "sr" }, P1, "visitor-ttl");
+    await Promise.resolve();
+    harness.advance(10_001);
+    harness.store.cleanup();
+    expect(signal?.aborted).toBe(true);
+    resolveRun?.({ runId: runId!, roundId, status: "failed", stopReason: "provider_failed", stepCount: 1, toolCallCount: 0, providerAttemptCount: 1, elapsedMs: 20, result: null });
+    const ack = await pending;
+    expect(ack).toMatchObject({ ok: true, data: { status: "stopped", stopReason: "cancelled", providerAttemptCount: 1, result: null } });
+  });
+
+  it("keeps cancellation as the terminal reason when a capability rejects after disconnect", async () => {
+    let rejectRun: ((error: Error) => void) | undefined;
+    const coach: CoachCapability = { run(input) {
+      input.authorizeAndCharge();
+      return new Promise((_resolve, reject) => { rejectRun = reject; });
+    } };
+    const harness = createHarness({}, { coach, limits: createUsageLimits({ aiRoomsPerVisitorHour: 3, hintsPerVisitorHour: 10, aiDailyCallBudget: 20, coachRunsPerVisitorHour: 5 }) });
+    const { roundId } = openRound(harness);
+    harness.store.finish(roundId, P1);
+    harness.store.finish(roundId, P2);
+    const pending = harness.store.reviewRound({ roundId, goalId: "review_round", language: "sr" }, P1, "visitor-disconnect");
+    await Promise.resolve();
+    harness.store.markDisconnected(P1);
+    rejectRun?.(new Error("late capability rejection"));
+    expect(await pending).toMatchObject({ ok: true, data: { status: "stopped", stopReason: "cancelled", providerAttemptCount: 1, result: null } });
   });
 
   it("scores the latest accepted draft of a player who never pressed Finished", () => {

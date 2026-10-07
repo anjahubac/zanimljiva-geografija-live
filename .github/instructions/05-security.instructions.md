@@ -89,6 +89,7 @@ Never accept these values as authoritative merely because a client sent them.
 - Keep `.env`, deployment credentials, tokens, private URLs, and production data out of git, prompts, screenshots, evidence, fixtures, and responses.
 - Commit only placeholder names in `.env.example`.
 - Never log full socket payloads, raw answers before reveal, resume tokens, environment contents, API keys, prompts or model replies, or stack traces to clients. AI telemetry logs counts, models and outcomes only; `AI_DEBUG_LOG` is for local debugging and is ignored in production.
+- The Week 5 post-round coach must never use raw debug logging, including in local development. Its bounded structured trace may include validated step/tool/attempt outcomes, safe reason codes and available usage metadata only; do not include prompts, model replies, answer text, identities, socket/room IDs, addresses or secrets.
 - Prefer structured summaries: event name, request ID, redacted room ID, phase, accepted/rejected outcome, and safe reason code.
 
 ## Production transport

@@ -18,6 +18,7 @@ describe("serverConfigSchema", () => {
       aiRoomsPerVisitorHour: 10,
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
+      coachRunsPerVisitorHour: 5,
       trustProxyHops: 0,
     });
   });
@@ -49,6 +50,7 @@ describe("serverConfigSchema", () => {
     ["a waiting-room TTL under 1min", { waitingRoomTtlMs: "59999" }],
     ["zero AI rooms per visitor", { aiRoomsPerVisitorHour: "0" }],
     ["zero hints per visitor", { hintsPerVisitorHour: "0" }],
+    ["more than five coach runs per visitor", { coachRunsPerVisitorHour: "6" }],
     ["a zero daily AI budget", { aiDailyCallBudget: "0" }],
     ["a negative proxy hop count", { trustProxyHops: "-1" }],
     ["more than 5 proxy hops", { trustProxyHops: "6" }],
@@ -79,6 +81,7 @@ describe("loadConfig", () => {
       aiRoomsPerVisitorHour: 10,
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
+      coachRunsPerVisitorHour: 5,
       trustProxyHops: 0,
     });
   });
@@ -95,6 +98,7 @@ describe("loadConfig", () => {
         AI_ROOMS_PER_VISITOR_HOUR: "4",
         HINTS_PER_VISITOR_HOUR: "8",
         AI_DAILY_CALL_BUDGET: "900",
+        COACH_RUNS_PER_VISITOR_HOUR: "4",
         TRUST_PROXY_HOPS: "1",
       }),
     ).toEqual({
@@ -107,6 +111,7 @@ describe("loadConfig", () => {
       aiRoomsPerVisitorHour: 4,
       hintsPerVisitorHour: 8,
       aiDailyCallBudget: 900,
+      coachRunsPerVisitorHour: 4,
       trustProxyHops: 1,
     });
   });
@@ -117,6 +122,7 @@ describe("loadConfig", () => {
     expect(Object.keys(config).sort()).toEqual([
       "aiDailyCallBudget",
       "aiRoomsPerVisitorHour",
+      "coachRunsPerVisitorHour",
       "completedRoomTtlMs",
       "countdownMs",
       "hintsPerVisitorHour",

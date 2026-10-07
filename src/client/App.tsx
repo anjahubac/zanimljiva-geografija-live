@@ -13,6 +13,7 @@ import { ResultsScreen } from "@client/screens/ResultsScreen";
 import { JudgingScreen } from "@client/screens/JudgingScreen";
 import { useI18n } from "@client/i18n";
 import type { GameError } from "@contracts/errors";
+import type { CoachRunView } from "@contracts/coach.schemas";
 
 const DRAFT_DEBOUNCE_MS = 300;
 const TICK_MS = 250;
@@ -40,6 +41,7 @@ export function App({ onLeave }: AppProps) {
   const say = useCallback((error: GameError) => tRef.current.errors[error.code] ?? error.message, []);
   const [now, setNow] = useState(() => Date.now());
   const [announcement, setAnnouncement] = useState("");
+  const coachAbortRef = useRef<AbortController | null>(null);
 
   const socketRef = useRef<GameSocket | null>(null);
   const readySentForRef = useRef<string | null>(null);
@@ -59,13 +61,19 @@ export function App({ onLeave }: AppProps) {
     const gameSocket = createGameSocket();
     socketRef.current = gameSocket;
 
-    gameSocket.onConnectionChange((connected) =>
-      dispatch({ type: "connection", connected, message: tRef.current.connectionLost }),
-    );
+    gameSocket.onConnectionChange((connected) => {
+      if (!connected) {
+        coachAbortRef.current?.abort();
+        coachAbortRef.current = null;
+      }
+      dispatch({ type: "connection", connected, message: tRef.current.connectionLost });
+    });
     gameSocket.onRoomState((payload) => dispatch({ type: "room-state", payload }));
-    gameSocket.onRoundScheduled((payload) =>
-      dispatch({ type: "round-scheduled", payload, receivedAt: Date.now() }),
-    );
+    gameSocket.onRoundScheduled((payload) => {
+      coachAbortRef.current?.abort();
+      coachAbortRef.current = null;
+      dispatch({ type: "round-scheduled", payload, receivedAt: Date.now() });
+    });
     gameSocket.onPlayerFinished((payload) => dispatch({ type: "player-finished", payload }));
     gameSocket.onRoundRevealed((payload) => dispatch({ type: "revealed", payload }));
     gameSocket.onRoundResults((payload) => dispatch({ type: "results", payload }));
@@ -75,6 +83,8 @@ export function App({ onLeave }: AppProps) {
     return () => {
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();
+      coachAbortRef.current?.abort();
+      coachAbortRef.current = null;
       gameSocket.disconnect();
       socketRef.current = null;
     };
@@ -249,6 +259,22 @@ export function App({ onLeave }: AppProps) {
     });
   }, [dispatch, say]);
 
+  const handleReviewRound = useCallback(() => {
+    const roundId = roundIdRef.current;
+    const gameSocket = socketRef.current;
+    if (!roundId || !gameSocket || !gameSocket.socket.connected || state.coach || coachAbortRef.current) return;
+    const controller = new AbortController();
+    coachAbortRef.current = controller;
+    dispatch({ type: "coach-started", roundId });
+    void gameSocket.reviewRound({ roundId, goalId: "review_round", language: languageRef.current }, controller.signal).then((ack) => {
+      if (coachAbortRef.current !== controller) return;
+      coachAbortRef.current = null;
+      if (socketRef.current !== gameSocket || !gameSocket.socket.connected || roundIdRef.current !== roundId) return;
+      if (ack.ok && ack.data.roundId === roundId) dispatch({ type: "coach-completed", roundId, payload: ack.data });
+      else dispatch({ type: "coach-unavailable", roundId, code: ack.ok ? "INTERNAL" : ack.error.code });
+    });
+  }, [dispatch, state.coach]);
+
   const handleCancelSearch = useCallback(() => {
     dispatch({ type: "busy", busy: true });
     void socketRef.current?.cancelQuickPlay().then(() => {
@@ -272,6 +298,12 @@ export function App({ onLeave }: AppProps) {
         onQuickPlay: handleQuickPlay,
         onPlayAi: handlePlayAi,
         onHint: handleHint,
+        coachView: state.coach?.status === "terminal" ? state.coach.view : null,
+        coachLoading: state.coach?.status === "pending",
+        coachUnavailable: state.coach?.status === "unavailable",
+        coachErrorCode: state.coach?.status === "unavailable" ? state.coach.code : null,
+        coachDisabled: !state.connected,
+        onReviewRound: handleReviewRound,
         onCancelSearch: handleCancelSearch,
         onLeave,
         onChange: handleChange,
@@ -301,6 +333,12 @@ type RenderArgs = {
   onQuickPlay: (displayName: string) => void;
   onPlayAi: (displayName: string) => void;
   onHint: (category: Category) => void;
+  coachView: CoachRunView | null;
+  coachLoading: boolean;
+  coachUnavailable: boolean;
+  coachErrorCode: GameError["code"] | null;
+  coachDisabled: boolean;
+  onReviewRound: () => void;
   onCancelSearch: () => void;
   onLeave: () => void;
   onChange: (category: Category, value: string) => void;
@@ -383,6 +421,12 @@ function renderScreen(args: RenderArgs) {
           revealed={state.revealed}
           results={state.results}
           opponentIsBot={state.opponentIsBot}
+          coachView={args.coachView}
+          coachLoading={args.coachLoading}
+          coachUnavailable={args.coachUnavailable}
+          coachErrorCode={args.coachErrorCode}
+          coachDisabled={args.coachDisabled}
+          onReviewRound={args.onReviewRound}
           onLeave={args.onLeave}
         />
       ) : (

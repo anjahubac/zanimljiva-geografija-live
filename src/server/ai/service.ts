@@ -9,6 +9,7 @@ import { createModelHealth } from "./model-health";
 import { loadProviders, type ProviderEnv } from "./providers";
 import { consoleTelemetry } from "./telemetry";
 import type { AiFailureCode } from "./types";
+import { createPostRoundCoach, type CoachCapability } from "@server/features/post-round-coach";
 
 /**
  * Everything the game asks of the AI, in game terms. The room store depends on
@@ -58,7 +59,7 @@ export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<P
  */
 export function createAiServiceFromEnv(
   env: ProviderEnv & DebugEnv,
-): { service: AiService; providers: string[] } | null {
+): { service: AiService; providers: string[]; coach: CoachCapability } | null {
   const setup = loadProviders(env);
   if (!setup) return null;
 
@@ -70,5 +71,5 @@ export function createAiServiceFromEnv(
     health: createModelHealth(),
     ...(debug ? { debug } : {}),
   });
-  return { service, providers: setup.providers };
+  return { service, providers: setup.providers, coach: createPostRoundCoach({ adapter: setup.adapter, modelChain: setup.modelChain, thinkingLevel: setup.thinkingLevel }) };
 }

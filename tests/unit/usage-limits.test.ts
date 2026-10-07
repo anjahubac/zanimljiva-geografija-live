@@ -55,6 +55,16 @@ describe("global daily budget", () => {
     usage.countCall(T0);
     expect(usage.check("aiRoom", "a", T0)).toBe("AI_LIMIT");
   });
+
+  it("atomically admits at most five coach runs per visitor and charges each physical attempt", () => {
+    const usage = limits({ aiDailyCallBudget: 7, coachRunsPerVisitorHour: 5 });
+    for (let i = 0; i < 5; i += 1) expect(usage.admitCoachRun("visitor", T0)).toBeNull();
+    expect(usage.admitCoachRun("visitor", T0)).toBe("RATE_LIMITED");
+    expect(usage.admitCoachRun("other", T0)).toBeNull();
+    for (let i = 0; i < 7; i += 1) expect(usage.chargeCoachAttempt(T0)).toBe(true);
+    expect(usage.chargeCoachAttempt(T0)).toBe(false);
+    expect(usage.admitCoachRun("fresh", T0)).toBe("AI_LIMIT");
+  });
 });
 
 describe("visitorAddress", () => {

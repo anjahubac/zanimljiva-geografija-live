@@ -227,6 +227,17 @@ Remaining Week 4 steps, in order:
 
 The AI usage limit (§2B.11) was accepted and built on 2026-09-30.
 
+## Week 5 — bounded post-round coach
+
+For the approved W05 feature, use `specs/010-post-round-coach/tasks.md` as the
+current task driver, `spec.md` and `Plan.md` §2C as scope, and
+`impact-analysis.md` for the shared-producer/consumer map. The runtime has
+strict contracts, an own-result snapshot, one read-only tool, two model
+decisions and a run-wide physical-attempt guard. Preserve W04 defaults and
+follow the per-task exit gates; do not claim browser, live or pair evidence
+without observing it. Historical Week 3 and Week 4 steps above remain in force
+for changes to those features.
+
 ## Accessibility and UX floor (applies from Step 8)
 
 Not decoration — these are acceptance criteria:

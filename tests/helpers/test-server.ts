@@ -1,6 +1,7 @@
 import type { AddressInfo } from "node:net";
 import { serverConfigSchema, type Letter, type ServerConfig } from "@contracts/game.schemas";
 import type { AiService } from "@server/ai/service";
+import type { CoachCapability } from "@server/features/post-round-coach";
 import { createGameServer, type GameServer } from "@server/index";
 import type { LetterSelector } from "@server/letters";
 import { createTestClock } from "./test-clock";
@@ -26,6 +27,7 @@ export async function startTestServer(
     selectLetter?: LetterSelector;
     config?: Record<string, unknown>;
     ai?: AiService;
+    coach?: CoachCapability;
     random?: () => number;
   } = {},
 ): Promise<TestContext> {
@@ -39,6 +41,7 @@ export async function startTestServer(
     scheduler,
     selectLetter: options.selectLetter ?? (() => letter),
     ai: options.ai ?? null,
+    coach: options.coach ?? null,
     ...(options.random ? { random: options.random } : {}),
   });
 

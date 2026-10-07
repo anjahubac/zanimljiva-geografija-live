@@ -104,3 +104,7 @@ Rules that apply to every rejection:
    kills the socket handler.
 4. Each code has at least one test proving both the rejection and the
    no-mutation property.
+
+## Week 5 coach contracts
+
+The W05 `round:coach` request and terminal ack are defined once in `src/contracts/coach.schemas.ts` and mapped in `src/contracts/socket.schemas.ts`. Keep the request strict and owner/seat/room fields server-derived. `CoachRunView` is terminal-only: completed includes validated evidence; stopped/failed has `result: null`. Do not add progress/cancel/broadcast event variants. See `specs/010-post-round-coach/contracts/coach-contract.md` and `docs/TOOL_CONTRACTS.md` for the canonical contract.

@@ -33,6 +33,14 @@ export const BUDGETS: Record<AiOperation, RetryBudget> = {
     backoffCapMs: 3_000,
     minAttemptMs: 2_000,
   },
+  "post-round-coach": {
+    perAttemptMs: 8_000,
+    totalMs: 30_000,
+    maxAttemptsPerModel: 1,
+    backoffBaseMs: 0,
+    backoffCapMs: 0,
+    minAttemptMs: 1,
+  },
 };
 
 /** Exponential backoff with full jitter: uniform in [0, min(cap, base × 2ⁿ)). */

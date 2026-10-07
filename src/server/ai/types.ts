@@ -6,7 +6,7 @@ import type { ThinkingLevel } from "./config";
  * the adapter never decides retries or business validity.
  */
 
-export type AiOperation = "check-round" | "hint" | "bot-answers";
+export type AiOperation = "check-round" | "hint" | "bot-answers" | "post-round-coach";
 /** Providers the gateway can route to (`Plan.md` §2B.5). */
 export type AiProvider = "gemini" | "groq";
 export type AttemptKind = "initial" | "retry" | "fallback";

@@ -5,7 +5,7 @@ A two-player online round of the Serbian pen-and-paper game
 at the same moment — so neither gets a head start — and an AI (Google Gemini,
 with Groq as a backup) checks that every answer is a real term of its category.
 
-Built for Weeks 3–4 of the Serbian AI Bootcamp.
+Built for Weeks 3–5 of the Serbian AI Bootcamp.
 
 ## Three ways to play
 
@@ -38,6 +38,10 @@ game also picks the letters: a Serbian game uses the whole Serbian alphabet
    and scored: two different valid answers 10 each, the same answer 5 each,
    only one valid answer 10 and 0, neither 0 and 0. Each rejected answer shows
    why (doesn't exist, wrong category, wrong letter…).
+7. After results, each human may request a private, read-only review of their
+   own recorded round. It shows checked observations and controlled practice
+   suggestions; it cannot change the score or provide generated geography
+   answers. The optional review is still under verification.
 
 If the AI is unavailable, the round is scored on the starting letter only, and
 the results say so. The game never waits on the AI for more than 20 seconds.
@@ -58,6 +62,8 @@ npm run build      # dist/client + dist/server
 npm start          # serve the built SPA, /healthz and Socket.IO from one origin
 npm run verify     # typecheck + lint + test + build — the gate before any handoff
 npm run smoke:ai   # opt-in: 5 real AI requests with fixed, pre-written expectations
+npm run coach:fake-e2e # scripted fake: real coach engine/tool/validators, no provider calls
+npm run coach:smoke     # opt-in live coach smoke; requires configured provider credentials
 ```
 
 Copy `.env.example` to `.env` and set `GEMINI_API_KEY` (free, from
@@ -79,6 +85,11 @@ lobby tells players this.
 | [docs/AI_EVALS.md](docs/AI_EVALS.md) | Live checks of the AI against real Gemini and Groq |
 | [docs/EVIDENCE_003.md](docs/EVIDENCE_003.md) | Week 3: scope changes, baseline, the controlled change |
 | [docs/EVIDENCE_004.md](docs/EVIDENCE_004.md) | Week 4: scope changes, AI evals, runs, open findings |
+| [docs/AGENT_FEATURE_SPEC.md](docs/AGENT_FEATURE_SPEC.md) | Week 5 coach goal, boundaries and links to its canonical spec |
+| [docs/AGENT_FLOW.md](docs/AGENT_FLOW.md) | Week 5 bounded decision/tool flow and stop behavior |
+| [docs/TOOL_CONTRACTS.md](docs/TOOL_CONTRACTS.md) | Week 5 tool, evidence and terminal acknowledgement contracts |
+| [docs/AGENT_EVALS.md](docs/AGENT_EVALS.md) | Week 5 preregistered cases and observed test mapping |
+| [docs/EVIDENCE_W05.md](docs/EVIDENCE_W05.md) | Week 5 actual fake/automated evidence and pending gates |
 | [docs/PRODUCT_REVIEW.md](docs/PRODUCT_REVIEW.md) | Product review and prioritised improvements |
 | [docs/BUILD_PROMPT_V1.md](docs/BUILD_PROMPT_V1.md) | The first build prompt, kept as written |
 | [docs/CONTEXT_MANIFEST.md](docs/CONTEXT_MANIFEST.md) | What context was used, and what was excluded |

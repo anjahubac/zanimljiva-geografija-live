@@ -2,12 +2,20 @@ import { CATEGORIES } from "@contracts/game.schemas";
 import type { Category, PlayerSlot, RejectReason } from "@contracts/game.schemas";
 import type { RoundResults, RoundRevealed } from "@contracts/socket.schemas";
 import { useI18n } from "@client/i18n";
+import type { CoachRunView } from "@contracts/coach.schemas";
+import type { GameErrorCode } from "@contracts/errors";
 
 type Props = {
   you: PlayerSlot;
   revealed: RoundRevealed;
   results: RoundResults;
   opponentIsBot?: boolean;
+  coachView?: CoachRunView | null;
+  coachLoading?: boolean;
+  coachUnavailable?: boolean;
+  coachErrorCode?: GameErrorCode | null;
+  coachDisabled?: boolean;
+  onReviewRound?: () => void;
   onLeave: () => void;
 };
 
@@ -37,7 +45,7 @@ type SheetRow = {
  *  same height and shape it had while the round was being played. */
 const BLANK_SHEET_ROWS = [1, 2, 3];
 
-export function ResultsScreen({ you, revealed, results, opponentIsBot = false, onLeave }: Props) {
+export function ResultsScreen({ you, revealed, results, opponentIsBot = false, coachView = null, coachLoading = false, coachUnavailable = false, coachErrorCode = null, coachDisabled = false, onReviewRound = () => {}, onLeave }: Props) {
   const { t, labels } = useI18n();
 
   const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
@@ -77,6 +85,7 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
       : (results.outcome === "player_1") === (you === 1)
         ? t.outcomeWin
         : t.outcomeLoss;
+  const coachResult = coachView?.status === "completed" ? coachView.result : null;
 
   return (
     <section className="screen screen-results screen-wide" aria-labelledby="results-title">
@@ -183,6 +192,55 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
           {t.backToLobby}
         </button>
       </div>
+
+      <section className="coach-panel" aria-labelledby="coach-title">
+        <h2 id="coach-title">{t.coach.summary}</h2>
+        <button type="button" onClick={onReviewRound} disabled={coachLoading || coachView !== null || coachUnavailable || coachDisabled}>
+          {coachLoading ? t.coach.loading : t.coach.action}
+        </button>
+        {coachLoading ? <p role="status" aria-live="polite">{t.coach.loading}</p> : null}
+        {coachUnavailable ? <p role="alert">{coachErrorCode ? t.errors[coachErrorCode] : t.coach.unavailable}</p> : null}
+        {coachView?.status === "completed" ? <p role="status">{t.coach.completed}</p> : null}
+        {coachView && coachView.status !== "completed" ? <p role="status">{t.coach.stopReasons[coachView.stopReason]}</p> : null}
+        {coachView?.status === "completed" && coachResult ? (
+          <div className="coach-result">
+            <p>{coachResult.confidence === "medium" ? t.coach.confidenceMedium : t.coach.confidenceLow}</p>
+            <h3>{t.coach.finding}</h3>
+            <ul>{coachResult.summary.findingIds.map((id) => {
+              const evidence = coachResult.evidence.find((item) => item.id === id)!;
+              if (evidence.kind === "cell") {
+                const state = evidence.blank ? t.coach.blank : evidence.accepted ? t.coach.accepted : t.coach.rejected;
+                const reason = evidence.rejectReason ? `: ${t.rejectReasons[evidence.rejectReason]}` : "";
+                return <li key={id}>{t.coach.findingCell.replace("{{category}}", labels[evidence.category]).replace("{{state}}", state).replace("{{reason}}", reason).replace("{{points}}", String(evidence.points))}</li>;
+              }
+              if (evidence.kind === "totals") return <li key={id}>{t.coach.totalsEvidence.replace("{{blank}}", String(evidence.blank)).replace("{{accepted}}", String(evidence.accepted)).replace("{{rejected}}", String(evidence.rejectedNonblank)).replace("{{hinted}}", String(evidence.hinted)).replace("{{duplicates}}", String(evidence.acceptedDuplicates)).replace("{{points}}", String(evidence.ownPoints))}</li>;
+              return <li key={id}>{t.coach.verifiedEvidence.replace("{{status}}", evidence.verified ? t.coach.yes : t.coach.no)}</li>;
+            })}</ul>
+            <h3>{t.coach.recommendations}</h3>
+            <ul>{coachResult.recommendations.map((item, index) => (
+              <li key={`${item.code}-${item.category ?? "all"}-${index}`}>
+                {item.code === "maintain_approach"
+                  ? coachResult.evidence.find((entry) => entry.kind === "verification")?.verified ? t.coach.maintainVerified : t.coach.maintainLocal
+                  : t.coach.recommendationText[item.code].replace("{{category}}", item.category ? labels[item.category] : "")}
+              </li>
+            ))}</ul>
+            <ul>{coachResult.limitations.map((limitation) => (
+              <li key={limitation}>{limitation === "single_round" ? t.coach.limitationSingleRound : limitation === "checker_can_be_wrong" ? t.coach.limitationChecker : t.coach.limitationLocal}</li>
+            ))}</ul>
+            <details>
+              <summary>{t.coach.evidence}</summary>
+              <ul>{coachResult.evidence.map((item) => {
+                if (item.kind === "cell") {
+                  const state = item.blank ? t.coach.blank : item.accepted ? t.coach.accepted : t.coach.rejected;
+                  return <li key={item.id}>{t.coach.evidenceCell.replace("{{category}}", labels[item.category]).replace("{{state}}", state).replace("{{points}}", String(item.points)).replace("{{hint}}", item.hinted ? t.coach.hintedEvidence : "")}</li>;
+                }
+                if (item.kind === "totals") return <li key={item.id}>{t.coach.totalsEvidence.replace("{{blank}}", String(item.blank)).replace("{{accepted}}", String(item.accepted)).replace("{{rejected}}", String(item.rejectedNonblank)).replace("{{hinted}}", String(item.hinted)).replace("{{duplicates}}", String(item.acceptedDuplicates)).replace("{{points}}", String(item.ownPoints))}</li>;
+                return <li key={item.id}>{t.coach.verifiedEvidence.replace("{{status}}", item.verified ? t.coach.yes : t.coach.no)}</li>;
+              })}</ul>
+            </details>
+          </div>
+        ) : null}
+      </section>
     </section>
   );
 }

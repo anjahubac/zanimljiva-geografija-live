@@ -49,3 +49,7 @@ Resolved on 2026-09-22 while auditing the plan against the instruction set:
 `Plan.md` is long. A weaker model asked to "read the plan" will spend most of
 its attention budget before writing a line of code. The mitigation is the per-step
 reading list in module 10 — if a future session ignores it, expect scope drift.
+
+## Week 5 context — post-round coach
+
+The W05 implementation context includes the approved `specs/010-post-round-coach/` package, `docs/AGENT_FLOW.md`, `docs/TOOL_CONTRACTS.md`, `docs/AGENT_EVALS.md`, `docs/EVIDENCE_W05.md`, the assignment coverage matrix, and the W04 result/usage/socket/provider/client consumers recorded in `impact-analysis.md`. Synthetic fixtures and scripted fake provider replies are test evidence only. No live credentials, provider outputs, browser screenshots, or private user answers were included. Live provider quality, browser accessibility, and human pair participation remain unverified.

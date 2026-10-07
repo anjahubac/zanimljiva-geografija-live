@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { coachRequestSchema, coachRunViewSchema } from "./coach.schemas";
 import {
   CATEGORY_COUNT,
   HINTS_PER_ROUND,
@@ -81,6 +82,9 @@ export const hintRequestSchema = z
   .strict();
 export type HintRequest = z.infer<typeof hintRequestSchema>;
 
+export const coachRequest = coachRequestSchema;
+export type CoachRequest = z.infer<typeof coachRequest>;
+
 /* ------------------------------------------------------- acknowledgements */
 
 /** Returned only to the caller. `resumeToken` is never broadcast. */
@@ -135,6 +139,9 @@ export const hintAckSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 export type HintAck = z.infer<typeof hintAckSchema>;
+
+export const coachAckSchema = coachRunViewSchema;
+export type CoachAck = z.infer<typeof coachAckSchema>;
 
 /* ------------------------------------------------------- server -> client */
 
@@ -228,6 +235,7 @@ export const CLIENT_EVENTS = {
   draft: "round:draft",
   finish: "round:finish",
   hint: "round:hint",
+  coach: "round:coach",
 } as const;
 
 export const SERVER_EVENTS = {

@@ -10,6 +10,7 @@ import {
   draftRequestSchema,
   finishRequestSchema,
   hintRequestSchema,
+  coachRequest,
   joinRoomRequestSchema,
   playAiRequestSchema,
   roomAckSchema,
@@ -208,6 +209,10 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
 
     socket.on(CLIENT_EVENTS.hint, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.hint, hintRequestSchema, raw, ack, (input) => store.requestHint(input, socket.id, visitor));
+    });
+
+    socket.on(CLIENT_EVENTS.coach, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.coach, coachRequest, raw, ack, (input) => store.reviewRound(input, socket.id, visitor));
     });
 
     socket.on("disconnect", () => {

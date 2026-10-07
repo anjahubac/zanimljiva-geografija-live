@@ -1,11 +1,12 @@
 import { io, type Socket } from "socket.io-client";
 import type { Ack } from "@contracts/errors";
 
-export async function connectClient(port: number): Promise<Socket> {
+export async function connectClient(port: number, headers?: Record<string, string>): Promise<Socket> {
   const socket = io(`http://localhost:${port}`, {
     transports: ["websocket"],
     forceNew: true,
     reconnection: false,
+    ...(headers ? { extraHeaders: headers } : {}),
   });
   await new Promise<void>((resolve, reject) => {
     socket.once("connect", () => resolve());

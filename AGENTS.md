@@ -47,5 +47,14 @@ above; it does not replace them, and `Plan.md` stays the plan of record.
 Features 001–008 in `specs/` were reconstructed after they were built. New
 features start at 009 and use the full specify → plan → tasks flow.
 
-Current feature: `specs/009-full-alphabet-letters/plan.md` (`Plan.md` §2B.13).
+Current feature: `specs/010-post-round-coach/spec.md` (`Plan.md` §2C).
+Week 5 status: implementation and automated verification complete (555 tests
+across 40 files; typecheck, lint and client/server builds pass). Live-provider,
+interactive browser and pair-evidence gates remain pending. Read the
+consumer/before-after review in
+`specs/010-post-round-coach/impact-analysis.md` and execute
+`specs/010-post-round-coach/tasks.md` in order. Ask the owner only for a design
+change outside the approved spec/contracts. Full regression and observed
+completion gates are tracked in `docs/EVIDENCE_W05.md`.
+Feature 009 remains historical context in `Plan.md` §2B.13.
 <!-- SPECKIT END -->

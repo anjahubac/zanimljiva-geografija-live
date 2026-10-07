@@ -1,0 +1,42 @@
+{
+  "observedAt": "2026-10-07T12:58:34.946Z",
+  "scenario": "provider_failure",
+  "status": "failed",
+  "stopReason": "provider_failed",
+  "stepCount": 1,
+  "toolCallCount": 0,
+  "providerAttemptCount": 1,
+  "adapterCallCount": 1,
+  "elapsedMs": 1,
+  "trace": [
+    {
+      "event": "ai.coach",
+      "runId": "00da0426-98df-4a28-b347-30b532c50e68",
+      "status": "failed",
+      "stopReason": "provider_failed",
+      "stepCount": 1,
+      "toolCallCount": 0,
+      "providerAttemptCount": 1,
+      "elapsedMs": 1,
+      "toolName": null,
+      "validations": [],
+      "attemptUsage": {
+        "usageReportedAttempts": 0,
+        "unknownAttempts": 1
+      },
+      "attempts": [
+        {
+          "step": 1,
+          "attempt": 1,
+          "kind": "initial",
+          "provider": "gemini",
+          "model": "fake-model",
+          "status": "auth_config",
+          "latencyMs": 1
+        }
+      ]
+    }
+  ],
+  "result": null,
+  "usageKind": "scripted fake-provider usage, not live billing usage"
+}

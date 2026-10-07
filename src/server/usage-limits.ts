@@ -23,6 +23,7 @@ export type UsageLimitsConfig = {
   aiRoomsPerVisitorHour: number;
   hintsPerVisitorHour: number;
   aiDailyCallBudget: number;
+  coachRunsPerVisitorHour?: number;
 };
 
 export type UsageLimits = {
@@ -32,12 +33,16 @@ export type UsageLimits = {
   charge(action: LimitedAction, visitor: string, now: number): void;
   /** Counts one AI call toward today's budget, whatever the operation. */
   countCall(now: number): void;
+  /** Atomically charges one admitted coach run and checks current daily availability. */
+  admitCoachRun(visitor: string, now: number): Extract<GameErrorCode, "AI_LIMIT" | "RATE_LIMITED"> | null;
+  /** Atomically checks and charges one physical coach provider attempt. */
+  chargeCoachAttempt(now: number): boolean;
   /** Forgets visitors whose hour has passed. */
   prune(now: number): void;
 };
 
 export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
-  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number }>();
+  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number; coachRun: number }>();
   let day = -1;
   let callsToday = 0;
 
@@ -69,7 +74,7 @@ export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
     charge(action, visitor, now) {
       let window = windowOf(visitor, now);
       if (!window) {
-        window = { startedAt: now, aiRoom: 0, hint: 0 };
+        window = { startedAt: now, aiRoom: 0, hint: 0, coachRun: 0 };
         visitors.set(visitor, window);
       }
       window[action] += 1;
@@ -77,6 +82,25 @@ export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
     countCall(now) {
       rollDay(now);
       callsToday += 1;
+    },
+    admitCoachRun(visitor, now) {
+      rollDay(now);
+      if (callsToday >= config.aiDailyCallBudget) return "AI_LIMIT";
+      const current = windowOf(visitor, now);
+      if (current && current.coachRun >= (config.coachRunsPerVisitorHour ?? 5)) return "RATE_LIMITED";
+      let window = current;
+      if (!window) {
+        window = { startedAt: now, aiRoom: 0, hint: 0, coachRun: 0 };
+        visitors.set(visitor, window);
+      }
+      window.coachRun += 1;
+      return null;
+    },
+    chargeCoachAttempt(now) {
+      rollDay(now);
+      if (callsToday >= config.aiDailyCallBudget) return false;
+      callsToday += 1;
+      return true;
     },
     prune(now) {
       for (const [visitor, window] of visitors) {

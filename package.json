@@ -23,6 +23,8 @@
     "build:server": "tsup src/server/index.ts --format esm --target node22 --out-dir dist/server --clean",
     "start": "node --env-file-if-exists=.env dist/server/index.js",
     "smoke:ai": "tsx --env-file-if-exists=.env scripts/ai-smoke.ts",
+    "coach:fake-e2e": "tsx scripts/coach-fake-e2e.ts",
+    "coach:smoke": "tsx --env-file-if-exists=.env scripts/coach-smoke.ts",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {

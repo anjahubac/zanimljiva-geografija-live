@@ -621,6 +621,75 @@ terms; the owner accepted that. Tracked as Spec Kit feature
 - Known effect: answers typed without diacritics fail the local rule on the
   new letters with them (Č, Ć, Đ, Dž, Š, Ž), as "Sabac" already failed on S.
 
+## 2C. Week 5 bounded post-round coach — specification and implementation (2026-10-07)
+
+**Owner request:** specify the proposed Zanimljiva Geografija post-round coach
+using Spec Kit, meet the complete W05 assignment/addendum and retain all
+required artifacts. Work on a local branch from Anja's main, commit at the
+agreed final milestone, and do not push. The initial specification pass was
+documentation only; the user later explicitly authorized implementation of
+the approved detailed design after root consistency review.
+
+**Status (2026-10-07):** implementation and automated verification complete.
+Final `npm.cmd run verify` passed 555 tests across 40 files, typecheck, lint,
+and client/server builds. Live-provider demo, interactive browser review and
+human pair gates remain open; see `docs/EVIDENCE_W05.md`.
+**Feature:** `specs/010-post-round-coach/spec.md`.
+**Branch/base:** `010-post-round-coach`, created after fetching `origin/main`
+at `4dea3b59e35c5dc89a09776cea43bb5e8487ad5e`; no upstream, push or deployment.
+
+The goal is **Review this completed round and recommend up to two things to
+practice**. Only the requesting human's completed results are used. The
+model proposes `analyze_round`, a checked read-only local operation; its
+evidence returns to a second model decision. The backend checks evidence
+references and eligible advice; approved SR/EN wording renders the review.
+There are no generated replacement geography answers or agent game writes.
+
+Proposed scope expansion is limited to the coach feature, one new
+`round:coach` request/terminal ack, bounded own-result/run metadata and a
+separate visitor allowance. No new dependency, database, service or deployment.
+Existing W04 score/checker/hint/alphabet/reveal behavior remains the baseline.
+`docs/GAME_SPEC.md` contains a clearly labeled W05 amendment describing the
+read-only results review and its limits.
+
+Limits: two model decisions, one tool, three actual provider attempts,
+one recovery and one configured-model/provider fallback for the whole run;
+30-second total deadline, eight-second attempt cap and 250 ms tool cap.
+One admitted run per human/round, five admitted runs per visitor/hour,
+terminal/in-flight duplicate reuse. Each coach attempt checks/consumes the
+shared daily allowance. Existing W04 logical-call accounting and checker
+priority remain unchanged; their mixed-unit limitation is documented.
+
+The source inspection identified three integration decisions: capture exact
+canonical completed results rather than rejudge locked answers; enforce
+W05 shared guards before actual gateway attempts rather than around two
+unbounded interactions; avoid unrestricted prose that cannot be validated
+against evidence. Consumers, before/after cases and tradeoffs are in
+`specs/010-post-round-coach/impact-analysis.md`.
+
+Required artifact entry points: `docs/AGENT_FEATURE_SPEC.md`,
+`docs/AGENT_FLOW.md`, `docs/TOOL_CONTRACTS.md`, `docs/AGENT_EVALS.md`,
+`docs/EVIDENCE_W05.md` and the existing `docs/AI_USAGE_LOG.md`.
+All assignment sections/Core items are mapped in
+`specs/010-post-round-coach/checklists/assignment-coverage.md`.
+Automated evidence is recorded in `docs/EVIDENCE_W05.md`; live-provider,
+interactive browser and human pair contribution evidence remain pending.
+
+Approval record: the user authorized the approved spec package and its exact
+design for implementation; root consistency review passed before code. No
+separate owner review of the generated plan is claimed. Any behavior outside
+the approved spec/data model/contracts requires owner clarification. W04 live
+evaluation in §2B.6 remains pending. No production deployment is needed for
+W05. Only existing bounded fallback reuse and grounded quality eval are in
+scope.
+
+Implemented: strict contracts, source snapshot, deterministic tool,
+two-step engine, physical-attempt guard, limits, telemetry, service/store/socket
+wiring, reducer-backed client flow, bilingual evidence rendering, fake-e2e and
+ opt-in live smoke scripts. See the actual test output and remaining gates in
+`docs/EVIDENCE_W05.md`; do not treat this worktree as final until those gates
+are honestly resolved.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.

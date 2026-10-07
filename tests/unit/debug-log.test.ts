@@ -27,4 +27,11 @@ describe("AI_DEBUG_LOG — local raw logging (constitution 1.1.0 exception)", ()
     expect(text).toContain('sent:  {"letter":"N"}');
     expect(text).toContain('"items": []');
   });
+
+  it("never raw-logs coach prompts or replies, even in local debug mode", () => {
+    const lines: string[] = [];
+    const sink = createDebugSink({ AI_DEBUG_LOG: "1" }, (line) => lines.push(line));
+    sink?.({ operation: "post-round-coach", promptVersion: "coach.v1", n: 1, model: "fake", kind: "initial", latencyMs: 1, sent: "private answer", reply: "private reply", result: "ok" });
+    expect(lines).toEqual([]);
+  });
 });
