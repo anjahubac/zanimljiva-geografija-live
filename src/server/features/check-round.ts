@@ -18,7 +18,7 @@ import {
   CHECK_ROUND_PROMPT_VERSION,
   CHECK_ROUND_SYSTEM_INSTRUCTION,
   type CheckRoundItem,
-} from "@server/prompts/check-round.v3";
+} from "@server/prompts/check-round.v4";
 
 /*
  * One request per round judges both players (`Plan.md` §2B.2). Adapted from

@@ -44,6 +44,14 @@
   `plan.md` and `contracts/`.
 - "Visitor", "AI attempt" and "backup provider" are used as the players and
   owner already meet them in Week 4 (`Plan.md` §2B.5, §2B.11).
-- Re-checked 2026-10-07 after the `/speckit-analyze` fixes (FR-017 now points
+- Historical re-check, 2026-10-07 after the initial `/speckit-analyze` fixes (FR-017 now points
   to FR-015's limits instead of restating them; FR-023 names 30 seconds).
   Every item still passes.
+
+- Current-document re-check, 2026-10-07: FR-015 and FR-023 now state the
+  approved overall 4/3/7/35 s bounds and 45 s client wait; current contracts
+  cover referee-only suggestions, empty model summary, backup and repair.
+  Read-only analysis maps 38 requirements to 68 tasks without critical
+  design conflict. The checklist concerns specification readiness; it does
+  not certify the unfinished live accounting, pair contributions or demo
+  rehearsal tracked in T060/T063/T065/T066.

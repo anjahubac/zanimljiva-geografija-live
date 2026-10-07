@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoachStep } from "@contracts/ai-output.schemas";
 import { coachReportSchema, type CoachReport } from "@contracts/coach.schemas";
+import type { Language } from "@contracts/game.schemas";
 import { runCoach, type CoachRunOutcome } from "@server/agent/coach-agent";
 import { memoryRunLog, type AgentRunRecord } from "@server/agent/run-log";
 import type { FocusEntry, RoundSnapshot } from "@server/agent/tools";
@@ -41,7 +42,7 @@ const final = (tips: Array<[string, string]>, summary = "") =>
   reply({ action: "final", tips: tips.map(([category, evidenceId]) => ({ category, evidenceId })), summary, confidence: "medium" });
 
 /**
- * The referee's reply (check-round.v3) to the game's own check of the words it
+ * The referee's reply (check-round.v4) to the game's own check of the words it
  * would show: one accepted item per word, ids a0, a1, … in category order
  * (country, city, river, mountain, sea, animal, …). `[written, recognised]`
  * lets the referee correct a spelling.
@@ -71,6 +72,13 @@ const refereeSays = (...names: Array<string | null>) => ({
     ),
   }),
 });
+/** The referee's reply with both names per word, `[sr, en]`, in the order of `refereeSays`. */
+const refereeNames = (...names: Array<[string, string]>) => ({
+  text: JSON.stringify({
+    items: names.map(([sr, en], index) => ({ id: `a${index}`, verdict: "accepted", recognizedSr: sr, recognizedEn: en, reason: "" })),
+  }),
+});
+
 /** Step 1 of C1: c1 passes (river), c2 and c3 fail on the letter. */
 const STEP1 = check(["river", "Ljubljanica"], ["animal", "Lisica"], ["country", "Lihtenštajn"]);
 const STEP1_ALL_PASS = check(["river", "Ljubljanica"], ["animal", "Ljuskavac"], ["country", "Ljubotinj"]);
@@ -81,7 +89,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function harness(script: Script[], options: { focus?: FocusEntry[]; signal?: AbortSignal; letter?: RoundSnapshot["letter"] } = {}) {
+function harness(
+  script: Script[],
+  options: { focus?: FocusEntry[]; signal?: AbortSignal; letter?: RoundSnapshot["letter"]; language?: Language } = {},
+) {
   const time = fakeTime();
   const timeouts: Array<{ fireAt: number; controller: AbortController }> = [];
   vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
@@ -116,7 +127,7 @@ function harness(script: Script[], options: { focus?: FocusEntry[]; signal?: Abo
 
   const run = (toolImpl?: Parameters<typeof runCoach>[1]["toolImpl"]): Promise<CoachRunOutcome> =>
     runCoach(
-      { runId: "run-1", goal: "fill_gaps", language: "sr", snapshot },
+      { runId: "run-1", goal: "fill_gaps", language: options.language ?? "sr", snapshot },
       {
         ai,
         now: time.now,
@@ -441,7 +452,7 @@ describe("the run log (T032)", () => {
     ]);
     await run();
     const record = recordOf(log);
-    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v5", stopReason: "goal_completed" });
+    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v6", stopReason: "goal_completed" });
     expect(record.steps.map((step) => [step.n, step.action, step.decision])).toEqual([
       [1, "check_candidates", "allowed"],
       [2, "check_candidates", "allowed"],
@@ -480,7 +491,7 @@ describe("C17 — the referee (verify_terms)", () => {
   /** Step 1: river and animal pass the letter rule, country fails. */
   const CHECK = check(["river", "Ljubljanica"], ["animal", "Ljuskavac"], ["country", "Lihtenštajn"]);
   const verify = (...ids: string[]) => reply({ action: "verify_terms", evidenceIds: ids });
-  /** The referee's reply (check-round.v3): river is a0, animal a1, in category order. */
+  /** The referee's reply (check-round.v4): river is a0, animal a1, in category order. */
   const referee = (animal: "accepted" | "rejected") => ({
     text: JSON.stringify({
       items: [
@@ -621,6 +632,40 @@ describe("only referee-accepted words reach the player", () => {
     const { run } = harness([check(["mountain", "Rtnj"]), final([["mountain", "c1"]]), refereeAccepts(["Rtnj", "Rtanj"])], { focus, ...round });
     const report = reportOf(await run());
     expect(report.tips[0]).toMatchObject({ suggestion: "Rtanj", checkedBy: "letter_rule_and_referee" });
+  });
+
+  it("shows the Serbian spelling in a Serbian game (Graz → Grac)", async () => {
+    const focus: FocusEntry[] = [{ category: "city", yourAnswer: "", whyMissed: "empty" }];
+    const { run } = harness([check(["city", "Graz"]), final([["city", "c1"]]), refereeNames(["Grac", "Graz"])], { focus, letter: "G" });
+    expect(reportOf(await run()).tips[0]).toMatchObject({ suggestion: "Grac" });
+  });
+
+  it("never shows an English spelling in a Serbian game: a name outside Serbian Latin falls to the backup", async () => {
+    const focus: FocusEntry[] = [{ category: "city", yourAnswer: "", whyMissed: "empty" }];
+    const { run } = harness(
+      [check(["city", "New York"], ["city", "Niš"]), final([["city", "c1"]]), refereeNames(["New York", "New York"], ["Niš", "Nis"])],
+      { focus, letter: "N" },
+    );
+    expect(reportOf(await run()).tips[0]).toMatchObject({ suggestion: "Niš" });
+  });
+
+  it("shows the English name in an English game (Dunav → Danube)", async () => {
+    const focus: FocusEntry[] = [{ category: "river", yourAnswer: "", whyMissed: "empty" }];
+    const { run } = harness([check(["river", "Dunav"]), final([["river", "c1"]]), refereeNames(["Dunav", "Danube"])], {
+      focus,
+      letter: "D",
+      language: "en",
+    });
+    expect(reportOf(await run()).tips[0]).toMatchObject({ suggestion: "Danube" });
+  });
+
+  it("never shows a Serbian spelling in an English game: a word whose English name misses the letter falls to the backup", async () => {
+    const focus: FocusEntry[] = [{ category: "city", yourAnswer: "", whyMissed: "empty" }];
+    const { run } = harness(
+      [check(["city", "Solun"], ["city", "Sofija"]), final([["city", "c1"]]), refereeNames(["Solun", "Thessaloniki"], ["Sofija", "Sofia"])],
+      { focus, letter: "S", language: "en" },
+    );
+    expect(reportOf(await run()).tips[0]).toMatchObject({ suggestion: "Sofia" });
   });
 
   it("drops a cited word the referee rejects at the end, and still completes", async () => {

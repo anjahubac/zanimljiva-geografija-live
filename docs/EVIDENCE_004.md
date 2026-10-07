@@ -4,6 +4,15 @@ Evidence for the Week 4 revision: the scope changes, the evals written before
 the code, what was run and what it showed, and what is still open. Week 3's
 evidence stays in `EVIDENCE_003.md`; the full Week 4 design is `Plan.md` §2B.
 
+**Current handoff (2026-10-07):** Week 4 is committed on main; W4-7 ran
+once per provider with `check-round.v3`, with 16/16 checker agreement on both. Its live details
+and bot/hint quality findings are in `docs/AI_EVALS.md`. W4-8's controlled
+change and W4-9's deployment remain open. Older dated observations below
+are historical, not a claim that no live call has ever occurred.
+The shared Week 5 workspace now uses `check-round.v4`; its Serbian spelling
+and original-name guidance has passed fake tests but has no new live checker
+eval recorded here. The v3 result above is not a v4 quality claim.
+
 Rule for this file, as for Week 3: nothing is written here that was not
 actually observed. A placeholder stays a placeholder until the run that fills
 it has happened. Sources are named for every result.
@@ -102,8 +111,8 @@ failed A5, and charging an extra hint failed A4 (`Plan.md` §2B.6).
 ### Live smoke check — the AI itself (manual, real providers)
 
 16 answer verdicts with expectations written first, plus an AI opponent sheet
-and two hints: `docs/AI_EVALS.md`. **Not run yet**: no API key was available
-in either session.
+and two hints: `docs/AI_EVALS.md`. **Run 2026-10-07:** both providers agreed with 16/16 checker expectations;
+see `docs/AI_EVALS.md` for bot/hint limitations.
 
 ### S8 — Leave game
 
@@ -122,8 +131,8 @@ anyone joins removes the room, and its code answers `ROOM_NOT_FOUND`.
 | After W4-2 | 2026-09-30 | uncommitted | `npm run verify` | pass — 437 tests, 27 files; the 4 new server tests fail with the new rule disabled | `AI_USAGE_LOG.md` 008 |
 | After W4-3 | 2026-09-30 | uncommitted | `npm run verify` | pass — 456 tests, 29 files; with the limits disabled, the 5 integration cases in `ai-limits.test.ts` fail | `AI_USAGE_LOG.md` 010 |
 | After 009 (whole alphabet) | 2026-09-30 | uncommitted | `npm run verify` | pass — 490 tests, 30 files; baseline before the change 458, 29; three mutation checks failed as expected | `AI_USAGE_LOG.md` 011 |
-| Live AI, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:ai` | **not run** | — |
-| Live AI, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:ai` | **not run** | — |
+| Live AI, Gemini | 2026-10-07 | Week 5 baseline | `AI_PROVIDER_ORDER=gemini npm run smoke:ai` | 16/16 checker agreement; bot/hint observations | `AI_EVALS.md`, `AI_USAGE_LOG.md` 015 |
+| Live AI, Groq | 2026-10-07 | Week 5 baseline | `AI_PROVIDER_ORDER=groq npm run smoke:ai` | 16/16 checker agreement; factually wrong hints recorded | `AI_EVALS.md`, `AI_USAGE_LOG.md` 015 |
 | Deployed round | — | — | Render, one round per mode | **not run** | — |
 
 ---
@@ -152,13 +161,13 @@ Write the claim, signal and hypothesis here **before** changing the prompt.
    `TRUST_PROXY_HOPS` for Render is unknown and must be set and checked at
    W4-9; with 0 there, every visitor shares one limit. Players behind one
    address share one per-visitor limit.
-2. **The live AI has never been called.** Groq's accuracy on Serbian answers is
-   untested; the Gemini model ids come from the colleague's testing and were
-   not re-checked.
+2. **Live AI quality remains limited.** W4-7 ran on 2026-10-07; both checkers
+   scored 16/16 on the fixed cases. Groq's hints still contained factual
+   errors and some bot answers were doubtful (`AI_EVALS.md`).
 3. **Leave game has not been clicked through in a browser**; only automated
    tests and the render tests cover it.
-4. **Not committed, not deployed.** Everything in §4 after the baseline is a
-   local working tree.
+4. **Committed, not deployed.** Week 4 is on main (`6232482`, `4dea3b5`);
+   W4-9 and its physical two-computer checks are still open.
 5. **Instructor approval** (`GAME_SPEC.md` §9) is still empty, and Week 4 is a
    larger scope change than the one it was requested for.
 6. **The resume token is still minted and unused** (`EVIDENCE_003.md` §5).

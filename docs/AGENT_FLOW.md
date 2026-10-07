@@ -1,129 +1,139 @@
 # AGENT_FLOW — the round coach
 
-The flow of one coaching run, with every check and every stop. Design of
-record: `Plan.md` §2C and §2C.16; contracts in
-`specs/010-round-coach-agent/contracts/`. **Approved 2026-10-07, not built.**
+**Current implementation: `coach-step.v6`, built on `feature/round-coach`.**
+Design: `Plan.md` §2C.16–§2C.17; contracts in
+`specs/010-round-coach-agent/contracts/`. Earlier flows are preserved in git.
 
 ## Architecture
 
 ```text
-Browser (results sheet)                 Server (one Node process)
-─────────────────────                   ───────────────────────────────────────────────
-CoachPanel ── round:coach ──────────►  register-handlers  (rate limit, zod, INTERNAL on throw)
-   ▲                                          │
-   │  ack: CoachReport (caller only)          ▼
-   └───────────────────────────────── room-store.requestCoach
-                                        eligibility · single-flight · usage limits · snapshot
-                                              │
-                                              ▼
-                                       agent/coach-agent.runCoach   ◄── RUN_LIMITS (agent/limits.ts)
-                                        allowlist · args · repeats · budgets · final check
-                                         │                  │
-                         model step      ▼                  ▼   tool
-                              ai/service.coachStep     agent/tools.ts
-                                         │              check_candidates (pure, Core)
-                                         ▼              verify_terms (O1 → W04 referee)
-                              ai/gateway.generate
-                              retries · fallback · deadline · maxAttempts
-                                         │
-                                         ▼
-                              Gemini ⇄ Groq adapters (fetch; key server-side only)
+Browser: results sheet + CoachPanel
+  │ round:coach { roundId, goal, focus, language }
+  ▼
+Socket handler: event rate limit → strict request schema → generic errors
+  ▼
+room-store.requestCoach: ownership → results phase → missed categories
+  → configured AI → cached/pending report → usage limits → reveal snapshot
+  ▼
+agent/coach-agent.runCoach                 RUN_LIMITS (application-owned)
+  │ model step                              │ validate tool/final
+  ▼                                         ▼
+AiService.coachStep                    TOOLS.check_candidates (pure)
+  │                                   TOOLS.verify_terms (O1, ids only)
+  ▼                                         │
+W04 gateway ←──────────────────── AiService.verifyTerms (W04 referee)
+  │ retries / fallback / deadline / attempt cap
+  ▼
+Gemini ⇄ Groq adapters (server-only keys)
+
+runCoach → application-owned referee check → optional bounded repair
+  → runtime-validated CoachReport → caller-only ack → CoachPanel
 ```
 
-The browser never runs a step, never sees a prompt or a model reply, and
-never calls a tool.
+The browser never runs the loop, calls a tool, or receives a prompt or raw
+model reply. Coaching reads only the caller's revealed misses; it never
+changes scores or any canonical round state.
 
-## One run
+## One logical run
 
 ```text
-User goal: "fill_gaps" on focus [river, animal, country]
-   │
-   ▼
-Validate request ─────────────── fail → INVALID_PAYLOAD / NOT_IN_ROOM / ROUND_STALE /
-   │                                     WRONG_PHASE / AI_UNAVAILABLE / AI_LIMIT /
-   │                                     RATE_LIMITED            (0 provider calls)
-   ▼
-Already coached this round? ──── yes → same report (0 calls) │ running → wait for it
-   │ no
-   ▼
-Charge the visitor one run; runId; deadline = now + 25 s
-   │
-   ▼
-┌─► Before step n: n ≤ 3? ≥ 2 s left? attempts left? ── no → STOP max_steps / deadline / call_budget
-│      │
-│      ▼
-│   AI step n  (gateway: ≤ 2 attempts, ≤ 10 s, run signal; retry/fallback = attempts, not steps)
-│      │ provider failed ─────────────────────────────────► STOP provider_timeout / _unavailable /
-│      │                                                         rate_limited / quota_exhausted
-│      ▼
-│   Parse + envelope schema ── fail ───────────────────────► STOP malformed_output
-│      │
-│      ▼
-│   Action allowed in THIS step?
-│      ├─ not in TOOLS, not final ─────────────────────────► STOP unknown_tool        (tool not run)
-│      ├─ known tool not offered, last step ───────────────► STOP max_steps           (tool not run)
-│      ├─ known tool not offered, other reason ────────────► STOP invalid_tool_args   (tool not run)
-│      └─ final not offered (step 1) ──────────────────────► STOP final_invalid
-│      │
-│      ├── tool ──► Validate args + run scope
-│      │               ├─ invalid / out of scope ──────────► STOP invalid_tool_args   (tool not run)
-│      │               └─ already checked ─────────────────► STOP repeated_call       (tool not run)
-│      │            Execute tool (read-only)
-│      │            Validate result (shape, ≤ 2 KB, ≤ 100 ms)
-│      │               └─ fail / throw ────────────────────► STOP tool_failed
-│      │            Add items to this run's evidence
-└──────┘            (all focus solved → next step offers no check_candidates)
-       │
-       └── final ─► Validate final: every focus category once; every cited id
-                    passes, is in its category (and with O1 not rejected);
-                    summary 1–280 chars; confidence set
-                       ├─ fail ────────────────────────────► STOP final_invalid
-                       └─ ok ──────────────────────────────► STOP goal_completed
-   │
-   ▼
-Report: completed (goal_completed) │ incomplete (other stop, ≥ 1 pass: evidence only)
-        │ failed (other stop, nothing passed)
-Suggestion text copied from evidence; your answer and why from the reveal
-   │
-   ▼
-Ack to the caller only ─► UI: "Analiza je gotova." / "Analiza je delimična." /
-                              "Analiza nije mogla bezbedno da se završi."
-Player leaves or the room is reaped at any point ──► abort → cancelled (no ack)
+Goal: fill_gaps, on selected categories where the caller scored 0
+  │
+  ├─ bad request / ownership / phase / scope / AI / usage limits → refusal
+  │      INVALID_PAYLOAD / NOT_IN_ROOM / ROUND_STALE / WRONG_PHASE /
+  │      AI_UNAVAILABLE / AI_LIMIT / RATE_LIMITED; 0 provider calls
+  ├─ report already cached → same report, 0 calls
+  ├─ run pending → join that promise, no second run
+  ▼
+Charge one visitor run; runId; main deadline = start + 25 s
+  ▼
+For main step n = 1..3:
+  signal? ≥ 2 s left? provider attempts left? → otherwise stop
+  AI step (≤ 2 attempts, ≤ 10 s interaction, ≤ 6 s per attempt)
+    → JSON + loose envelope validation
+    → per-step allowlist + action shape
+    → tool argument schema + scope + repeat guard, OR final evidence check
+
+  Step 1: check_candidates only
+  Step 2: final; check_candidates for unsolved categories; verify_terms for
+          unjudged passing ids, only with a tool execution left
+  Step 3: final only
+
+  Allowed tool → execute → validate normalized result → evidence → next step
+    check_candidates: ≤ 16 terms, ≤ 2/category, 40 chars, ≤ 100 ms, ≤ 4 KB
+    verify_terms: passing unjudged ids only → W04 referee, ≤ 4 KB result
+  Refused proposal → stop; no tool execution counted for that proposal
+  Valid final → every focus category once; same-run passing citations;
+                summary empty; confidence low / medium / high
+  ▼
+Application-owned referee check before any non-cancelled report:
+  choose passing words (including categories final left empty)
+  → chosen word + one backup per category that lacks an accepted choice
+  → referee only with attempts left and ≥ 2 s of the main deadline left
+  → only referee-accepted words can be displayed
+     failure after a valid final changes its stop reason/status
+     other main-loop failures keep their original stop reason
+  ▼
+Valid final and successful check, but categories still empty?
+  ├─ no → report
+  └─ yes → one optional repair, only with ≥ 4 s of start + 35 s left
+      model sees only empty focus categories + earlier normalized evidence
+      + referee_check verdicts by id
+      → check_candidates only; 1 model attempt; 1 extra tool execution
+      → passing new words → referee, 1 attempt
+      → accepted words added; no subsequent final
+      → refused/failed repair preserves prior status and accepted suggestions
+  ▼
+Runtime validation → report ack to caller only → UI + optional Details (O6)
 ```
 
-## Who stops the run
+Cancellation at any stage (caller disconnects or room is reaped) aborts the
+run, logs `cancelled`, and sends no report. The client stops waiting at 45 s.
 
-The application, always. The model can only end a run early by giving a valid
-final; every other stop is a check in code that runs **before** the model is
-asked again. No `while (true)`: the step loop is `for n in 1..3`.
+## Limits and counters
 
-| Stop | Checked in | Eval |
+| Bound | Main loop + application check | Including optional repair |
+| --- | ---: | ---: |
+| Model decisions | 3 | 4 |
+| Tool executions | 2 | 3 |
+| Provider attempts, including referee | 5 | 7 |
+| Deadline from original start | 25 s | 35 s |
+
+A retry/fallback is an attempt, not a model decision. The application-owned
+referee check and repair referee are provider interactions, not model-requested
+tool executions. Every model/referee interaction counts toward the shared
+daily AI budget. A visitor is limited to 6 runs/hour by default.
+
+## Stops and reports
+
+The application enforces every stop, including the optional repair's fixed
+allowlist, single attempts and deadline. The model can end the main loop only
+with a validated final.
+
+| Stop reason | Application check | Eval |
 | --- | --- | --- |
-| `goal_completed` | final validation | C1, C2 |
-| `unknown_tool` | allowlist | C4, C16 |
-| `invalid_tool_args` | argument schema, run scope, a known tool the step does not offer | C5 |
-| `repeated_call` | repeat guard | C9 |
-| `tool_failed` | result validation | C6 |
-| `provider_timeout`, `provider_unavailable`, `rate_limited`, `quota_exhausted` | gateway result | C7, C8 |
-| `malformed_output` | envelope schema | C19; the envelope parse alone in `ai-features.test.ts` (T016) |
-| `final_invalid` | final validation (and a final on step 1) | C13, C17 |
-| `max_steps` | step limit | C10 |
-| `deadline` | time check before each step; run signal | C11 |
-| `call_budget` | attempts left in the run | C12 |
-| `cancelled` | run signal (disconnect, reap) | T039 |
+| goal_completed | final validation; application check did not fail | C1, C2, C20–C22 |
+| unknown_tool | name outside TOOLS and not final | C4, C16 |
+| invalid_tool_args | shape, args, scope or known tool not offered | C5, C17 |
+| repeated_call | category + folded term already checked | C9, C22 |
+| tool_failed | throw, invalid result, size or local tool time | C6 |
+| provider_timeout / provider_unavailable / rate_limited / quota_exhausted | gateway failure | C7, C8 |
+| malformed_output | JSON/envelope rejection, no blind retry | C19 |
+| final_invalid | missing/duplicate focus, bad evidence or nonempty summary | C13, C17 |
+| max_steps | tool proposed on last main step / tool budget spent | C10 |
+| deadline | insufficient time before an interaction | C11, C22 |
+| call_budget | provider-attempt cap | C12 |
+| cancelled (log only) | disconnect/reap signal | wire cancellation tests |
 
-## Example run log (expected shape, C1)
+`completed` means a valid final and no application-check failure; it may still
+contain empty categories. Otherwise `incomplete` requires at least one shown,
+referee-accepted suggestion; with none, status is `failed`. A failed repair
+leaves this prior outcome intact. No unverified word is displayed.
 
-```text
-Run ID: <runId>          Goal: fill_gaps (river, animal, country), Lj / sr
-Step 1  model: <model>   decision: check_candidates   allowed
-        tool: check_candidates   items 3, passed 1   (c1 river ✓, c2 animal ✗ wrong_letter, c3 country ✗ wrong_letter)
-Step 2  model: <model>   decision: check_candidates   allowed
-        tool: check_candidates   items 1, passed 1   (c4 animal ✓)
-Step 3  model: <model>   decision: final              allowed   → valid
-Stop reason: goal_completed   Model steps: 3   Provider attempts: 3   Tool calls: 2   Elapsed: <ms>
-```
+## Observable evidence
 
-Real run logs record no candidate words or answers; the words in brackets
-above are for the reader only. The model's reasoning is never asked for or
-stored.
+One `agent.run` record holds runId, promptVersion, step decisions and attempts,
+tool counts, application referee-check attempts, optional repair counts,
+status, stopReason and totals. No terms, answers, prompts, replies or keys.
+Interaction ids are `<runId>:s<n>`, `<runId>:s<n>:verify`, `<runId>:check` and
+`<runId>:repair`. See `docs/EVIDENCE_005.md` for actual logs and known limits.

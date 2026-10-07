@@ -4,13 +4,13 @@
 Changing anything in this file after this point is a scope change and must be
 recorded in `docs/EVIDENCE_003.md` with a reason.
 
-**Amendment 8 — 2026-10-07, at the product owner's request. Approved; Core
+**Amendment 8 — 2026-10-07, at the product owner's request. Approved; Core, O1, O6 and backup/repair
 built 2026-10-07 on `feature/round-coach`.** After a round's results, a human player may ask a **round coach**
 (_Trener partije_) what they could have written in the categories where they
 scored 0. Server-side, an AI proposes words, the game's own letter rule checks
 them, and the AI may revise once; the player then gets a short report, in
-their language, whose every suggestion passed that check (and, with option
-O1, the answer referee). Coaching is read-only: it changes no answer, validity
+their language, whose every displayed suggestion passed the letter rule and was accepted
+by the answer referee in that run. Coaching is read-only: it changes no answer, validity
 mark, point or result, it reaches only the player who asked, and it never uses
 the opponent's answers. One run per player per round, and the run is bounded
 in steps, checks, AI attempts and time. Nothing about the round itself — sheet,
@@ -18,6 +18,10 @@ letter, timing, judging, scoring — changes. Recorded in `Plan.md` §2C and
 §2C.16, `docs/EVIDENCE_005.md` (W5-1) and `specs/010-round-coach-agent`.
 _2026-10-07, owner:_ only words the answer referee accepted are shown, in the
 referee's spelling, and the summary is written by the game, not the AI.
+The approved backup/repair adds at most one repair decision for still-empty
+categories: overall maxima 4 model steps, 3 tool executions, 7 provider
+attempts and 35 seconds; the client acknowledgement wait is 45 seconds.
+Current design: `Plan.md` §2C.17. Empty categories remain possible.
 
 **Amendment 7 — 2026-09-30, at the product owner's request.** The round
 letter is no longer limited to `A, B, D, K, M, S, V` (§5). A room's letter

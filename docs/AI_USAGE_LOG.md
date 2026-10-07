@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **19 logged** (001–019; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **20 logged** (001–020; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -13,7 +13,8 @@ session, not during it.
 Week 5 (W05 §44): at most **15 live agent runs** in development and **3** in
 the demo. From W5-11 on, each entry keeps agent runs, model calls, retries and
 tool calls apart; the run logs themselves go in `docs/EVIDENCE_005.md` §4.
-Live agent runs used: **6** (entry 015).
+Recorded exact live smoke runs: **6** (entry 015). The browser-run count is
+awaiting the owner; full development usage is not established. See entry 020.
 
 ---
 
@@ -514,3 +515,33 @@ Live agent runs used: **6** (entry 015).
 - **Actual (verified in-session):** test first (red), then v5; 655 tests pass.
   The shared category rules (referee, hint, bot) are unchanged.
 - **Not done:** no live run; the effect on recall is unmeasured.
+
+## 020 — Week 5 submission alignment and evidence audit (Codex, 2026-10-07)
+
+- **Phase:** W5-12, after the owner requested implementation of all review findings.
+- **Reason:** bring current specs/contracts/flow/status in line with the built coach, remove
+  duplicate planned security rows, correct task checkboxes, reconcile usage
+  and prepare the final demo.
+- **Expected:** truthful current docs, no gameplay change, passing verification,
+  read-only SpecKit analysis, bounded current-version live evidence once the
+  full development count is known, actual pair contributions and rehearsal.
+- **Actual:** documentation alignment and demo run sheet prepared; original
+  eval expectations and dated implementation evidence preserved. Read-only
+  SpecKit analysis: 38 requirements, 68 tasks, 100% mapped coverage, zero
+  critical design conflicts. `npm run verify` exited 0: 657 tests / 34 files,
+  typecheck, lint, client/server builds. Offline demo commands passed 4 and
+  22 selected tests; all tests ran in the full gate. Nine JSON contract
+  examples validated against the runtime schemas/content builder/local tool.
+  Prompt changes to `coach-step.v6` and `check-round.v4` appeared separately
+  in the shared workspace and were included in verification; this entry's
+  documentation work did not author those source edits. River names were
+  checked against official park/tourism pages (EVIDENCE_005 §9), without any
+  AI-provider call.
+- **Live accounting:** zero new live coaching runs so far in this cleanup;
+  no provider attempts or tool executions spent on a live check. The six v1
+  smoke runs are exact (15 model decisions, 20 provider attempts including
+  referee, 9 tool executions); entries 016–019 describe browser observations
+  without counts. Requested the owner's browser-run total. Do not reconstruct
+  exact attempts/retries/tool executions from an estimated run count.
+- **Remaining human evidence:** actual member names/contributions and a timed
+  pair rehearsal. Neither is inferred from the planned division of work.

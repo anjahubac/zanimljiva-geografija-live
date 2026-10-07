@@ -2,9 +2,9 @@
 
 **Branch**: `feature/round-coach` | **Date**: 2026-10-07 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/010-round-coach-agent/spec.md`. Decisions of record: `Plan.md` §2C (design) and §2C.16 (owner's decisions, 2026-10-07).
+**Input**: Feature specification from `specs/010-round-coach-agent/spec.md`. Decisions of record: `Plan.md` §2C.17 (current design) and §2C.16 (owner's decisions, 2026-10-07).
 
-**Status**: planned, not built. The owner asked for no implementation yet.
+**Status**: Built on `feature/round-coach`, through `coach-step.v6`. Core, O1, O6, backup candidates and one bounded repair are implemented. Remaining submission work is tracked in `tasks.md`.
 
 ## Summary
 
@@ -19,9 +19,12 @@ validates its result, and feeds it back. The run stops on a valid final or on
 an application-owned limit: 3 model steps, 2 tool calls, 2 provider attempts
 per step and 5 per run, 25 s. The final must cite passing evidence for every
 suggestion, or it is rejected whole. The player gets a caller-only report:
-completed, incomplete (evidence-only) or failed. Points never change. Options
-O1 (`verify_terms`, the W04 referee) and O6 (run details) follow once Core is
-green. Design choices are in [research.md](research.md).
+completed, incomplete (evidence-only) or failed. Points never change. O1 (`verify_terms`) and O6 (run details) are built.
+Before display, an application-owned referee check validates unjudged words,
+with one backup per category. A valid final may then get one repair step for
+still-empty categories: in all at most 4 steps, 3 tool executions, 7 attempts
+and 35 s. Only referee-accepted words are displayed, in the referee's
+spelling; the client writes the summary. Design history is in [research.md](research.md).
 
 ## Technical Context
 
@@ -37,7 +40,7 @@ green. Design choices are in [research.md](research.md).
 
 **Project Type**: web application, single service (`src/server`, `src/client`, shared `src/contracts`, pure `src/domain`)
 
-**Performance Goals**: a report within 25 s of the request (run deadline); typical 2–3 provider attempts. The tool is constant-time per candidate.
+**Performance Goals**: main loop and check within 25 s; optional repair within 35 s from original start; client acknowledgement timeout 45 s. Provider-attempt counts include every referee call. The tool is constant-time per candidate.
 
 **Constraints**: read-only after reveal (FR-024); caller-only (FR-025); the model is never an authority (allowlist, schemas, evidence); budgets are explicit constants with tests; one gateway change, backward compatible (optional `maxAttempts`).
 
@@ -54,7 +57,7 @@ green. Design choices are in [research.md](research.md).
 | III. Hidden answers | Coaching starts only after `round:revealed`. The model gets only the caller's own answers; the opponent's sheet is never read by a tool or put in a prompt (FR-007, C14). The report is an ack to the caller only. | Pass |
 | IV. Close exactly once | `closeRound`/`completeRound` gain one line: keeping the already-parsed reveal on the round as a read-only snapshot. No new path to reveal or score; A1–A6 must still pass. | Pass |
 | V. Locked scope | Owner's decision recorded in `Plan.md` §2C.16 before this plan: the event `round:coach`, the config key, O1 and O6. No dependency, service, database or new error code. | Pass |
-| VI. Evidence, not claims | Evals C1–C19 pre-registered in `docs/AGENT_EVALS.md` before any code; mutation checks planned; live runs bounded (≤ 15 dev, ≤ 3 demo) and logged in `docs/EVIDENCE_005.md`. | Pass |
+| VI. Evidence, not claims | Evals C1–C19 pre-registered in `docs/AGENT_EVALS.md` before any code; mutation checks recorded; six v1 smoke runs logged in `docs/EVIDENCE_005.md`. Development/demo bounds are ≤ 15/3; full browser-inclusive accounting remains open in T066. | Pass |
 
 Post-design re-check (after Phase 1): unchanged. The design adds one request
 schema, one ack schema, one model-step schema, a tool registry and an
@@ -79,7 +82,7 @@ specs/010-round-coach-agent/
 └── tasks.md                   # /speckit-tasks
 
 docs/AGENT_FLOW.md             # diagram and stop conditions (W05 §36)
-docs/AGENT_EVALS.md            # C1–C19, written before code (W05 §38)
+docs/AGENT_EVALS.md            # original C1–C19, approved amendments, C20–C22 and live checks
 docs/EVIDENCE_005.md           # Week 5 evidence (W05 §39)
 ```
 
@@ -92,7 +95,7 @@ src/server/agent/limits.ts           # RUN_LIMITS: steps, tool calls, attempts, 
 src/server/agent/tools.ts            # TOOLS allowlist; check_candidates; verify_terms (O1); arg + result validation
 src/server/agent/coach-agent.ts      # the orchestrator: allowed actions per step, stop rules, final check, report
 src/server/agent/run-log.ts          # the agent.run record (typed fields only) and its sink
-src/server/prompts/coach-step.v2.ts  # system instruction + user content builder (v1 until 2026-10-07)
+src/server/prompts/coach-step.v6.ts  # current system instruction + bounded JSON content builder
 src/client/screens/CoachPanel.tsx    # focus checkboxes, status, report, details (O6)
 scripts/coach-smoke.ts               # limited live run on a fixed Lj round (npm run smoke:coach)
 
@@ -109,7 +112,7 @@ src/server/features/check-round.ts   # O1 only: optional budget and signal for r
 src/server/usage-limits.ts           # LimitedAction += "coach"
 src/server/rooms/room-store.ts       # reveal snapshot on the round; player.coach; requestCoach; abort on leave/reap; countedAi.coachStep
 src/server/socket/register-handlers.ts # round:coach handler (same handle() wrapper as round:hint)
-src/client/socket/game-socket.ts     # requestCoach with a 30 s ack timeout
+src/client/socket/game-socket.ts     # requestCoach with a 45 s ack timeout
 src/client/screens/ResultsScreen.tsx # mounts CoachPanel
 src/client/strings.ts                # SR/EN strings and stop-reason texts
 src/client/app.css                   # panel styles
@@ -117,7 +120,7 @@ src/client/app.css                   # panel styles
 
 # Tests
 tests/unit/agent-tools.test.ts       # check_candidates, args, scope, repeats, result validation (C5, C6)
-tests/unit/coach-agent.test.ts       # loop with real gateway + fake adapter + fakeTime (C1, C2, C4–C13, C16, C17, C19)
+tests/unit/coach-agent.test.ts       # loop with real gateway + fake adapter + fakeTime (C1, C2, C4–C13, C16, C17, C19–C22)
 tests/unit/gateway.test.ts           # + maxAttempts cases; existing cases unchanged
 tests/unit/contracts.test.ts         # + coach request/report/envelope valid and invalid
 tests/integration/coach.test.ts      # over the wire: C3, C14, C15, single-flight, abort
@@ -137,11 +140,15 @@ level.
 `Plan.md` §2C.10 is the step list (W5-4 → W5-12, with O1 and O6 as W5-10a and
 W5-10b, §2C.16). `tasks.md` breaks each step into tasks with exit commands.
 Steps W5-4 to W5-10b use fakes only and need no key; W5-11 (live) needs W4-7
-done first.
+done first. W4-7 and six v1 coaching runs are recorded. W5-12 now aligns the
+current documents, rechecks specification/task coverage, records verification
+and prepares the demo. Current-version live runs and actual pair rehearsal
+remain separate evidence gates. See `docs/EVIDENCE_005.md` for observed results.
 
 ## Complexity Tracking
 
-No constitution violations.
+No design conflicts with the constitution. Final submission evidence still
+requires browser-run accounting and actual pair contributions/rehearsal.
 
 | Addition | Why needed | Simpler alternative rejected because |
 | --- | --- | --- |

@@ -6,12 +6,13 @@ import { memoryTelemetry } from "@server/ai/telemetry";
 import { validateBotAnswers } from "@server/features/bot-answers";
 import { answerKey, planCheck, runCheck, validateCheck, type Sheets } from "@server/features/check-round";
 import { validateHint } from "@server/features/hint";
+import { CHECK_ROUND_PROMPT_VERSION, CHECK_ROUND_SYSTEM_INSTRUCTION } from "@server/prompts/check-round.v4";
 import {
   COACH_STEP_PROMPT_VERSION,
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   buildCoachStepContent,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v5";
+} from "@server/prompts/coach-step.v6";
 import { fakeAdapter, fakeTime, type Step } from "../fakes/fake-adapter";
 
 const sheet = (answers: Partial<Record<Category, string>> = {}): Record<Category, string> =>
@@ -144,6 +145,15 @@ describe("validateCheck — the model's reply", () => {
       plan,
     );
     expect(result.ok && result.value.get("a0")).toEqual({ valid: true, canonical: "monblan" });
+  });
+
+  it("v4: asks for the Serbian name on every accepted answer, in Serbian spelling, and never a translated one", () => {
+    expect(CHECK_ROUND_PROMPT_VERSION).toBe("check-round.v4");
+    expect(CHECK_ROUND_SYSTEM_INSTRUCTION).toMatch(/"recognizedSr" is never "" for an\s+accepted answer/);
+    expect(CHECK_ROUND_SYSTEM_INSTRUCTION).toMatch(/"Grac", not "Graz"; "Gang", not "Ganges"/);
+    expect(CHECK_ROUND_SYSTEM_INSTRUCTION).toMatch(/for "Huanghe" return "Huanghe", not "Žuta reka"/);
+    // A player may write either spelling; the referee accepts both.
+    expect(CHECK_ROUND_SYSTEM_INSTRUCTION).toMatch(/accept both "Graz" and "Grac", both "Ganges" and "Gang"/);
   });
 });
 
@@ -441,13 +451,14 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
   });
 
   it("v2: asks for each term as the player would write it, in the interface language (Eufrat, not Euphrates)", () => {
-    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v5");
+    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v6");
     for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
       expect(instruction).toMatch(/Serbian Latin name when "language" is "sr"/);
       expect(instruction).toMatch(/Eufrat, not Euphrates/);
       expect(instruction).toMatch(/English name when it is "en"/);
-      // The other language only as a fallback, when the player's own name misses the letter.
-      expect(instruction).toMatch(/only when the name in the player's language does not start with the round letter/);
+      // v6 (owner, 2026-10-07): never the other language's name, not even as a fallback.
+      expect(instruction).toMatch(/Never use the other language's name/);
+      expect(instruction).not.toMatch(/only when the name in the player's language/);
     }
   });
 
@@ -480,6 +491,14 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
       expect(instruction).toMatch(/Never invent a term/);
       // The repair step is where the obvious terms have already failed.
       expect(instruction).toMatch(/search the category systematically now/);
+    }
+  });
+
+  it("v6: asks for the Serbian spelling of foreign names (Grac, not Graz) and starts a Serbian search close to home", () => {
+    for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
+      expect(instruction).toMatch(/foreign names as they are pronounced/);
+      expect(instruction).toMatch(/Grac, not Graz; Gang,\s+not Ganges/);
+      expect(instruction).toMatch(/start with Serbia and its\s+neighbours/);
     }
   });
 

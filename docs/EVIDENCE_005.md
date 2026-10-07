@@ -8,8 +8,10 @@ actually observed. A placeholder stays a placeholder until the run that fills
 it has happened. Sources are named for every result.
 
 **State on 2026-10-07: built on `feature/round-coach`** (W5-0 → W5-11, Core
-plus O1 and O6), with 6 live runs. W5-12's demo rehearsal and the
-contributions table (§8) are still open.
+plus O1 and O6), followed by v3–v5 checked words, backup and repair, then v6 spelling guidance. Six v1
+smoke runs are recorded; the full count including browser runs is awaiting
+owner reconciliation. Current-version live checks, actual human rehearsal and
+the contributions table (§8) remain open; §9 tracks this cleanup.
 
 ## Where each W05 artifact is
 
@@ -64,7 +66,7 @@ C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 | C1–C16, C19 (Core) | pass — W5-7 (loop), W5-8 (wire) |
 | C17 (O1), C18 (O6) | pass — W5-10a, W5-10b |
 | Mutation checks | 4 of 4 caught, then restored — see below |
-| L1–L3 (live) | 6 runs, 2026-10-07: L1 holds (every suggestion shown starts with Lj; no unhandled error); L2 holds (country never suggested); L3 not confirmed for "Ljutica", and the referee accepted the invented "Ljlama" — see §4 |
+| L1–L3 (live, v1) | 6 runs, 2026-10-07: Lj/privacy boundaries held; Groq's one failed run did not meet L1's original completed/incomplete expectation; L2 holds (country never suggested); L3 not confirmed for "Ljutica", and the referee accepted the invented "Ljlama" — see §4 |
 
 ### Mutation checks (T035, 2026-10-07, W5-7)
 
@@ -117,7 +119,10 @@ method; the fourth change now targets the rewritten final validation):
 | Systematic search, `coach-step.v5` | 2026-10-07 | after `1f82f6c` | `npx vitest run`, then `npm run verify` | the owner got no sea for H although the Halmahera Sea exists; prompt only, no search or word list (owner); red first (v5 missing), then 34 files, 655 tests; typecheck, lint, build clean. Whether it finds more terms can only be shown live | implementation session |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
-Used: **6** in development (3 Gemini, 3 Groq), 0 in the demo.
+Recorded exact smoke count: **6** in development (3 Gemini, 3 Groq),
+0 recorded in the demo. Browser runs mentioned in usage entries 016–019
+are not counted here yet; the complete total and remaining allowance are
+**unknown until reconciled**. Do not treat 6 as a proven total.
 
 ### Run logs (W5-11, live, 2026-10-07)
 
@@ -184,21 +189,21 @@ Design: `docs/AGENT_FLOW.md`. Confirmed against the built code on 2026-10-07:
 | Part | Where |
 | --- | --- |
 | Request and report contracts | `src/contracts/coach.schemas.ts`; step envelope and its JSON schema in `src/contracts/ai-output.schemas.ts`; event `round:coach` in `src/contracts/socket.schemas.ts` |
-| Limits | `RUN_LIMITS` in `src/server/agent/limits.ts` (3 steps, 2 tool calls, 2 attempts per step, 5 per run, 6 s / 10 s / 25 s, 2 s minimum, 8 candidates, 2 per category, 100 ms tool time, 2 KB result) |
+| Limits | `RUN_LIMITS` in `src/server/agent/limits.ts` (main loop/check 3 decisions, 2 tool executions, 5 attempts, 25 s; including repair 4/3/7/35 s; 6 s attempt, 10 s interaction, 16 candidates, 2/category, 100 ms local tool, 4 KB result) |
 | Tool registry | `TOOLS` in `src/server/agent/tools.ts`: `check_candidates` (pure letter rule) and `verify_terms` (O1, ids only, the W04 referee through `runCheck`) |
 | The loop | `runCoach` in `src/server/agent/coach-agent.ts`: per-step allowlist, shape, tool checks, final validation, evidence-only reports, run details (O6) |
 | Run log | `agent.run` in `src/server/agent/run-log.ts`; each step's `ai.interaction` line has `interactionId = <runId>:s<n>` |
-| Prompt | `coach-step.v1` in `src/server/prompts/coach-step.v1.ts`, temperature 0.2, 600 output tokens |
+| Prompt | `coach-step.v6` in `src/server/prompts/coach-step.v6.ts`, temperature 0.2, 600 output tokens |
 | Provider | the Week 4 gateway and chain, Gemini ⇄ Groq (`Plan.md` §2B.5), with the new optional `RetryBudget.maxAttempts`; budget `BUDGETS["coach-step"]` |
 | Store and socket | `requestCoach` in `src/server/rooms/room-store.ts` (reveal snapshot, checks, single-flight, limits, abort); handler in `src/server/socket/register-handlers.ts` |
-| Client | `src/client/screens/CoachPanel.tsx`, `requestCoach` with a 30 s ack timeout in `src/client/socket/game-socket.ts` |
+| Client | `src/client/screens/CoachPanel.tsx`, `requestCoach` with a 45 s ack timeout in `src/client/socket/game-socket.ts` |
 | Live check | `scripts/coach-smoke.ts`, `npm run smoke:coach` (at most 3 runs per invocation) |
 
 ---
 
 ## 6. Security checklist (W05 §41)
 
-Where each line is planned to be enforced. Status changes only when a test or
+Where each line is enforced in the built implementation. Status changes only when a test or
 a run shows it.
 
 | W05 line | Enforcement | Shown by | Status |
@@ -217,40 +222,26 @@ a run shows it.
 | Final output is validated | final validation of `contracts/model-step.md`; only referee-accepted words shown, in the referee's spelling; no model text in the report (2026-10-07) | C13, C19; mutation check (model's citation trusted → C13 fails); Groq live run 3 | holds |
 | User-facing errors hide internals | stop reasons become sentences in `strings.ts` | `client-coach.test.ts` (no code rendered) | holds |
 
---- | --- | --- | --- |
-| Provider key is server-side only | unchanged Week 4 wiring; the browser has no AI path | existing tests; code review | Week 4: holds |
-| The model cannot pick any tool | `TOOLS` allowlist, per-step `allowedActions` | C4, C16 | planned |
-| Tool args are validated | per-tool schema + run scope + repeat guard | C5, C9 | planned |
-| Tool output is validated | result schema, size, time | C6 | planned |
-| No arbitrary filesystem or network access for the agent | tools are pure (Core) or call the existing referee (O1) | code review | planned |
-| Core agent does not change game state | read-only snapshot; no write path | C14 | planned |
-| No secrets in tool results | results built from typed fields only | C14, code review | planned |
-| Max steps | `RUN_LIMITS.maxModelSteps` = 3 | C10 | planned |
-| Deadline | 25 s, checked before every step, plus the run signal | C11 | planned |
-| Bounded retries | ≤ 2 attempts per step, ≤ 5 per run (gateway `maxAttempts`) | C7, C12 | planned |
-| Logs hold no keys | run log of typed fields only | T032 | planned |
-| Final output is validated | final validation of `contracts/model-step.md` | C13, C19 | planned |
-| User-facing errors hide internals | stable codes → sentences in the client | T045 | planned |
-
 ---
 
 ## 7. Known limitations
 
 - One round of evidence: no history, by decision.
-- Core checks the letter, not the fact; O1 narrows that gap but does not close
-  it: live, the referee accepted the invented "Ljlama" (§4).
+- The current coach requires letter-rule and referee acceptance, but the
+  referee can be wrong: in v1 it accepted the invented "Ljlama" (§4).
 - With Groq the agent often proposes arguments the tool refuses (2 of 3 live
   runs); the run log does not say which argument, by design.
 - A cancelled run sends no ack; the client then shows "could not complete
-  safely" after its 30 s timeout (45 s since 2026-10-07).
+  safely" after its 45 s acknowledgement timeout.
 - The report is in memory and disappears with the finished room (5 minutes).
 - One status while waiting, not live step progress.
 - Players behind one address share one hourly limit.
-- 6 live runs are a small sample (3 per provider), all with `coach-step.v1`.
+- The six recorded v1 smoke runs are a small sample, three per provider.
+  Browser-triggered runs need separate accounting; the full total is unknown.
 - The language of a suggested term is a prompt hint, not enforced; since the
   "checked answers" change the player sees the referee's name in their
   language when it gives one that starts with the letter, which covers most
-  cases (Eufrat for a Serbian player). Neither has had a live run.
+  cases (Eufrat for a Serbian player). No current-version live smoke run is recorded here.
 - Only referee-accepted words are shown, but the referee is an AI: live, it
   accepted the invented "Ljlama" once. The game cannot check facts by itself.
 - The game's own referee check needs time and an attempt: a run stopped by the
@@ -259,16 +250,113 @@ a run shows it.
   stays empty when the model knows no word the referee accepts in two words
   and one repair. Only completed runs get the repair. Not run live yet
   (`coach-step.v4`, then `v5`, which asks for a systematic search of the
-  category; whether that finds more terms is unmeasured).
+  category, followed by v6 spelling guidance; current quality is unmeasured).
 
 ---
 
 ## 8. Contributions
 
-Split agreed in `Plan.md` §2C.15 item 7: person A drives W5-4 → W5-7 while B
+**Actual evidence pending from both members.** The planned split below is
+not proof of who performed the work. Split agreed in `Plan.md` §2C.15 item 7: person A drives W5-4 → W5-7 while B
 reviews; B drives W5-8 → W5-12 while A reviews.
 
 | Person | Implementation | Review / evidence |
 | --- | --- | --- |
 | _to fill_ | | |
 | _to fill_ | | |
+
+---
+
+## 9. Submission cleanup — 2026-10-07
+
+Authorized by the owner after the assignment review: implement all review
+findings. Source baseline is `48bbf96` (`coach-step.v5`). No new gameplay,
+provider, tool, event, dependency or scoring rule is added. This is an
+alignment of existing Amendment 8 and the owner decisions in Plan §2C.16.
+During this cleanup, separate source changes appeared in the shared workspace:
+`coach-step.v6` and `check-round.v4` add Serbian transcription and regional
+recall guidance. Current contracts describe those prompts; this cleanup did
+not author those source changes. The verification below includes them. The
+referee additionally accepts original foreign spelling as a prompt instruction;
+the existing game-side spelling/letter validation stays authoritative. The
+shared prompt/test received a further edit after the first gate, so the full
+gate was rerun before handoff.
+
+| Finding | Work | Current status |
+| --- | --- | --- |
+| Contradictory current spec/flow/contracts | Consolidated current behavior, correct examples and limits; original evals/research retained as history | aligned; 9 JSON examples checked against runtime schemas/content/tool output |
+| Stale built/live statuses | Plan/README/quickstart/current spec and Week 4 evidence corrected; historical review labelled | aligned |
+| Old live evidence | Current V1–V3 criteria prewritten in AGENT_EVALS; two one-run commands prepared | awaiting full development-run count |
+| Checked incomplete tasks | T060 reopened; T062 analysis completed; T063 still open; T064–T068 added | actual incomplete evidence remains open |
+| Run accounting | Six smoke runs separated from unknown browser runs | owner count requested |
+| Pair/demo evidence | Contributions requested; timed run sheet prepared below | human evidence pending |
+
+### Verification in this cleanup session
+
+Observed in this cleanup session, 2026-10-07:
+
+| Check | Observed outcome |
+| --- | --- |
+| `npm run verify` | exit 0; typecheck and lint passed; **34 files, 657 tests passed**; client and server built |
+| Offline demo success/allowlist/timeout command from §10 | exit 0; 4 selected tests passed (50 outside the selection) |
+| Offline demo final-validation/malformed-output/repair command from §10 | exit 0; 22 selected tests passed (32 outside the selection) |
+| Contract JSON examples | 9 checked: request UUID and schema; both ack reports; model content builder; all three action envelopes; actual local-tool input/output |
+| Read-only SpecKit analysis | 38 requirements, 68 tasks, 100% mapped task coverage; 0 critical conflicts, 0 unmapped tasks; contributions, live accounting/recheck and rehearsal remain open |
+| `git diff --check`; identical AGENTS/CLAUDE entries | passed |
+
+The full verification needed execution outside the sandbox because real socket
+integration tests bind localhost. The documentation-check `tsx` CLI initially
+hit the same IPC restriction; using Node's tsx loader ran the same temporary
+validator successfully without escalation. No provider was called by these
+checks. Targeted demo selections did not change or disable any tests; all 657
+ran in the full gate. Vite retains its >500 KB chunk advisory; build succeeded.
+
+### Independent source check of recorded river suggestions
+
+Checked on 2026-10-07 during cleanup, separately from the earlier v1 AI
+referee decisions. The official National Parks of Montenegro page explicitly
+names the mouth of the small river Ljutica in its rafting route description:
+[Durmitor activities](https://nparkovi.me/parks/Durmitor/active_holidays).
+Ljubljana Tourism likewise identifies Ljubljanica as a river:
+[The river Ljubljanica and its bridges](https://www.visitljubljana.com/en/visitors/sights-and-activities/the-river-ljubljanica-and-its-bridges).
+These sources support those river names; they do not certify other candidate
+words, prove current-version quality, or establish a team member's review.
+The original live outcomes and invented-animal failure remain recorded.
+
+## 10. Seven-minute demo run sheet (prepared, not rehearsed)
+
+Use recorded live evidence for practice. One live coaching success during the
+final demo is enough; stop at the assignment's maximum of three live runs.
+Do not spend extra runs just to chase a successful model response.
+
+| Time | Speaker/action | Evidence to show |
+| --- | --- | --- |
+| 0:00–0:45 | Explain fill_gaps after reveal: what to write where you scored 0 | Results sheet and selected categories; empty categories are possible |
+| 0:45–1:30 | Explain server authority, snapshot, gateway and two tools | AGENT_FLOW architecture; no frontend loop |
+| 1:30–3:00 | Show one success, live if budget allows, otherwise recorded | runId, model → tool → evidence → model → report; show only accepted words |
+| 3:00–4:00 | Explain allowlist, scope, repeated-call and limits | tools.ts, limits.ts; main 3/2/5/25 s, overall 4/3/7/35 s |
+| 4:00–5:00 | Show refused action and a controlled provider failure | C4/C8 tests below; refused proposal has zero tool executions |
+| 5:00–6:00 | Explain fake-provider path and application final validation | C13, C19, C22; verification output |
+| 6:00–7:00 | Open Details; state factual and coverage limitations; each member describes actual work | step/tool/attempt counts, provider/model, elapsed time, stop reason; §8 contributions |
+
+Offline evidence commands (no provider key required):
+
+```bash
+npx vitest run tests/unit/coach-agent.test.ts -t 'C1 —|C4 —|C8 —'
+npx vitest run tests/unit/coach-agent.test.ts -t 'C13 —|C19 —|a suggestion for every category'
+npm run verify
+```
+
+Current-version live commands, only after run-count reconciliation:
+
+```bash
+AI_DEBUG_LOG=0 AI_PROVIDER_ORDER=gemini npm run smoke:coach -- 1
+AI_DEBUG_LOG=0 AI_PROVIDER_ORDER=groq npm run smoke:coach -- 1
+```
+
+Each member must explain why the tools fit this goal, why the main loop and
+repair have these limits, where arguments are validated, where the application
+stops a run, and which assertion proves a refused tool never executed.
+A rehearsal record needs the actual date, participants, observed duration,
+commands/run ids used and outcome. Preparing these instructions or running
+automated tests does not establish either member's understanding or rehearsal.

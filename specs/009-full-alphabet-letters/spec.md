@@ -4,11 +4,11 @@
 
 **Created**: 2026-09-30
 
-**Status**: Implemented locally, uncommitted (2026-09-30)
+**Status**: Built 2026-09-30 and committed on main (`4dea3b5`); live smoke ran 2026-10-07 (`docs/AI_EVALS.md`).
 
 **Input**: User description: "Update so we can get any letter from azbuka if we're on serbian, if we're on english, we get any letter from alphabet." Open questions decided by the owner the same day and recorded in `Plan.md` §2B.13.
 
-**Source of truth**: `Plan.md` §2B.13 (decision), `docs/GAME_SPEC.md` §5 (rules, to be amended).
+**Source of truth**: `Plan.md` §2B.13 (decision), `docs/GAME_SPEC.md` Amendment 7 and §5 (rules).
 
 ## User Scenarios & Testing *(mandatory)*
 

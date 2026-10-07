@@ -59,7 +59,7 @@ events. Adding one is a scope change (`Plan.md` §11) and starts in
 | C→S | `round:draft` | `draftRequestSchema` | `draftAckSchema` |
 | C→S | `round:finish` | `finishRequestSchema` | `finishAckSchema` |
 | C→S | `round:hint` | `hintRequestSchema` | `hintAckSchema` (`clue` or `no_known_term`, with `hintsLeft`) — Week 4, §2B.8 |
-| C→S | `round:coach` | `coachRequestSchema` (`roundId`, `goal: "fill_gaps"`, `focus`, `language`) | `coachReportSchema` — Week 5, §2C. The report travels **only** in this ack, so it reaches only the caller; there is no server event for it. A cancelled run (the caller left, the room was reaped) sends no ack. The client waits at most 30 s (`COACH_ACK_TIMEOUT_MS`) |
+| C→S | `round:coach` | `coachRequestSchema` (`roundId`, `goal: "fill_gaps"`, `focus`, `language`) | `coachReportSchema` — Week 5, §2C. The report travels **only** in this ack, so it reaches only the caller; there is no server event for it. A cancelled run (the caller left, the room was reaped) sends no ack. The client waits at most 45 s (`COACH_ACK_TIMEOUT_MS`) |
 | S→C | `room:state` | `roomStateSchema` (players carry `bot`) | — |
 | S→C | `round:scheduled` | `roundScheduledSchema` | — |
 | S→C | `round:player-finished` | `playerFinishedSchema` | — |
