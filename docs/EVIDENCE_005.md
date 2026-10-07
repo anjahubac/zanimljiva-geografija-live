@@ -113,6 +113,7 @@ method; the fourth change now targets the rewritten final validation):
 | W5-11 live, Groq | 2026-10-07 | after `502a9b1` | `AI_PROVIDER_ORDER=groq npm run smoke:coach -- 3` | 3 runs: 1 `failed` (`invalid_tool_args`), 2 `incomplete` (`invalid_tool_args`, `final_invalid`); 6 model steps, 8 provider attempts (1 rate-limited, then fallback), 3 tool calls (2 check, 1 verify); 0.9–3.7 s each | run logs below |
 | Prompt `coach-step.v2` | 2026-10-07 | after `34c5a8c` | `npx vitest run tests/unit/ai-features.test.ts tests/unit/coach-agent.test.ts`, then `npm run verify` | the owner saw "Euphrates" suggested to a Serbian player; red first (v2 missing), then 72 tests passed; verify below | implementation session |
 | Only valid and checked answers, `coach-step.v3` | 2026-10-07 | after `40c033f` | `npx vitest run` and `npm run verify` | the owner saw an unchecked "Rosno more" in the model's summary and "Rtnj" for Rtanj; decision in `Plan.md` §2C.16; red first (19 loop, 8 contract/client/wire cases); a mis-attributed `call_budget` found and fixed on the way; then 34 files, 637 tests; mutation checks re-run, 4/4 | implementation session |
+| A suggestion for every category, `coach-step.v4` | 2026-10-07 | after `bba2f79` | `npx vitest run`, then `npm run verify` | the owner saw suggestions for only 4 categories; decision in `Plan.md` §2C.16 (backup word + repair); red first (17 new or amended cases); then 34 files, 654 tests; 4 new mutation checks, 4/4 caught (C20, C22); evals C20–C22 added, C1/C17/C18 amended in `AGENT_EVALS.md` | implementation session |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
 Used: **6** in development (3 Gemini, 3 Groq), 0 in the demo.
@@ -208,9 +209,9 @@ a run shows it.
 | No arbitrary filesystem or network access for the agent | `check_candidates` is pure; `verify_terms` reaches only the existing referee through `AiService` | code review: `tools.ts` imports nothing from rooms/, socket/ or ai/ | holds |
 | Core agent does not change game state | reads `Round.reveal`; writes only `player.coach` | C14 (projections, round and phase identical before and after) | holds |
 | No secrets in tool results | results built from typed fields only | C14 (no room code, token, round id or opponent word in any step input) | holds |
-| Max steps | `RUN_LIMITS.maxModelSteps` = 3 | C10 | holds |
-| Deadline | 25 s, checked before every step; each step's gateway budget ≤ time left | C11; mutation check (deadline check removed → C11 fails) | holds |
-| Bounded retries | ≤ 2 attempts per step, ≤ 5 per run (gateway `maxAttempts`) | C7, C8, C12; Groq live run 3 used exactly 5 | holds |
+| Max steps | `RUN_LIMITS.maxModelSteps` = 3, plus 1 repair step after a completed run (2026-10-07) | C10, C22 | holds |
+| Deadline | 25 s, checked before every step; each step's gateway budget ≤ time left; the repair step only with ≥ 4 s of 35 s left (2026-10-07) | C11, C22; mutation checks (deadline check removed → C11 fails; repair time check removed → C22 fails) | holds |
+| Bounded retries | ≤ 2 attempts per step, ≤ 5 per run (gateway `maxAttempts`); the repair adds ≤ 2 (1 model, 1 referee), ≤ 7 in all (2026-10-07) | C7, C8, C12, C22; Groq live run 3 used exactly 5 | holds |
 | Logs hold no keys | `agent.run` of typed fields only | T032 run-log test; the 6 live logs above | holds |
 | Final output is validated | final validation of `contracts/model-step.md`; only referee-accepted words shown, in the referee's spelling; no model text in the report (2026-10-07) | C13, C19; mutation check (model's citation trusted → C13 fails); Groq live run 3 | holds |
 | User-facing errors hide internals | stop reasons become sentences in `strings.ts` | `client-coach.test.ts` (no code rendered) | holds |
@@ -240,7 +241,7 @@ a run shows it.
 - With Groq the agent often proposes arguments the tool refuses (2 of 3 live
   runs); the run log does not say which argument, by design.
 - A cancelled run sends no ack; the client then shows "could not complete
-  safely" after its 30 s timeout.
+  safely" after its 30 s timeout (45 s since 2026-10-07).
 - The report is in memory and disappears with the finished room (5 minutes).
 - One status while waiting, not live step progress.
 - Players behind one address share one hourly limit.
@@ -253,6 +254,10 @@ a run shows it.
   accepted the invented "Ljlama" once. The game cannot check facts by itself.
 - The game's own referee check needs time and an attempt: a run stopped by the
   deadline or the attempt budget shows no suggestion at all.
+- "A suggestion for every category" (2026-10-07) is best effort: a category
+  stays empty when the model knows no word the referee accepts in two words
+  and one repair. Only completed runs get the repair. Not run live yet
+  (`coach-step.v4`).
 
 ---
 

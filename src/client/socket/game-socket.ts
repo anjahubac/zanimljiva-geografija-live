@@ -43,10 +43,11 @@ import type { z } from "zod";
  * rendered on trust.
  */
 /**
- * How long the browser waits for a coach report: 5 s beyond the server's 25 s
- * run deadline (`Plan.md` §2C, FR-023). The only ack with a timeout.
+ * How long the browser waits for a coach report: 10 s beyond the server's
+ * 35 s (the 25 s run deadline plus the repair step's 10 s, owner 2026-10-07;
+ * `Plan.md` §2C, FR-023). The only ack with a timeout.
  */
-export const COACH_ACK_TIMEOUT_MS = 30_000;
+export const COACH_ACK_TIMEOUT_MS = 45_000;
 
 /** Null when no answer came in time; otherwise the parsed ack, a malformed one as INTERNAL. */
 export function parseCoachAck(error: unknown, raw: unknown): Ack<CoachReport> | null {

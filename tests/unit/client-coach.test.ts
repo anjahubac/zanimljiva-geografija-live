@@ -8,6 +8,7 @@ import { I18nContext } from "@client/i18n";
 import { CoachPanelView, type CoachPanelState } from "@client/screens/CoachPanel";
 import { ResultsScreen } from "@client/screens/ResultsScreen";
 import { COACH_ACK_TIMEOUT_MS, parseCoachAck } from "@client/socket/game-socket";
+import { RUN_LIMITS } from "@server/agent/limits";
 import { UI_EN, UI_SR } from "@client/strings";
 
 /*
@@ -194,8 +195,10 @@ describe("the coach panel on the results sheet", () => {
 });
 
 describe("the coach request's ack", () => {
-  it("waits 30 s, 5 s beyond the run's 25 s deadline (FR-023)", () => {
-    expect(COACH_ACK_TIMEOUT_MS).toBe(30_000);
+  // Amended 2026-10-07: the repair step can add 10 s to the run's 25 s.
+  it("waits 45 s, 10 s beyond the run's 35 s with the repair step (FR-023)", () => {
+    expect(COACH_ACK_TIMEOUT_MS).toBe(45_000);
+    expect(COACH_ACK_TIMEOUT_MS).toBeGreaterThan(RUN_LIMITS.runDeadlineMs + RUN_LIMITS.repairExtraMs);
   });
 
   it("turns no answer in time into null, a malformed ack into INTERNAL, and parses a good one", () => {

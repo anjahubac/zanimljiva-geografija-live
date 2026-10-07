@@ -90,3 +90,9 @@ round; sending to the opponent; arbitrary functions, URLs, files or shell;
 choosing a model or provider; more steps, calls, attempts or time than the run
 allows (W05 §8). None of these has a tool, and the allowlist refuses any name
 that is not in `TOOLS`.
+
+_Update 2026-10-07 (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): `check_candidates` takes up
+to **16** candidates (≤ 2 per category) and its result may be up to **4 KB**;
+`verify_terms` takes up to 16 ids, result ≤ 4 KB. The repair step's call runs
+the same tool with a scope of the still-empty categories and one extra call
+allowed (`toolCallLimit`), so a run makes at most 3 tool calls._

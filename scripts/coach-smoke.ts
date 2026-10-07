@@ -10,7 +10,7 @@
  * "Ljubljana" for country (rejected as the wrong category). Expectations L1-L3
  * were written there before the first run.
  *
- * Each run uses at most 3 model steps, 1 referee call and 5 provider attempts.
+ * Each run uses at most 4 model steps (3, plus a repair step) and 7 provider attempts.
  * It prints the run's `agent.run` log (typed fields only) and then the report,
  * whose suggestions a person must read to judge L1-L3. Never a key.
  */

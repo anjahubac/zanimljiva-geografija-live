@@ -55,6 +55,8 @@ export type ToolScope = {
   /** Every item checked so far in this run, in order. */
   evidence: readonly EvidenceItem[];
   toolCallsUsed: number;
+  /** Tool calls the run may make; the repair step's scope grants one more. */
+  toolCallLimit?: number;
 };
 
 export type ToolRefusal = "invalid_tool_args" | "repeated_call" | "tool_failed";
@@ -151,7 +153,7 @@ export function checkCandidates(proposal: unknown, scope: ToolScope, deps: ToolD
 
   // 2. Run scope: a call left; focus categories only, none already solved;
   //    at most two per category; no duplicate inside the call.
-  if (scope.toolCallsUsed >= RUN_LIMITS.maxToolCalls) return { ok: false, reason: "invalid_tool_args" };
+  if (scope.toolCallsUsed >= (scope.toolCallLimit ?? RUN_LIMITS.maxToolCalls)) return { ok: false, reason: "invalid_tool_args" };
   const focus = new Set(scope.snapshot.focus.map((entry) => entry.category));
   const solved = new Set(scope.evidence.filter(isPassing).map((item) => item.category));
   const perCategory = new Map<Category, number>();
@@ -208,8 +210,8 @@ export function checkCandidates(proposal: unknown, scope: ToolScope, deps: ToolD
 
 /* ------------------------------------------------------ verify_terms (O1) */
 
-/** contracts/tools.md: at most 8 items and 1 KB. */
-const MAX_VERIFY_RESULT_BYTES = 1_024;
+/** contracts/tools.md: at most 16 items and 4 KB (1 KB for 8 until 2026-10-07). */
+const MAX_VERIFY_RESULT_BYTES = RUN_LIMITS.maxToolResultBytes;
 
 const verifyArgsSchema = z
   .object({ evidenceIds: z.array(z.string().max(8)).min(1).max(RUN_LIMITS.maxCandidatesPerCall) })

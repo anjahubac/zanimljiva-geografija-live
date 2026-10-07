@@ -140,3 +140,9 @@ Mapping from the gateway's `AiFailureCode`: `timeout` → `provider_timeout`;
 `quota_exhausted`; `invalid_output:*` → `malformed_output`; `deadline_exhausted`
 → `deadline`; `cancelled` → `cancelled`. A gateway stop caused by
 `maxAttempts` maps to `call_budget` when the run's attempts are spent.
+
+_Update 2026-10-07 (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): `RUN_LIMITS` gains
+`repairModelSteps` 1, `repairToolCalls` 1, `repairAttempts` 2 and
+`repairExtraMs` 10 s; `maxCandidatesPerCall` is 16 and `maxToolResultBytes`
+4 KB. The run log's step may carry `repair: true`, and `agent.run` may carry
+`repair: { categories, items, accepted, attempts }` (counts only)._

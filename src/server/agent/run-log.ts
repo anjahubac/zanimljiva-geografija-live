@@ -24,6 +24,8 @@ export type StepRecord = {
   /** `passed`: passing words for check_candidates, accepted words for verify_terms (O1). */
   tool?: { name: string; items: number; passed: number; latencyMs: number; attempts?: ProviderAttempt[] };
   usage?: TokenUsage;
+  /** The repair step after the report's referee check (owner, 2026-10-07). */
+  repair?: true;
 };
 
 export type AgentRunRecord = {
@@ -39,6 +41,12 @@ export type AgentRunRecord = {
    * sent, words accepted, its provider attempts. Absent when nothing needed it.
    */
   refereeCheck?: { items: number; accepted: number; attempts: ProviderAttempt[] };
+  /**
+   * The repair (owner, 2026-10-07): categories it was asked about, passing
+   * words it proposed, words the referee accepted, the referee's attempts.
+   * Absent when no category was left empty.
+   */
+  repair?: { categories: number; items: number; accepted: number; attempts: ProviderAttempt[] };
   totals: { modelSteps: number; providerAttempts: number; toolCalls: number; elapsedMs: number };
 };
 

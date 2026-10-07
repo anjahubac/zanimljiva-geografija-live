@@ -1,13 +1,13 @@
 import type { CoachStep } from "@contracts/ai-output.schemas";
 import { coachReportSchema, type CoachReport, type CoachStopReason, type CoachTip } from "@contracts/coach.schemas";
-import { MAX_ANSWER_LENGTH, type Category, type Language, type PlayerSlot } from "@contracts/game.schemas";
+import { MAX_ANSWER_LENGTH, type Category, type Language, type PlayerSlot, type RejectReason } from "@contracts/game.schemas";
 import { startsWithLetter } from "@domain/validate-answer";
 import { answerKey, type NamedVerdict } from "@server/features/check-round";
 import { canFallBack } from "@server/ai/classify";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiService, CoachStepResult, VerifyTermsResult } from "@server/ai/service";
 import type { AiFailureCode, ProviderAttempt } from "@server/ai/types";
-import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v3";
+import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v4";
 import { RUN_LIMITS } from "./limits";
 import type { AgentRunRecord, RunLogSink, StepRecord } from "./run-log";
 import {
@@ -35,6 +35,11 @@ import {
  * never runs and never counts as a tool call. The report's suggestion text is
  * copied from a passing tool item of this run, never from the model.
  * Read-only: nothing here writes game state or sees the opponent's sheet.
+ *
+ * Owner, 2026-10-07: a suggestion for every category the coach can fill. The
+ * game fills a category the final left empty with a passing word, sends a
+ * backup word with each word it would show to the referee, and after a
+ * completed run gives the model one repair step for categories still empty.
  */
 
 export type CoachRunContext = {
@@ -135,7 +140,11 @@ function validateFinal(
   return { cited, confidence };
 }
 
-/** Any other stop: per category, the passing word to offer — one the referee accepted, else the first. */
+/**
+ * Per category, the passing word to offer — one the referee accepted, else the
+ * first. Used for any stop other than a valid final, and for the categories a
+ * valid final left "".
+ */
 function bestPassing(snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): Map<Category, EvidenceItem | null> {
   return new Map(
     snapshot.focus.map((entry) => {
@@ -179,6 +188,12 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
   let attemptsUsed = 0;
 
   let refereeCheck: AgentRunRecord["refereeCheck"];
+  let repairRecord: AgentRunRecord["repair"];
+  /** The game's own check, by id and verdict, for the repair step to see. */
+  let checkVerdicts: Array<{ id: string; verdict: "accepted" | "rejected" | "unverified"; reason: RejectReason | null }> = [];
+  // The repair step moves both (owner, 2026-10-07): +10 s, and its own 2 attempts.
+  let runDeadline = deadlineAt;
+  let attemptCap: number = RUN_LIMITS.maxAttemptsPerRun;
 
   /**
    * One referee call, bound to the run's time, attempts and signal. Returns the
@@ -191,8 +206,8 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
     attempts: ProviderAttempt[],
   ): Promise<{ verdictOf: (slot: PlayerSlot, category: Category) => RefereeVerdict | undefined } | { failed: CoachStopReason | "cancelled" }> => {
     if (deps.signal.aborted) return { failed: "cancelled" };
-    const timeLeft = deadlineAt - deps.now();
-    const attemptsNow = RUN_LIMITS.maxAttemptsPerRun - attemptsUsed;
+    const timeLeft = runDeadline - deps.now();
+    const attemptsNow = attemptCap - attemptsUsed;
     if (timeLeft < RUN_LIMITS.minStepMs) return { failed: "deadline" };
     if (attemptsNow <= 0) return { failed: "call_budget" };
     const verified = await deps.ai
@@ -233,50 +248,186 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
   };
 
   /**
+   * The referee on words that passed the letter rule, at most two per
+   * category, in one call; records each verdict. `failed` is the stop reason
+   * when the referee could not answer.
+   */
+  const checkWithReferee = async (words: readonly EvidenceItem[], interactionId: string, attempts: ProviderAttempt[]) => {
+    let failed: CoachStopReason | "cancelled" | null = null;
+    const items = await askReferee(words, async (sheets) => {
+      const answer = await callReferee(sheets, interactionId, attempts);
+      if ("failed" in answer) {
+        failed = answer.failed;
+        return null;
+      }
+      return answer.verdictOf;
+    });
+    if (items) applyVerdicts(items);
+    return { items: items ?? [], failed: failed as CoachStopReason | "cancelled" | null };
+  };
+
+  /** The word shown for a category: the chosen one if the referee accepted it, else any it accepted. */
+  const shownItem = (category: Category, chosen: ReadonlyMap<Category, EvidenceItem | null>): EvidenceItem | null => {
+    const item = chosen.get(category) ?? null;
+    if (item?.referee === "accepted") return item;
+    return evidence.find((each) => each.category === category && each.referee === "accepted") ?? null;
+  };
+
+  /** Passing words the referee has not accepted or rejected yet. */
+  const unjudged = (item: EvidenceItem): boolean => isPassing(item) && item.referee !== "accepted";
+
+  /**
+   * The repair (owner, 2026-10-07): after a completed run whose check left
+   * categories with no accepted word, one more model step — only
+   * `check_candidates`, for those categories alone, one attempt — then the
+   * referee, one attempt. Bound to 10 s beyond the run's deadline. Whatever
+   * goes wrong here leaves the report as it was.
+   */
+  const repair = async (chosen: ReadonlyMap<Category, EvidenceItem | null>): Promise<"cancelled" | undefined> => {
+    // A category with a passing word still unjudged is not empty: the tool's scope would refuse it.
+    const empty = snapshot.focus.filter(
+      (entry) =>
+        shownItem(entry.category, chosen) === null && !evidence.some((each) => each.category === entry.category && unjudged(each)),
+    );
+    if (empty.length === 0) return undefined;
+    runDeadline = deadlineAt + RUN_LIMITS.repairExtraMs;
+    attemptCap = attemptsUsed + RUN_LIMITS.repairAttempts;
+    const left = runDeadline - deps.now();
+    if (left < 2 * RUN_LIMITS.minStepMs) return undefined;
+
+    const n = steps.length + 1;
+    const repairSnapshot: RoundSnapshot = { ...snapshot, focus: empty };
+    const input: CoachStepInput = {
+      goal: context.goal,
+      language: context.language,
+      letter: snapshot.letter,
+      alphabet: snapshot.alphabet,
+      step: n,
+      stepsLeft: 0,
+      toolCallsLeft: RUN_LIMITS.repairToolCalls,
+      allowedActions: ["check_candidates"],
+      focus: empty,
+      toolResults: checkVerdicts.length > 0 ? [...toolResults, { tool: "referee_check", items: checkVerdicts }] : toolResults,
+    };
+    const result: CoachStepResult = await deps.ai
+      .coachStep(input, {
+        interactionId: `${context.runId}:s${n}`,
+        // The referee keeps at least the last 2 s.
+        budget: { ...BUDGETS["coach-step"], totalMs: Math.min(RUN_LIMITS.perStepMs, left - RUN_LIMITS.minStepMs), maxAttempts: 1 },
+        signal: deps.signal,
+      })
+      .catch((): CoachStepResult => ({ ok: false, code: "transport", attempts: [] }));
+    attemptsUsed += result.attempts.length;
+    const step: StepRecord = { n, action: null, decision: null, attempts: result.attempts, repair: true };
+    steps.push(step);
+    repairRecord = { categories: empty.length, items: 0, accepted: 0, attempts: [] };
+    if (deps.signal.aborted) return "cancelled";
+    if (!result.ok) {
+      if (result.code.startsWith("invalid_output:")) step.rejectReason = "malformed_output";
+      return undefined;
+    }
+    if (result.usage) step.usage = result.usage;
+    const { envelope } = result;
+    step.action = loggableAction(envelope.action);
+
+    // Only check_candidates, shaped as a tool call, then the tool's own checks on the repair's scope.
+    const refuse = (reason: StepRecord["rejectReason"]) => {
+      step.decision = "rejected";
+      step.rejectReason = reason;
+      return undefined;
+    };
+    if (envelope.action !== "check_candidates") {
+      if (envelope.action === "final") return refuse("final_invalid");
+      return refuse(isToolName(envelope.action) ? "max_steps" : "unknown_tool");
+    }
+    const toolShaped =
+      envelope.candidates.length > 0 &&
+      envelope.evidenceIds.length === 0 &&
+      envelope.summary === "" &&
+      envelope.tips.length === 0 &&
+      envelope.confidence === "";
+    if (!toolShaped) return refuse("invalid_tool_args");
+
+    const toolStarted = deps.now();
+    const outcome = TOOLS.check_candidates(
+      { candidates: envelope.candidates },
+      { snapshot: repairSnapshot, evidence, toolCallsUsed: toolCalls, toolCallLimit: toolCalls + RUN_LIMITS.repairToolCalls },
+      { now: deps.now, ...(deps.toolImpl ? { impl: deps.toolImpl } : {}) },
+    );
+    if (!outcome.ok) {
+      if (outcome.reason !== "tool_failed") return refuse(outcome.reason);
+      toolCalls += 1;
+      step.decision = "allowed";
+      step.tool = { name: "check_candidates", items: 0, passed: 0, latencyMs: deps.now() - toolStarted };
+      return undefined;
+    }
+    toolCalls += 1;
+    step.decision = "allowed";
+    const items = outcome.result.items.map((item) => ({ ...item, callId: outcome.result.callId }));
+    evidence.push(...items);
+    const passing = items.filter(isPassing);
+    step.tool = { name: "check_candidates", items: items.length, passed: passing.length, latencyMs: deps.now() - toolStarted };
+    if (passing.length === 0) return undefined;
+
+    const attempts: ProviderAttempt[] = [];
+    const checked = await checkWithReferee(passing, `${context.runId}:repair`, attempts);
+    repairRecord = {
+      categories: empty.length,
+      items: passing.length,
+      accepted: checked.items.filter((item) => item.verdict === "accepted").length,
+      attempts,
+    };
+    return checked.failed === "cancelled" || deps.signal.aborted ? "cancelled" : undefined;
+  };
+
+  /**
    * Ends the run. Owner, 2026-10-07: only valid and checked answers reach the
    * player. Whatever the stop, the words that would be shown and that the
    * referee has not accepted go to the referee first (not a tool call; its
-   * attempts count toward the run's 5), and only accepted words are shown, in
-   * the referee's spelling. No model text is shown.
+   * attempts count toward the run's 5), each with a backup word of its
+   * category when there is one, and only accepted words are shown, in the
+   * referee's spelling. No model text is shown. A completed run may then
+   * repair the categories still empty.
    */
   const finish = async (
     stopReason: CoachStopReason | "cancelled",
     final?: { cited: Map<Category, EvidenceItem | null>; confidence: (typeof CONFIDENCE)[number] },
   ): Promise<CoachRunOutcome> => {
     let outcome: CoachStopReason | "cancelled" = stopReason;
-    let chosen = new Map<Category, EvidenceItem | null>();
+    const chosen = new Map<Category, EvidenceItem | null>();
 
     if (stopReason !== "cancelled") {
-      chosen = final ? final.cited : bestPassing(snapshot, evidence);
-      const toCheck = [...chosen.values()].filter(
-        (item): item is EvidenceItem => item !== null && item.referee !== "accepted",
-      );
+      // A category the final left "" gets a passing word of this run, if there is one.
+      const best = bestPassing(snapshot, evidence);
+      for (const entry of snapshot.focus) {
+        chosen.set(entry.category, final?.cited.get(entry.category) ?? best.get(entry.category) ?? null);
+      }
+      // Per category without an accepted word: the chosen word, then one backup.
+      const toCheck = snapshot.focus.flatMap((entry) => {
+        const item = chosen.get(entry.category) ?? null;
+        if (item === null || item.referee === "accepted") return [];
+        const backups = evidence.filter((each) => each.category === entry.category && each !== item && unjudged(each));
+        return [item, ...backups].slice(0, 2);
+      });
       if (toCheck.length > 0) {
         const attempts: ProviderAttempt[] = [];
-        let failed: CoachStopReason | "cancelled" | null = null;
-        const items = await askReferee(toCheck, async (sheets) => {
-          const answer = await callReferee(sheets, `${context.runId}:check`, attempts);
-          if ("failed" in answer) {
-            failed = answer.failed;
-            return null;
-          }
-          return answer.verdictOf;
-        });
-        if (items) applyVerdicts(items);
+        const checked = await checkWithReferee(toCheck, `${context.runId}:check`, attempts);
+        checkVerdicts = checked.items.map(({ id, verdict, reason }) => ({ id, verdict, reason }));
         refereeCheck = {
           items: toCheck.length,
-          accepted: (items ?? []).filter((item) => item.verdict === "accepted").length,
+          accepted: checked.items.filter((item) => item.verdict === "accepted").length,
           attempts,
         };
-        if (failed === "cancelled" || deps.signal.aborted) outcome = "cancelled";
+        if (checked.failed === "cancelled" || deps.signal.aborted) outcome = "cancelled";
         // A failed check turns a completed run partial; any other stop keeps its own reason.
-        else if (failed && final) outcome = failed;
+        else if (checked.failed && final) outcome = checked.failed;
       }
+      if (outcome === "goal_completed" && (await repair(chosen)) === "cancelled") outcome = "cancelled";
     }
 
     const tips: CoachTip[] = snapshot.focus.map((entry) => {
-      const item = chosen.get(entry.category) ?? null;
-      const shown = item !== null && item.referee === "accepted" ? (item.shownAs ?? item.term) : null;
+      const item = outcome === "cancelled" ? null : shownItem(entry.category, chosen);
+      const shown = item === null ? null : (item.shownAs ?? item.term);
       return {
         category: entry.category,
         yourAnswer: entry.yourAnswer,
@@ -303,15 +454,20 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
       stopReason: outcome,
       steps,
       ...(refereeCheck ? { refereeCheck } : {}),
+      ...(repairRecord ? { repair: repairRecord } : {}),
       totals,
     };
     deps.log(record);
     if (!report) return { cancelled: true };
 
     // O6: the run log's totals and the last provider that answered — no content.
+    // In the order they happened: the loop's steps, the game's check, then the repair.
+    const attemptsOf = (each: StepRecord) => [...each.attempts, ...(each.tool?.attempts ?? [])];
     const lastSuccess = [
-      ...steps.flatMap((each) => [...each.attempts, ...(each.tool?.attempts ?? [])]),
+      ...steps.filter((each) => !each.repair).flatMap(attemptsOf),
       ...(refereeCheck?.attempts ?? []),
+      ...steps.filter((each) => each.repair).flatMap(attemptsOf),
+      ...(repairRecord?.attempts ?? []),
     ]
       .filter((attempt) => attempt.status === "success")
       .at(-1);

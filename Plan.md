@@ -1127,6 +1127,31 @@ unchecked "Rosno more" and a suggestion spelled "Rtnj" (Rtanj). Decided:
   partial if another word was accepted, otherwise "could not complete safely",
   with the existing stop reason of the failure. No new stop reason or field.
 
+**Owner's decision, 2026-10-07, later ("I want to have always an answer for a
+category in suggestions if there is one"):** the owner saw suggestions for only
+4 categories. Causes: one word per category (8 per check), no second chance
+after a referee rejection, a final allowed to leave a category empty, and a
+failed final check dropping every unchecked word. The game has no word list of
+its own, so "if there is one" means "if the model knows one and the referee
+accepts it". Decided ("backup word + repair"):
+
+- **A backup word.** Up to **16** candidates per check (still ≤ 2 per category;
+  tool result ≤ 4 KB). The game's own check sends, per category without an
+  accepted word, the chosen word and one backup in the same referee call, and
+  shows the first the referee accepts.
+- **The game fills a gap the final left.** A category the final cites as ""
+  gets a passing word of this run, which then goes to the referee like any
+  other.
+- **One repair step.** After a **completed** run whose check left categories
+  with no accepted word, one more model step, offering only
+  `check_candidates`, for those categories alone (it sees the check's
+  verdicts by id), with **1** provider attempt; then the referee, **1**
+  attempt. Whatever fails there leaves the report as it was; a run that
+  stopped on a refusal, a provider failure or a limit gets no repair. New
+  maxima per run: **4** model steps, **3** tool calls, **7** provider
+  attempts, **35 s** (25 s + 10 s for the repair); the client waits **45 s**.
+  No new event, error code, stop reason or tool (`coach-step.v4`).
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.

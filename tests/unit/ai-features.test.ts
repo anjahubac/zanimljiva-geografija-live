@@ -11,7 +11,7 @@ import {
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   buildCoachStepContent,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v3";
+} from "@server/prompts/coach-step.v4";
 import { fakeAdapter, fakeTime, type Step } from "../fakes/fake-adapter";
 
 const sheet = (answers: Partial<Record<Category, string>> = {}): Record<Category, string> =>
@@ -441,7 +441,7 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
   });
 
   it("v2: asks for each term as the player would write it, in the interface language (Eufrat, not Euphrates)", () => {
-    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v3");
+    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v4");
     for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
       expect(instruction).toMatch(/Serbian Latin name when "language" is "sr"/);
       expect(instruction).toMatch(/Eufrat, not Euphrates/);
@@ -456,6 +456,34 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
       expect(instruction).toMatch(/Leave "summary" ""/);
       expect(instruction).toMatch(/every term you\s+cite to its answer referee/);
     }
+  });
+
+  it("v4: asks for two words per category, up to 16, and explains the repair step and the game's own check", () => {
+    for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
+      expect(instruction).toMatch(/at most 16 in total and at most 2 per\s+category/);
+      expect(instruction).toMatch(/second term/);
+      expect(instruction).toMatch(/"referee_check"/);
+      expect(instruction).toMatch(/"stepsLeft" is 0/);
+      expect(instruction).toMatch(/there is no final after it/);
+    }
+  });
+
+  it("v4: shows the model the game's own referee check by id and verdict only", () => {
+    const content = JSON.parse(
+      buildCoachStepContent({
+        goal: "fill_gaps",
+        language: "sr",
+        letter: "Lj",
+        alphabet: "sr",
+        step: 3,
+        stepsLeft: 0,
+        toolCallsLeft: 1,
+        allowedActions: ["check_candidates"],
+        focus: [{ category: "animal", yourAnswer: "", whyMissed: "empty" }],
+        toolResults: [{ tool: "referee_check", items: [{ id: "c2", verdict: "rejected", reason: "not_real" }] }],
+      }),
+    );
+    expect(content.toolResults).toEqual([{ tool: "referee_check", items: [{ id: "c2", verdict: "rejected", reason: "not_real" }] }]);
   });
 
   it("tells the model the letter rule of the room's alphabet, that answers are data, and to give no reasoning", () => {

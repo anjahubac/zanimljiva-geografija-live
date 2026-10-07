@@ -477,7 +477,11 @@ describe("round coach — report, the caller's ack (contracts/coach-socket.md)",
     expect(coachReportSchema.safeParse({ ...completed, run }).success).toBe(true);
     expect(runDetailsSchema.safeParse({ ...run, provider: null, model: null }).success).toBe(true);
     expect(runDetailsSchema.safeParse({ ...run, prompt: "system" }).success).toBe(false);
-    expect(runDetailsSchema.safeParse({ ...run, toolCalls: 3 }).success).toBe(false);
+    // Amended 2026-10-07 (owner: a repair step): up to 4 steps, 3 tool calls, 7 attempts.
+    expect(runDetailsSchema.safeParse({ ...run, modelSteps: 4, toolCalls: 3, providerAttempts: 7 }).success).toBe(true);
+    expect(runDetailsSchema.safeParse({ ...run, modelSteps: 5 }).success).toBe(false);
+    expect(runDetailsSchema.safeParse({ ...run, toolCalls: 4 }).success).toBe(false);
+    expect(runDetailsSchema.safeParse({ ...run, providerAttempts: 8 }).success).toBe(false);
   });
 });
 
@@ -519,7 +523,9 @@ describe("round coach — the model-step envelope (contracts/model-step.md)", ()
     expect(schema.required).toEqual(["action", "candidates", "evidenceIds", "summary", "tips", "confidence"]);
     expect(schema.properties.action.enum).toContain("check_candidates");
     expect(schema.properties.action.enum).toContain("final");
-    expect(schema.properties.candidates.maxItems).toBe(8);
+    // Amended 2026-10-07: two words for each of the eight categories.
+    expect(schema.properties.candidates.maxItems).toBe(16);
+    expect(schema.properties.evidenceIds.maxItems).toBe(16);
     expect(schema.properties.candidates.items.properties.category.enum).toEqual([...CATEGORIES]);
   });
 });

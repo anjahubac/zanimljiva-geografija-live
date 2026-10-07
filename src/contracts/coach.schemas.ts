@@ -79,9 +79,10 @@ export type CoachTip = z.infer<typeof coachTipSchema>;
 /** O6 (§2C.16): counts, the last provider and model, time and stop reason — no content. */
 export const runDetailsSchema = z
   .object({
-    modelSteps: z.number().int().min(0).max(3),
-    toolCalls: z.number().int().min(0).max(2),
-    providerAttempts: z.number().int().min(0).max(5),
+    // With the repair step (owner, 2026-10-07): 3 + 1 steps, 2 + 1 calls, 5 + 2 attempts.
+    modelSteps: z.number().int().min(0).max(4),
+    toolCalls: z.number().int().min(0).max(3),
+    providerAttempts: z.number().int().min(0).max(7),
     provider: z.enum(["gemini", "groq"]).nullable(),
     model: z.string().min(1).max(80).nullable(),
     elapsedMs: z.number().int().nonnegative(),

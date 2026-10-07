@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **17 logged** (001–017; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **18 logged** (001–018; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -477,3 +477,25 @@ Live agent runs used: **6** (entry 015).
   `docs/AGENT_EVALS.md`; no expected text was rewritten.
 - **Not done:** no live run of v3.
 - **Next decision:** live runs on a letter where Serbian and English differ.
+
+## 018 — Round coach: a suggestion for every category it can fill (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after entry 017, from the owner's browser test.
+- **Reason:** the owner got suggestions for only 4 categories and asked for an
+  answer in every category "if there is one". Four causes in the code: one
+  word per category (8 per check), no second chance after a referee
+  rejection, a final allowed to leave a category empty, and a failed final
+  check dropping every unchecked word. Options put to the owner; chosen:
+  backup word + repair (`Plan.md` §2C.16, last entry), before code.
+- **Expected:** up to 16 candidates per check; a backup word in the same
+  referee call; gaps the final left filled by the game; one repair step after
+  a completed run, 1 model and 1 referee attempt; maxima 4 steps, 3 tool
+  calls, 7 attempts, 35 s; client ack 45 s; no new event, error code, stop
+  reason or tool; the failure evals unchanged.
+- **Actual (verified in-session):** tests first (red), then `coach-step.v4`
+  and the loop changes. C1, C17, C18 and the run-log test needed the repair
+  scripted; amended with dated notes, expected text left as written. 654
+  tests pass; 4 new mutation checks, 4/4 caught.
+- **Judgement call:** the repair runs only after a completed run, because
+  C4–C13, C16 and C19 pin tool calls and status after a refusal.
+- **Not done:** no live run of v4.

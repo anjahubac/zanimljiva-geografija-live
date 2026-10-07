@@ -17,9 +17,22 @@ export const RUN_LIMITS = Object.freeze({
   runDeadlineMs: 25_000,
   /** No step starts with less time than this left. */
   minStepMs: 2_000,
-  maxCandidatesPerCall: 8,
+  /** Two words for each of the eight categories, so each has a backup (owner, 2026-10-07). */
+  maxCandidatesPerCall: 16,
   maxCandidatesPerCategory: 2,
   /** `check_candidates` is synchronous; over this it counts as failed. */
   toolTimeMs: 100,
-  maxToolResultBytes: 2_048,
+  /** 16 items of 40-character terms with two-byte letters fit. */
+  maxToolResultBytes: 4_096,
+  /*
+   * The repair (owner, 2026-10-07): after the report's referee check, one more
+   * model step for the categories still without an accepted word, then the
+   * referee. On top of the figures above: in all at most 4 steps, 3 tool
+   * calls, 7 provider attempts and 35 s.
+   */
+  repairModelSteps: 1,
+  repairToolCalls: 1,
+  /** One model attempt and one referee attempt: no retry, no fallback. */
+  repairAttempts: 2,
+  repairExtraMs: 10_000,
 });

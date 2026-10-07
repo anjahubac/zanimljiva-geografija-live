@@ -256,3 +256,8 @@ exactly those fields with the right counts and nothing else.
 - Visitors are counted by network address, as for the Week 4 limits; players behind one address share one limit.
 - The AI is not asked for its reasoning, and none is stored or shown.
 - No API key is needed for any test; live runs need the owner's keys and come after the Week 4 live check (W4-7).
+
+_Update 2026-10-07 (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): FR-015 and SC-003 hold for
+the run up to its final check; after a completed run, one repair step may add
+1 AI step, 1 check and 2 AI attempts, within 10 more seconds (at most 4 steps,
+3 checks, 7 attempts, 35 s in all). SC-007's 30 seconds becomes 45._

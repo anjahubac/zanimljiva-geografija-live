@@ -22,6 +22,19 @@ words it would show to the referee itself before the report; only accepted
 words are shown, in the referee's spelling. That check is not a tool call, but
 its attempts count toward the run's 5. The model never sees the referee's
 spelling._
+
+_Update 2026-10-07, `coach-step.v4` (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): up to 16
+candidates per `check_candidates` (≤ 2 per category), so each category can
+have a backup. A final's `""` citation no longer means "no suggestion": the
+game uses a passing word of that category, if any. The game's own check sends
+the chosen word and one backup per category. After a completed run whose check
+left categories with no accepted word, a **repair step**: `step` = next,
+`stepsLeft: 0`, `toolCallsLeft: 1`, `allowedActions: ["check_candidates"]`,
+`focus` = those categories only, and `toolResults` ending with
+`{ tool: "referee_check", items: [{ id, verdict, reason }] }`. One provider
+attempt; no final after it; the game sends its passing words to the referee
+(one attempt, interaction id `<runId>:repair`). A refused or failed repair
+leaves the report unchanged._
 ## Request (built by the server per step)
 
 The system instruction is fixed per prompt version. The user content is one

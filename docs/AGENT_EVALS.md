@@ -56,6 +56,9 @@ result names its source (test file and command, or run log).
 | C17 | O1 referee | The referee accepts one suggestion and rejects another; then fails entirely; then is cited with bad ids | Rejected and cited → `final_invalid`; accepted → `letter_rule_and_referee`; referee down → run continues, `letter_rule`; bad ids → `invalid_tool_args`, nothing sent; over the wire, one referee call adds one call to the daily budget (FR-028) | `coach-agent.test.ts` | pass — `npx vitest run tests/unit/coach-agent.test.ts tests/unit/agent-tools.test.ts tests/integration/coach.test.ts`, 2026-10-07 (W5-10a) |
 | C18 | O6 run details | Any completed run | `run` holds exactly steps, tool calls, attempts, provider, model, time, stop reason, equal to the run log; no word or answer | `coach-agent.test.ts`, `client-coach.test.ts` | pass — `npx vitest run tests/unit/coach-agent.test.ts tests/unit/client-coach.test.ts`, 2026-10-07 (W5-10b) |
 | C19 | malformed model output | Step 1's reply is not JSON; in another run, step 2's reply lacks the `tips` field | `malformed_output`; that step made **one** provider attempt (no blind retry); tool calls unchanged; `failed` at step 1, `incomplete` at step 2 with step 1's passes | `coach-agent.test.ts` | pass — `npx vitest run tests/unit/coach-agent.test.ts`, 2026-10-07 (W5-7) |
+| C20 | backup word (added 2026-10-07, owner) | Step 1 checks two river words and one each for animal and country; the referee rejects river's first and accepts its backup | One referee call holds both; river shows the backup; `completed`; 16 candidates in one call are accepted, 17 refused | `coach-agent.test.ts`, `agent-tools.test.ts` | pass — `npx vitest run`, 2026-10-07 |
+| C21 | gap filled by the game (added 2026-10-07, owner) | Every step-1 word passes; the final cites "" for country | Country shows its passing word once the referee accepts it; no repair step | `coach-agent.test.ts` | pass — `npx vitest run`, 2026-10-07 |
+| C22 | repair step (added 2026-10-07, owner) | A completed run leaves animal and country with no accepted word | One more step offers only `check_candidates` for exactly those categories, shows the check's verdicts by id, gets 1 attempt; the referee then 1 attempt; accepted words shown; at most 4 steps, 3 tool calls, 7 attempts; a failed repair, a word for a category that has one, or a repeated word leaves the report unchanged; no repair after the referee is down, after a provider stop, or with under 4 s of the 35 s left | `coach-agent.test.ts` | pass — `npx vitest run`, 2026-10-07 |
 
 _Note on C2, 2026-10-07, when O1 was built (W5-10a), at the owner's decision:_
 C2's expected "Step 2 offers only `final`" describes Core. With O1 built,
@@ -81,6 +84,22 @@ where they and this note differ, this note holds:_
 - **Every report:** a suggestion is shown only if the referee accepted it in
   this run; `summary` is no longer part of the report.
 
+_Amendments, 2026-10-07, from the owner's decision "a suggestion for every
+category" (`Plan.md` §2C.16, last entry; C20–C22 above). The rows above are
+left as written; where they and this note differ, this note holds:_
+
+- **C1:** country is still empty after the final, so a repair step runs: in
+  the test its word is rejected, country keeps no suggestion, and the totals
+  are **4 model steps, 3 tool calls, 6 provider attempts**.
+- **C5:** "nine candidates" is still refused, by the two-per-category rule; the
+  per-call cap is now 16, and 17 is refused.
+- **C6:** the result limit is 4 KB, not 2 KB.
+- **C17, C18:** a completed run with an empty category adds the repair step
+  (C17's test: its one attempt fails, 4 steps, 5 attempts; C18's: 4 steps,
+  3 tool calls, 7 attempts).
+- **Runs that stop on a refusal or a failure** (C4–C13, C16, C19) are
+  unchanged: they get no repair.
+
 W05 §32 requires at least one test where `toolCallCount === 0` for a refused
 proposal: C4, C5, C16 and C19 (at step 1) each assert it, and C9 asserts the
 count does not move.
@@ -99,6 +118,10 @@ Each change must make the named eval fail; then it is restored.
 | Skip the repeat guard | C9 | failed as required: C9 only; restored — 2026-10-07 |
 | Skip the deadline check before a step | C11 | failed as required: C11 only (a third step was called); restored — 2026-10-07 |
 | Copy the suggestion from the model's reply, not the evidence | C13 | failed as required: C13 failed id, unknown id, other category; restored — 2026-10-07 |
+| No backup word: send only the chosen word (2026-10-07) | C20 | failed as required: C20 backup only; restored — 2026-10-07 |
+| No repair step (2026-10-07) | C22, amended C1 | failed as required: 9 tests (C1, C17, C18, run log, six C22 cases); restored — 2026-10-07 |
+| Give the repair's model step a retry (2026-10-07) | C22 | failed as required: C22 repair and failed-repair cases, C17; restored — 2026-10-07 |
+| Skip the time check before the repair (2026-10-07) | C22 | failed as required: C22 "under 4 s left" only; restored — 2026-10-07 |
 
 ## Live evals (real providers, W5-11)
 

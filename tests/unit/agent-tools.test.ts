@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CATEGORIES } from "@contracts/game.schemas";
 import { RUN_LIMITS } from "@server/agent/limits";
 import {
   TOOLS,
@@ -75,10 +76,15 @@ describe("the allowlist", () => {
       perStepMs: 10_000,
       runDeadlineMs: 25_000,
       minStepMs: 2_000,
-      maxCandidatesPerCall: 8,
+      // Amended 2026-10-07 (owner: a backup word and a repair step): 8 → 16, 2 KB → 4 KB.
+      maxCandidatesPerCall: 16,
       maxCandidatesPerCategory: 2,
       toolTimeMs: 100,
-      maxToolResultBytes: 2_048,
+      maxToolResultBytes: 4_096,
+      repairModelSteps: 1,
+      repairToolCalls: 1,
+      repairAttempts: 2,
+      repairExtraMs: 10_000,
     });
   });
 });
@@ -142,15 +148,53 @@ describe("check_candidates — the game's own letter rule", () => {
   });
 });
 
+/** Two words for each of the eight categories, 16 in all. */
+function sixteenForEveryCategory(): Array<[string, string]> {
+  return CATEGORIES.flatMap((category): Array<[string, string]> => [
+    [category, `Lja${category}`],
+    [category, `Lje${category}`],
+  ]);
+}
+
+describe("check_candidates — a backup word for every category (owner, 2026-10-07)", () => {
+  const everyCategory = snapshot({
+    focus: CATEGORIES.map((category) => ({ category, yourAnswer: "", whyMissed: "empty" as const })),
+  });
+
+  it("checks two words for each of the eight categories in one call", () => {
+    const result = passed(checkCandidates(propose(...sixteenForEveryCategory()), scope([], 0, everyCategory), clock()));
+    expect(result.items).toHaveLength(16);
+    expect(result.items.at(-1)).toMatchObject({ id: "c16", passes: true });
+  });
+
+  it("keeps 16 items of the longest terms, with two-byte letters, within the result limit", () => {
+    const longest = CATEGORIES.flatMap((category): Array<[string, string]> => [
+      [category, `Lj${"ž".repeat(37)}a`],
+      [category, `Lj${"ž".repeat(37)}e`],
+    ]);
+    expect(checkCandidates(propose(...longest), scope([], 0, everyCategory), clock()).ok).toBe(true);
+  });
+
+  it("allows a third call only when the scope grants it: the repair step's", () => {
+    const repair = propose(["river", "Ljuta"]);
+    expect(checkCandidates(repair, scope([], 2), clock())).toEqual({ ok: false, reason: "invalid_tool_args" });
+    expect(passed(checkCandidates(repair, { ...scope([], 2), toolCallLimit: 3 }, clock())).callId).toBe("t3");
+  });
+});
+
 describe("check_candidates — arguments (C5): refused before the tool runs", () => {
   const nine = Array.from({ length: 9 }, (_, n): [string, string] => [
     ["river", "animal", "country"][n % 3]!,
     `Lj${"a".repeat(n + 1)}`,
   ]);
 
+  /** Two for each of the eight categories, plus one. */
+  const seventeen = [...sixteenForEveryCategory(), ["river", "Ljig"] as [string, string]];
+
   const invalid: Array<[string, unknown]> = [
     ["no candidates", propose()],
     ["nine candidates", propose(...nine)],
+    ["seventeen candidates", propose(...seventeen)],
     ["three for one category", propose(["river", "Ljuta"], ["river", "Ljubljanica"], ["river", "Ljig"])],
     ["a 41-character term", propose(["river", `Lj${"a".repeat(39)}`])],
     ["a blank term", propose(["river", "   "])],
@@ -242,7 +286,7 @@ describe("check_candidates — results (C6): a bad tool result stops the run", (
     }
   });
 
-  it("a result over 2 KB → tool_failed", () => {
+  it("a result over 4 KB → tool_failed", () => {
     const six = propose(
       ["river", "Ljubljanica"],
       ["river", "Ljuta"],
@@ -259,7 +303,7 @@ describe("check_candidates — results (C6): a bad tool result stops the run", (
         term: candidate.term,
         passes: false,
         failure: "wrong_letter" as const,
-        padding: "x".repeat(400),
+        padding: "x".repeat(800),
       })),
     });
     expect(checkCandidates(six, scope(), { ...clock(), impl })).toEqual({ ok: false, reason: "tool_failed" });
@@ -295,6 +339,7 @@ describe("verify_terms (O1) — arguments, before the referee is asked", () => {
     ["an unknown id", ["c7"]],
     ["a repeated id", ["c1", "c1"]],
     ["nine ids", Array.from({ length: 9 }, () => "c1")],
+    ["seventeen ids", Array.from({ length: 17 }, (_, n) => `c${n + 1}`)],
     ["no id", []],
   ])("refuses %s as invalid_tool_args without asking the referee", async (_name, ids) => {
     let asked = 0;

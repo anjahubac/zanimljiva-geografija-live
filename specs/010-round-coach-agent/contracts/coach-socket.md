@@ -111,3 +111,8 @@ Incomplete example (stopped by `repeated_call` at step 2, after one pass):
 
 No new error code. Reused: `INVALID_PAYLOAD`, `NOT_IN_ROOM`, `ROUND_STALE`,
 `WRONG_PHASE`, `AI_UNAVAILABLE`, `AI_LIMIT`, `RATE_LIMITED`, `INTERNAL`.
+
+_Update 2026-10-07 (owner: "a suggestion for every category", `Plan.md` §2C.16, last entry): `run` allows up to 4 model
+steps, 3 tool calls and 7 provider attempts (the repair step), and the
+client's ack timeout is **45 s** (the run's 25 s plus the repair's 10 s, plus
+10 s). The report's shape is otherwise unchanged._

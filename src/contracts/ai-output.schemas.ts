@@ -141,8 +141,8 @@ export const HINT_JSON_SCHEMA = {
 export const coachStepSchema = z
   .object({
     action: z.string().min(1).max(40),
-    candidates: z.array(z.object({ category: z.string().max(20), term: z.string().max(60) }).strict()).max(16),
-    evidenceIds: z.array(z.string().max(8)).max(16),
+    candidates: z.array(z.object({ category: z.string().max(20), term: z.string().max(60) }).strict()).max(32),
+    evidenceIds: z.array(z.string().max(8)).max(32),
     summary: z.string().max(400),
     tips: z.array(z.object({ category: z.string().max(20), evidenceId: z.string().max(8) }).strict()).max(16),
     confidence: z.string().max(10),
@@ -157,7 +157,7 @@ export const COACH_STEP_JSON_SCHEMA = {
     action: { type: "string", enum: ["check_candidates", "verify_terms", "final"] },
     candidates: {
       type: "array",
-      maxItems: 8,
+      maxItems: 16,
       items: {
         type: "object",
         properties: {
@@ -170,7 +170,7 @@ export const COACH_STEP_JSON_SCHEMA = {
     },
     evidenceIds: {
       type: "array",
-      maxItems: 8,
+      maxItems: 16,
       items: { type: "string" },
       description: "verify_terms only: ids of passing checked items to send to the referee.",
     },
