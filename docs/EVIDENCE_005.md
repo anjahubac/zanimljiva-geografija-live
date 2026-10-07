@@ -62,8 +62,22 @@ C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 | --- | --- |
 | C1–C16, C19 (Core) | not run — not built |
 | C17 (O1), C18 (O6) | not run — not built |
-| Mutation checks | not run |
+| Mutation checks | 4 of 4 caught, then restored — see below |
 | L1–L3 (live) | not run — needs W4-7 and the owner's key |
+
+### Mutation checks (T035, 2026-10-07, W5-7)
+
+Each change was applied by a script to the working tree, `npx vitest run
+tests/unit/coach-agent.test.ts` was run, and the file was restored from a
+copy; afterwards `tests/unit/agent-tools.test.ts` and `coach-agent.test.ts`
+passed 56/56 and `git diff` showed no change to `tools.ts`.
+
+| Change | Where | Must fail | Observed |
+| --- | --- | --- | --- |
+| Skip the allowlist check (`if (false && !allowed.includes(action))`) | `coach-agent.ts` | C4, C16 | 4 failed / 25 passed: C4, C16, plus C10 and C13 "final at step 1", which also depend on the per-step allowlist. In C4 the tool then **ran** on `delete_room`'s arguments |
+| Skip the repeat guard | `tools.ts` | C9 | 1 failed / 28 passed: C9 |
+| Skip the deadline check before a step | `coach-agent.ts` | C11 | 1 failed / 28 passed: C11 (a third model step was called) |
+| Trust the model's citation: take the cited id's text without checking pass and category | `coach-agent.ts` | C13 | 3 failed / 26 passed: C13 failed id, unknown id, other category's id |
 
 ---
 
@@ -78,6 +92,7 @@ C1–C19 and L1–L3, with expected results: `docs/AGENT_EVALS.md`, committed
 | W5-4 contracts | 2026-10-07 | after `df38235` | `npm run typecheck && npx vitest run tests/unit/contracts.test.ts tests/unit/config.test.ts` | red first (module missing, 8 config cases); then typecheck clean, 2 files, 128 tests passed | implementation session |
 | W5-5 tool | 2026-10-07 | after `b052998` | `npx vitest run tests/unit/agent-tools.test.ts` | red first (module missing); then 1 file, 27 tests passed | implementation session |
 | W5-6 gateway, budget, prompt, service | 2026-10-07 | after `26f80a6` | `npm run typecheck && npx vitest run tests/unit/gateway.test.ts tests/unit/ai-features.test.ts` | red first (3 gateway cases, prompt module missing); then typecheck clean, 2 files, 58 tests passed; every existing gateway case unchanged | implementation session |
+| W5-7 loop | 2026-10-07 | after `8a06ea3` | `npx vitest run tests/unit/agent-tools.test.ts tests/unit/coach-agent.test.ts` | red first (module missing); then 2 files, 56 tests passed; 4/4 mutation checks caught | implementation session |
 | After W5-4 … W5-10b | — | — | `npm run verify` | **not run** | — |
 | Live, Gemini | — | — | `AI_PROVIDER_ORDER=gemini npm run smoke:coach` | **not run** | — |
 | Live, Groq | — | — | `AI_PROVIDER_ORDER=groq npm run smoke:coach` | **not run** | — |

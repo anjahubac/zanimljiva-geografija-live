@@ -1,0 +1,53 @@
+import type { CoachStopReason } from "@contracts/coach.schemas";
+import type { ProviderAttempt, TokenUsage } from "@server/ai/types";
+
+/*
+ * One `agent.run` line per coach run (`Plan.md` §2C.9, research R15). Built
+ * from typed fields only, so no answer, candidate word, prompt, model reply or
+ * key has a way in. Each step's own `ai.interaction` line carries
+ * `interactionId = <runId>:s<n>`, which links the two.
+ *
+ * "A retry is not a step": every step keeps its provider attempts under it.
+ */
+
+export type StepDecision = "allowed" | "rejected";
+export type StepRejectReason = "unknown_tool" | "invalid_tool_args" | "repeated_call" | "malformed_output" | "final_invalid" | "max_steps";
+
+export type StepRecord = {
+  n: number;
+  /** The action the model named; null when there was no readable reply. */
+  action: string | null;
+  /** Null when there was nothing to judge (the provider failed). */
+  decision: StepDecision | null;
+  rejectReason?: StepRejectReason;
+  attempts: ProviderAttempt[];
+  tool?: { name: string; items: number; passed: number; latencyMs: number };
+  usage?: TokenUsage;
+};
+
+export type AgentRunRecord = {
+  event: "agent.run";
+  runId: string;
+  goal: "fill_gaps";
+  promptVersion: string;
+  status: "completed" | "incomplete" | "failed" | "cancelled";
+  stopReason: CoachStopReason | "cancelled";
+  steps: StepRecord[];
+  totals: { modelSteps: number; providerAttempts: number; toolCalls: number; elapsedMs: number };
+};
+
+export type RunLogSink = (record: AgentRunRecord) => void;
+
+export const consoleRunLog: RunLogSink = (record) => {
+  console.info(JSON.stringify(record));
+};
+
+/** Test sink: keeps records in memory. */
+export function memoryRunLog(): RunLogSink & { records: AgentRunRecord[] } {
+  const records: AgentRunRecord[] = [];
+  const sink = ((record: AgentRunRecord) => {
+    records.push(record);
+  }) as RunLogSink & { records: AgentRunRecord[] };
+  sink.records = records;
+  return sink;
+}
