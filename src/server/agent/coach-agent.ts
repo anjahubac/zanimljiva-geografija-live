@@ -7,7 +7,7 @@ import { canFallBack } from "@server/ai/classify";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiService, CoachStepResult, VerifyTermsResult } from "@server/ai/service";
 import type { AiFailureCode, ProviderAttempt } from "@server/ai/types";
-import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v4";
+import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v5";
 import { RUN_LIMITS } from "./limits";
 import type { AgentRunRecord, RunLogSink, StepRecord } from "./run-log";
 import {

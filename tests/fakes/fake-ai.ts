@@ -2,7 +2,7 @@ import type { Category, Language, Letter } from "@contracts/game.schemas";
 import type { CoachStep } from "@contracts/ai-output.schemas";
 import type { AiService, CoachStepOptions, CoachStepResult, HintResult, VerifyTermsResult } from "@server/ai/service";
 import { answerKey, type CheckVerdicts, type Sheets } from "@server/features/check-round";
-import type { CoachStepInput } from "@server/prompts/coach-step.v4";
+import type { CoachStepInput } from "@server/prompts/coach-step.v5";
 
 /**
  * A scriptable stand-in for the whole AI service, for store and socket tests.

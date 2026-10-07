@@ -35,6 +35,13 @@ left categories with no accepted word, a **repair step**: `step` = next,
 attempt; no final after it; the game sends its passing words to the referee
 (one attempt, interaction id `<runId>:repair`). A refused or failed repair
 leaves the report unchanged._
+
+_Update 2026-10-07, `coach-step.v5` (owner: "if there is an answer for a
+category, find it"): prompt only. A term for every focus category; when no
+well-known term comes to mind, a systematic pass through the category (where
+to look, per category) for a lesser-known term that really exists, never an
+invented one; the repair step is told the obvious terms have failed. Request,
+response and limits unchanged._
 ## Request (built by the server per step)
 
 The system instruction is fixed per prompt version. The user content is one

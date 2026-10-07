@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **18 logged** (001–018; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **19 logged** (001–019; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -499,3 +499,18 @@ Live agent runs used: **6** (entry 015).
 - **Judgement call:** the repair runs only after a completed run, because
   C4–C13, C16 and C19 pin tool calls and status after a refusal.
 - **Not done:** no live run of v4.
+
+## 019 — Round coach: search the category before giving up, `coach-step.v5` (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after entry 018, from the owner's browser test.
+- **Reason:** no sea suggested for H, although the Halmahera Sea exists. The
+  owner asked whether the AI could search the web; options (live Google
+  Search in the repair step, a checked word list) were laid out, and the owner
+  declined both: "just try to improve the suggestions".
+- **Expected:** prompt only. v4 said "Prefer well-known terms" and nothing
+  about what to do when none comes to mind; v5 asks for a term in every
+  category and a systematic pass, with where to look per category, for a
+  lesser-known real term, never an invented one.
+- **Actual (verified in-session):** test first (red), then v5; 655 tests pass.
+  The shared category rules (referee, hint, bot) are unchanged.
+- **Not done:** no live run; the effect on recall is unmeasured.

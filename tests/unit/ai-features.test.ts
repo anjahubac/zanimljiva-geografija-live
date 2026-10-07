@@ -11,7 +11,7 @@ import {
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   buildCoachStepContent,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v4";
+} from "@server/prompts/coach-step.v5";
 import { fakeAdapter, fakeTime, type Step } from "../fakes/fake-adapter";
 
 const sheet = (answers: Partial<Record<Category, string>> = {}): Record<Category, string> =>
@@ -441,7 +441,7 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
   });
 
   it("v2: asks for each term as the player would write it, in the interface language (Eufrat, not Euphrates)", () => {
-    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v4");
+    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v5");
     for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
       expect(instruction).toMatch(/Serbian Latin name when "language" is "sr"/);
       expect(instruction).toMatch(/Eufrat, not Euphrates/);
@@ -465,6 +465,21 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
       expect(instruction).toMatch(/"referee_check"/);
       expect(instruction).toMatch(/"stepsLeft" is 0/);
       expect(instruction).toMatch(/there is no final after it/);
+    }
+  });
+
+  it("v5: never gives up on a category while a real term exists: a term for every category, searched systematically, never invented", () => {
+    for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
+      expect(instruction).toMatch(/for every focus category/);
+      expect(instruction).toMatch(/Never give up on a category while a real term exists/);
+      expect(instruction).toMatch(/go through the category systematically/);
+      for (const category of ["sea:", "river:", "mountain:", "city:", "country:", "animal:", "plant:", "thing:"]) {
+        expect(instruction).toContain(category);
+      }
+      expect(instruction).toMatch(/lesser-known term that really exists/);
+      expect(instruction).toMatch(/Never invent a term/);
+      // The repair step is where the obvious terms have already failed.
+      expect(instruction).toMatch(/search the category systematically now/);
     }
   });
 

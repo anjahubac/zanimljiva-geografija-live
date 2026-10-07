@@ -114,6 +114,7 @@ method; the fourth change now targets the rewritten final validation):
 | Prompt `coach-step.v2` | 2026-10-07 | after `34c5a8c` | `npx vitest run tests/unit/ai-features.test.ts tests/unit/coach-agent.test.ts`, then `npm run verify` | the owner saw "Euphrates" suggested to a Serbian player; red first (v2 missing), then 72 tests passed; verify below | implementation session |
 | Only valid and checked answers, `coach-step.v3` | 2026-10-07 | after `40c033f` | `npx vitest run` and `npm run verify` | the owner saw an unchecked "Rosno more" in the model's summary and "Rtnj" for Rtanj; decision in `Plan.md` §2C.16; red first (19 loop, 8 contract/client/wire cases); a mis-attributed `call_budget` found and fixed on the way; then 34 files, 637 tests; mutation checks re-run, 4/4 | implementation session |
 | A suggestion for every category, `coach-step.v4` | 2026-10-07 | after `bba2f79` | `npx vitest run`, then `npm run verify` | the owner saw suggestions for only 4 categories; decision in `Plan.md` §2C.16 (backup word + repair); red first (17 new or amended cases); then 34 files, 654 tests; 4 new mutation checks, 4/4 caught (C20, C22); evals C20–C22 added, C1/C17/C18 amended in `AGENT_EVALS.md` | implementation session |
+| Systematic search, `coach-step.v5` | 2026-10-07 | after `1f82f6c` | `npx vitest run`, then `npm run verify` | the owner got no sea for H although the Halmahera Sea exists; prompt only, no search or word list (owner); red first (v5 missing), then 34 files, 655 tests; typecheck, lint, build clean. Whether it finds more terms can only be shown live | implementation session |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
 Used: **6** in development (3 Gemini, 3 Groq), 0 in the demo.
@@ -257,7 +258,8 @@ a run shows it.
 - "A suggestion for every category" (2026-10-07) is best effort: a category
   stays empty when the model knows no word the referee accepts in two words
   and one repair. Only completed runs get the repair. Not run live yet
-  (`coach-step.v4`).
+  (`coach-step.v4`, then `v5`, which asks for a systematic search of the
+  category; whether that finds more terms is unmeasured).
 
 ---
 

@@ -441,7 +441,7 @@ describe("the run log (T032)", () => {
     ]);
     await run();
     const record = recordOf(log);
-    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v4", stopReason: "goal_completed" });
+    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v5", stopReason: "goal_completed" });
     expect(record.steps.map((step) => [step.n, step.action, step.decision])).toEqual([
       [1, "check_candidates", "allowed"],
       [2, "check_candidates", "allowed"],
