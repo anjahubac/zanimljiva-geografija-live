@@ -36,8 +36,27 @@ const reply = (envelope: Envelope): { text: string } => ({
 });
 const check = (...candidates: Array<[string, string]>) =>
   reply({ action: "check_candidates", candidates: candidates.map(([category, term]) => ({ category, term })) });
-const final = (tips: Array<[string, string]>, summary = "Za reku prolazi Ljubljanica, za životinju Ljuskavac.") =>
+/** The model writes no summary any more (coach-step.v3): the game writes it. */
+const final = (tips: Array<[string, string]>, summary = "") =>
   reply({ action: "final", tips: tips.map(([category, evidenceId]) => ({ category, evidenceId })), summary, confidence: "medium" });
+
+/**
+ * The referee's reply (check-round.v3) to the game's own check of the words it
+ * would show: one accepted item per word, ids a0, a1, … in category order
+ * (country, city, river, mountain, sea, animal, …). `[written, recognised]`
+ * lets the referee correct a spelling.
+ */
+const refereeAccepts = (...names: Array<string | [string, string]>) => ({
+  text: JSON.stringify({
+    items: names.map((name, index) => ({
+      id: `a${index}`,
+      verdict: "accepted",
+      recognizedSr: Array.isArray(name) ? name[1] : name,
+      recognizedEn: "",
+      reason: "",
+    })),
+  }),
+});
 
 /** Step 1 of C1: c1 passes (river), c2 and c3 fail on the letter. */
 const STEP1 = check(["river", "Ljubljanica"], ["animal", "Lisica"], ["country", "Lihtenštajn"]);
@@ -49,7 +68,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function harness(script: Script[], options: { focus?: FocusEntry[]; signal?: AbortSignal } = {}) {
+function harness(script: Script[], options: { focus?: FocusEntry[]; signal?: AbortSignal; letter?: RoundSnapshot["letter"] } = {}) {
   const time = fakeTime();
   const timeouts: Array<{ fireAt: number; controller: AbortController }> = [];
   vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
@@ -80,7 +99,7 @@ function harness(script: Script[], options: { focus?: FocusEntry[]; signal?: Abo
   const ai = createAiService({ adapter, modelChain: CHAIN, thinkingLevel: null, telemetry, now: time.now, sleep: time.sleep, random: () => 0 });
   const coachSteps = vi.spyOn(ai, "coachStep");
   const log = memoryRunLog();
-  const snapshot: RoundSnapshot = { letter: "Lj", alphabet: "sr", focus: options.focus ?? FOCUS };
+  const snapshot: RoundSnapshot = { letter: options.letter ?? "Lj", alphabet: "sr", focus: options.focus ?? FOCUS };
 
   const run = (toolImpl?: Parameters<typeof runCoach>[1]["toolImpl"]): Promise<CoachRunOutcome> =>
     runCoach(
@@ -118,21 +137,23 @@ describe("C1 — a normal run: propose, revise, final", () => {
       STEP1,
       check(["animal", "Ljuskavac"]),
       final([["river", "c1"], ["animal", "c4"], ["country", ""]]),
+      refereeAccepts("Ljubljanica", "Ljuskavac"),
     ]);
     const report = reportOf(await run());
 
     expect(report).toMatchObject({ status: "completed", stopReason: "goal_completed", confidence: "medium" });
-    expect(report.summary).toBe("Za reku prolazi Ljubljanica, za životinju Ljuskavac.");
+    expect(report).not.toHaveProperty("summary");
     expect(suggestions(report)).toEqual({ country: null, river: "Ljubljanica", animal: "Ljuskavac" });
     expect(report.tips.find((tip) => tip.category === "river")).toEqual({
       category: "river",
       yourAnswer: "",
       whyMissed: "empty",
       suggestion: "Ljubljanica",
-      checkedBy: "letter_rule",
+      checkedBy: "letter_rule_and_referee",
     });
     expect(report.tips.find((tip) => tip.category === "country")?.checkedBy).toBeNull();
-    expect(recordOf(log).totals).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 3 });
+    // Amended 2026-10-07: plus one referee attempt for the game's own check.
+    expect(recordOf(log).totals).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 4 });
     expect(allowedAt(adapter, 0)).toEqual(["check_candidates"]);
     // With O1 built, passing words not yet judged also allow verify_terms (FR-016).
     expect(allowedAt(adapter, 1)).toEqual(["check_candidates", "verify_terms", "final"]);
@@ -150,7 +171,11 @@ describe("C1 — a normal run: propose, revise, final", () => {
 
 describe("C2 — every step-1 candidate passes", () => {
   it("no longer offers check_candidates at step 2, and completes with 2 steps and 1 tool call", async () => {
-    const { adapter, log, run } = harness([STEP1_ALL_PASS, final([["river", "c1"], ["animal", "c2"], ["country", "c3"]])]);
+    const { adapter, log, run } = harness([
+      STEP1_ALL_PASS,
+      final([["river", "c1"], ["animal", "c2"], ["country", "c3"]]),
+      refereeAccepts("Ljubotinj", "Ljubljanica", "Ljuskavac"),
+    ]);
     const report = reportOf(await run());
     expect(report.status).toBe("completed");
     // Core: ["final"]. With O1 built, the owner chose FR-016 over C2's Core wording
@@ -172,7 +197,7 @@ describe("C4 — an action outside the allowlist", () => {
         return { callId: numbering.callId, items: [] };
       }),
     );
-    expect(report).toMatchObject({ status: "failed", stopReason: "unknown_tool", summary: null });
+    expect(report).toMatchObject({ status: "failed", stopReason: "unknown_tool" });
     expect(toolRan).toBe(0);
     const record = recordOf(log);
     expect(record.totals.toolCalls).toBe(0);
@@ -190,9 +215,9 @@ describe("C5 — invalid tool arguments", () => {
   });
 
   it("refuses a known tool the step does not offer: check_candidates after every category passed", async () => {
-    const { log, run } = harness([STEP1_ALL_PASS, check(["river", "Ljuta"])]);
+    const { log, run } = harness([STEP1_ALL_PASS, check(["river", "Ljuta"]), refereeAccepts("Ljubotinj", "Ljubljanica", "Ljuskavac")]);
     const report = reportOf(await run());
-    expect(report).toMatchObject({ status: "incomplete", stopReason: "invalid_tool_args", summary: null, confidence: null });
+    expect(report).toMatchObject({ status: "incomplete", stopReason: "invalid_tool_args", confidence: null });
     expect(suggestions(report)).toEqual({ country: "Ljubotinj", river: "Ljubljanica", animal: "Ljuskavac" });
     expect(recordOf(log).totals.toolCalls).toBe(1);
   });
@@ -221,7 +246,12 @@ describe("C6 — the tool fails", () => {
 
 describe("C7 — a step's first attempt times out, the fallback answers", () => {
   it("counts one step with two attempts and goes on to completed", async () => {
-    const { log, run } = harness(["hang", STEP1_ALL_PASS, final([["river", "c1"], ["animal", "c2"], ["country", "c3"]])]);
+    const { log, run } = harness([
+      "hang",
+      STEP1_ALL_PASS,
+      final([["river", "c1"], ["animal", "c2"], ["country", "c3"]]),
+      refereeAccepts("Ljubotinj", "Ljubljanica", "Ljuskavac"),
+    ]);
     const report = reportOf(await run());
     expect(report.status).toBe("completed");
     const record = recordOf(log);
@@ -229,7 +259,7 @@ describe("C7 — a step's first attempt times out, the fallback answers", () => 
       ["initial", "failure", "timeout"],
       ["fallback", "success", null],
     ]);
-    expect(record.totals).toMatchObject({ modelSteps: 2, providerAttempts: 3 });
+    expect(record.totals).toMatchObject({ modelSteps: 2, providerAttempts: 4 });
   });
 });
 
@@ -248,7 +278,7 @@ describe("C8 — every attempt times out", () => {
 
 describe("C9 — a repeated check", () => {
   it("refuses Lisica again: repeated_call, tool calls stay 1, incomplete with step 1's pass", async () => {
-    const { log, run } = harness([STEP1, check(["animal", "lisica"])]);
+    const { log, run } = harness([STEP1, check(["animal", "lisica"]), refereeAccepts("Ljubljanica")]);
     const report = reportOf(await run());
     expect(report).toMatchObject({ status: "incomplete", stopReason: "repeated_call" });
     expect(suggestions(report)).toEqual({ country: null, river: "Ljubljanica", animal: null });
@@ -260,23 +290,25 @@ describe("C9 — a repeated check", () => {
 
 describe("C10 — the last step asks for a tool", () => {
   it("stops with max_steps; tool calls stay 2; evidence-only tips", async () => {
-    const { log, run } = harness([STEP1, check(["animal", "Ljuskavac"]), check(["country", "Ljubotinj"])]);
+    const { log, run } = harness([STEP1, check(["animal", "Ljuskavac"]), check(["country", "Ljubotinj"]), refereeAccepts("Ljubljanica", "Ljuskavac")]);
     const report = reportOf(await run());
-    expect(report).toMatchObject({ status: "incomplete", stopReason: "max_steps", summary: null });
+    expect(report).toMatchObject({ status: "incomplete", stopReason: "max_steps" });
     expect(suggestions(report)).toEqual({ country: null, river: "Ljubljanica", animal: "Ljuskavac" });
     expect(recordOf(log).totals).toMatchObject({ toolCalls: 2, modelSteps: 3 });
   });
 });
 
 describe("C11 — the deadline passes between steps", () => {
-  it("never starts step 3 when under 2 s are left", async () => {
+  it("never starts step 3 when under 2 s are left, and shows nothing it could not check", async () => {
     const { coachSteps, telemetry, log, run } = harness([
       STEP1,
       { ...check(["animal", "Ljuskavac"]), advanceMs: 23_500 },
       final([["river", "c1"], ["animal", "c4"], ["country", ""]]),
     ]);
     const report = reportOf(await run());
-    expect(report).toMatchObject({ status: "incomplete", stopReason: "deadline" });
+    // No time is left for the referee either, so no word can be shown (owner, 2026-10-07).
+    expect(report).toMatchObject({ status: "failed", stopReason: "deadline" });
+    expect(report.tips.every((tip) => tip.suggestion === null)).toBe(true);
     expect(coachSteps).toHaveBeenCalledTimes(2);
     expect(telemetry.records).toHaveLength(2);
     expect(recordOf(log).totals.modelSteps).toBe(2);
@@ -288,7 +320,8 @@ describe("C12 — the run's provider-attempt budget", () => {
     const RATE = { code: "rate_limited", httpStatus: 429 } as const;
     const { adapter, coachSteps, log, run } = harness([RATE, STEP1, RATE, check(["animal", "Ljuskavac"]), RATE, final([])]);
     const report = reportOf(await run());
-    expect(report).toMatchObject({ status: "incomplete", stopReason: "call_budget" });
+    // No attempt is left for the referee, so nothing can be shown (owner, 2026-10-07).
+    expect(report).toMatchObject({ status: "failed", stopReason: "call_budget" });
     expect(adapter.calls).toHaveLength(5);
     expect(recordOf(log).totals.providerAttempts).toBe(5);
     // Step 3 was given the one attempt the run had left.
@@ -298,18 +331,21 @@ describe("C12 — the run's provider-attempt budget", () => {
 
 describe("C13 — the final answer is validated whole", () => {
   const prefix = [STEP1, check(["animal", "Ljuskavac"])];
+  /** After a refused final the game still checks the words it would show. */
+  const checked = refereeAccepts("Ljubljanica", "Ljuskavac");
   const finals: Array<[string, Script[]]> = [
-    ["cites a failed id", [...prefix, final([["river", "c1"], ["animal", "c2"], ["country", ""]])]],
-    ["cites an unknown id", [...prefix, final([["river", "c1"], ["animal", "c9"], ["country", ""]])]],
-    ["cites another category's id", [...prefix, final([["river", "c1"], ["animal", "c1"], ["country", ""]])]],
-    ["omits a focus category", [...prefix, final([["river", "c1"], ["animal", "c4"]])]],
-    ["repeats a focus category", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""], ["river", ""]])]],
-    ["adds a category outside focus", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""], ["city", ""]])]],
-    ["has an empty summary", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""]], "   ")]],
-    ["has a 281-character summary", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""]], "x".repeat(281))]],
+    ["cites a failed id", [...prefix, final([["river", "c1"], ["animal", "c2"], ["country", ""]]), checked]],
+    ["cites an unknown id", [...prefix, final([["river", "c1"], ["animal", "c9"], ["country", ""]]), checked]],
+    ["cites another category's id", [...prefix, final([["river", "c1"], ["animal", "c1"], ["country", ""]]), checked]],
+    ["omits a focus category", [...prefix, final([["river", "c1"], ["animal", "c4"]]), checked]],
+    ["repeats a focus category", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""], ["river", ""]]), checked]],
+    ["adds a category outside focus", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""], ["city", ""]]), checked]],
+    // Amended 2026-10-07: the model writes no summary; any summary text makes the final invalid.
+    ["has a 281-character summary", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""]], "x".repeat(281)), checked]],
+    ["has any summary text at all", [...prefix, final([["river", "c1"], ["animal", "c4"], ["country", ""]], "Rosno more."), checked]],
     [
       "has no confidence",
-      [...prefix, reply({ action: "final", tips: [{ category: "river", evidenceId: "c1" }, { category: "animal", evidenceId: "c4" }, { category: "country", evidenceId: "" }], summary: "ok", confidence: "" })],
+      [...prefix, reply({ action: "final", tips: [{ category: "river", evidenceId: "c1" }, { category: "animal", evidenceId: "c4" }, { category: "country", evidenceId: "" }], summary: "", confidence: "" }), checked],
     ],
     ["arrives at step 1, which offers only check_candidates", [final([["river", ""], ["animal", ""], ["country", ""]])]],
   ];
@@ -319,7 +355,7 @@ describe("C13 — the final answer is validated whole", () => {
     const report = reportOf(await run());
     expect(report.stopReason).toBe("final_invalid");
     expect(report.status).not.toBe("completed");
-    expect(report.summary).toBeNull();
+    expect(report.confidence).toBeNull();
     // Whatever was shown passed the letter rule in this run.
     for (const suggestion of Object.values(suggestions(report))) {
       if (suggestion !== null) expect(["Ljubljanica", "Ljuskavac"]).toContain(suggestion);
@@ -355,7 +391,7 @@ describe("C19 — malformed model output", () => {
 
   it("a step-2 reply without tips: malformed_output, tool calls stay 1, incomplete with step 1's passes", async () => {
     const noTips = JSON.stringify({ action: "final", candidates: [], evidenceIds: [], summary: "x", confidence: "low" });
-    const { log, run } = harness([STEP1, { text: noTips }]);
+    const { log, run } = harness([STEP1, { text: noTips }, refereeAccepts("Ljubljanica")]);
     const report = reportOf(await run());
     expect(report).toMatchObject({ status: "incomplete", stopReason: "malformed_output" });
     expect(suggestions(report).river).toBe("Ljubljanica");
@@ -380,19 +416,24 @@ describe("the run log (T032)", () => {
       STEP1,
       check(["animal", "Ljuskavac"]),
       final([["river", "c1"], ["animal", "c4"], ["country", ""]]),
+      refereeAccepts("Ljubljanica", "Ljuskavac"),
     ]);
     await run();
     const record = recordOf(log);
-    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v2", stopReason: "goal_completed" });
+    expect(record).toMatchObject({ event: "agent.run", runId: "run-1", goal: "fill_gaps", promptVersion: "coach-step.v3", stopReason: "goal_completed" });
     expect(record.steps.map((step) => [step.n, step.action, step.decision])).toEqual([
       [1, "check_candidates", "allowed"],
       [2, "check_candidates", "allowed"],
       [3, "final", "allowed"],
     ]);
     expect(record.steps[0]!.tool).toMatchObject({ name: "check_candidates", items: 3, passed: 1 });
-    expect(record.totals.providerAttempts).toBe(record.steps.reduce((sum, step) => sum + step.attempts.length, 0));
-    // Each step's ai.interaction line is linked by <runId>:s<n>.
-    expect(telemetry.records.map((line) => line.interactionId)).toEqual(["run-1:s1", "run-1:s2", "run-1:s3"]);
+    expect(record.refereeCheck).toMatchObject({ items: 2, accepted: 2 });
+    expect(record.totals.providerAttempts).toBe(
+      record.steps.reduce((sum, step) => sum + step.attempts.length + (step.tool?.attempts?.length ?? 0), 0) +
+        (record.refereeCheck?.attempts.length ?? 0),
+    );
+    // Each step's ai.interaction line is linked by <runId>:s<n>; the game's own check by <runId>:check.
+    expect(telemetry.records.map((line) => line.interactionId)).toEqual(["run-1:s1", "run-1:s2", "run-1:s3", "run-1:check"]);
     const line = JSON.stringify(record);
     for (const word of ["Ljubljanica", "Lisica", "Lihtenštajn", "Ljuskavac", "Ljubljana", "Lav", "Za reku"]) {
       expect(line).not.toContain(word);
@@ -446,10 +487,28 @@ describe("C17 — the referee (verify_terms)", () => {
   });
 
   it("keeps going when the referee fails: the suggestions stay 'letter rule only'", async () => {
-    const { run } = harness([CHECK, verify("c1", "c2"), { code: "invalid_request", httpStatus: 400 }, final([["river", "c1"], ["animal", "c2"], ["country", ""]])]);
+    // Amended 2026-10-07: the game asks the referee again before the report.
+    const { run } = harness([
+      CHECK,
+      verify("c1", "c2"),
+      { code: "invalid_request", httpStatus: 400 },
+      final([["river", "c1"], ["animal", "c2"], ["country", ""]]),
+      referee("accepted"),
+    ]);
     const report = reportOf(await run());
     expect(report.status).toBe("completed");
-    expect(report.tips.filter((tip) => tip.suggestion !== null).map((tip) => tip.checkedBy)).toEqual(["letter_rule", "letter_rule"]);
+    expect(report.tips.filter((tip) => tip.suggestion !== null).map((tip) => tip.checkedBy)).toEqual([
+      "letter_rule_and_referee",
+      "letter_rule_and_referee",
+    ]);
+  });
+
+  it("shows no unchecked word when the referee is still down at the end", async () => {
+    const DOWN = { code: "invalid_request", httpStatus: 400 } as const;
+    const { run } = harness([CHECK, verify("c1", "c2"), DOWN, final([["river", "c1"], ["animal", "c2"], ["country", ""]]), DOWN]);
+    const report = reportOf(await run());
+    expect(report).toMatchObject({ status: "failed", stopReason: "provider_unavailable" });
+    expect(report.tips.every((tip) => tip.suggestion === null)).toBe(true);
   });
 
   it.each([
@@ -458,11 +517,15 @@ describe("C17 — the referee (verify_terms)", () => {
     ["the same id twice", ["c1", "c1"]],
     ["no id", []],
   ])("refuses %s: invalid_tool_args, nothing sent to the referee", async (_name, ids) => {
-    const { adapter, log, run } = harness([CHECK, verify(...ids)]);
+    const { telemetry, log, run } = harness([CHECK, verify(...ids), refereeAccepts("Ljubljanica", "Ljuskavac")]);
     const report = reportOf(await run());
     expect(report.stopReason).toBe("invalid_tool_args");
-    expect(adapter.calls).toHaveLength(2);
-    expect(recordOf(log).totals.toolCalls).toBe(1);
+    const record = recordOf(log);
+    expect(record.totals.toolCalls).toBe(1);
+    expect(record.steps[1]).toMatchObject({ decision: "rejected" });
+    expect(record.steps[1]!.tool).toBeUndefined();
+    // The tool sent nothing; the only referee request is the game's own check.
+    expect(telemetry.records.map((line) => line.interactionId)).toEqual(["run-1:s1", "run-1:s2", "run-1:check"]);
   });
 });
 
@@ -475,6 +538,7 @@ describe("C18 — run details on the report", () => {
       STEP1,
       check(["animal", "Ljuskavac"]),
       final([["river", "c1"], ["animal", "c4"], ["country", ""]]),
+      refereeAccepts("Ljubljanica", "Ljuskavac"),
     ]);
     const report = reportOf(await run());
     const record = recordOf(log);
@@ -487,12 +551,12 @@ describe("C18 — run details on the report", () => {
       providerAttempts: record.totals.providerAttempts,
       provider: "gemini",
       // Step 1 fell back to model-b; with no model-health memory in this harness,
-      // steps 2 and 3 start from the head of the chain again, so model-a answered last.
+      // later calls start from the head of the chain, so model-a (the referee) answered last.
       model: "model-a",
       elapsedMs: record.totals.elapsedMs,
       stopReason: "goal_completed",
     });
-    expect(report.run).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 4, elapsedMs: 6_000 });
+    expect(report.run).toMatchObject({ modelSteps: 3, toolCalls: 2, providerAttempts: 5, elapsedMs: 6_000 });
     const details = JSON.stringify(report.run);
     for (const word of ["Ljubljanica", "Lisica", "Ljuskavac", "Ljubljana", "Lav", "Za reku"]) expect(details).not.toContain(word);
   });
@@ -501,5 +565,49 @@ describe("C18 — run details on the report", () => {
     const { run } = harness([{ code: "invalid_request", httpStatus: 400 }]);
     const report = reportOf(await run());
     expect(report.run).toMatchObject({ modelSteps: 1, toolCalls: 0, providerAttempts: 1, provider: null, model: null, stopReason: "provider_unavailable" });
+  });
+});
+
+
+/* -------------------- only valid and checked answers (owner, 2026-10-07) */
+
+describe("only referee-accepted words reach the player", () => {
+  it("shows the referee's spelling, not the model's (Rtnj → Rtanj)", async () => {
+    const focus: FocusEntry[] = [{ category: "mountain", yourAnswer: "", whyMissed: "empty" }];
+    const round = { letter: "R" as const };
+    const { run } = harness([check(["mountain", "Rtnj"]), final([["mountain", "c1"]]), refereeAccepts(["Rtnj", "Rtanj"])], { focus, ...round });
+    const report = reportOf(await run());
+    expect(report.tips[0]).toMatchObject({ suggestion: "Rtanj", checkedBy: "letter_rule_and_referee" });
+  });
+
+  it("drops a cited word the referee rejects at the end, and still completes", async () => {
+    const rejectAnimal = {
+      text: JSON.stringify({
+        items: [
+          { id: "a0", verdict: "accepted", recognizedSr: "Ljubljanica", recognizedEn: "", reason: "" },
+          { id: "a1", verdict: "rejected", recognizedSr: "", recognizedEn: "", reason: "not_real" },
+        ],
+      }),
+    };
+    const { run } = harness([STEP1, check(["animal", "Ljuskavac"]), final([["river", "c1"], ["animal", "c4"], ["country", ""]]), rejectAnimal]);
+    const report = reportOf(await run());
+    expect(report.status).toBe("completed");
+    expect(suggestions(report)).toEqual({ country: null, river: "Ljubljanica", animal: null });
+  });
+
+  it("shows nothing it could not check: the referee down after a valid final", async () => {
+    const { run } = harness([STEP1, check(["animal", "Ljuskavac"]), final([["river", "c1"], ["animal", "c4"], ["country", ""]]), { code: "timeout" }, { code: "timeout" }]);
+    const report = reportOf(await run());
+    expect(report).toMatchObject({ status: "failed", stopReason: "provider_timeout" });
+    expect(report.tips.every((tip) => tip.suggestion === null)).toBe(true);
+  });
+
+  it("never sends the player's own or the opponent's answers to the referee: only the words it would show", async () => {
+    const { adapter, run } = harness([STEP1, check(["animal", "Ljuskavac"]), final([["river", "c1"], ["animal", "c4"], ["country", ""]]), refereeAccepts("Ljubljanica", "Ljuskavac")]);
+    await run();
+    const sent = adapter.calls[3]!.userContent;
+    expect(sent).toContain("Ljubljanica");
+    expect(sent).toContain("Ljuskavac");
+    for (const word of ["Lisica", "Lihtenštajn", "Ljubljana\"", "Lav"]) expect(sent).not.toContain(word);
   });
 });

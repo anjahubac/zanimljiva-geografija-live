@@ -5,7 +5,7 @@ next decision. No private chain-of-thought, no secrets, no tokens, no private
 URLs, no in-round answer payloads.
 
 Budget: 10–15 meaningful coding-agent iterations across Weeks 3–4.
-Used so far: **16 logged** (001–016; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
+Used so far: **17 logged** (001–017; corrected 2026-10-07, the line said 9). The Week 3 sessions for Steps 9–10 have no entries
 here; their results are recorded in `EVIDENCE_003.md` §2–§3 and the `EVALS.md`
 run log. Entry 007 was written afterwards, from the owner's summary of that
 session, not during it.
@@ -453,3 +453,27 @@ Live agent runs used: **6** (entry 015).
   where the two languages mostly agree). Code cannot enforce the language.
 - **Next decision:** whether to spend live runs on a letter where the names
   differ (for example E: Eufrat / Euphrates).
+
+## 017 — Round coach: only valid and checked answers (Claude Code, 2026-10-07)
+
+- **Phase:** Week 5, after W5-11, from the owner's own browser test.
+- **Reason:** the report's model-written summary named "Rosno more" for sea,
+  which the checks had not backed, and a suggestion read "Rtnj" (Rtanj),
+  because the referee tolerates typos and the coach showed the model's
+  spelling. The owner: "we need to give people only valid and checked
+  answers"; decisions recorded in `Plan.md` §2C.16 before code.
+- **Expected:** only referee-accepted words shown, in the referee's spelling;
+  the game always asks the referee before a report; the summary written by the
+  game; no new event, error code, stop reason or tool; Week 4 checker output
+  unchanged.
+- **Actual (verified in-session):** tests first (red), then `coach-step.v3`,
+  the game's own referee check in `runCoach`, named verdicts on an opt-in path
+  of `runCheck` (the seven Week 4 checker assertions unchanged), `summary`
+  removed from the report, the panel's own summary sentence and "Nema
+  proverenog predloga." While doing it a real bug surfaced: a provider failure
+  was labelled `call_budget` whenever the run's attempts happened to be spent;
+  now only when the run's budget actually narrowed the call. 637 tests pass;
+  mutation checks re-run, 4/4 caught. Eval amendments are dated notes in
+  `docs/AGENT_EVALS.md`; no expected text was rewritten.
+- **Not done:** no live run of v3.
+- **Next decision:** live runs on a letter where Serbian and English differ.

@@ -43,6 +43,14 @@ parse, and a generic `INTERNAL` on a thrown error.
 
 ## Ack
 
+_Update 2026-10-07 (owner: "only valid and checked answers", `Plan.md`
+§2C.16): the report has **no `summary`** — the client writes one sentence from
+the tips — and the refine is `completed ⇔ confidence !== null`. A tip's
+`suggestion` is set only for a word the referee accepted in this run, in the
+referee's spelling, so `checkedBy` is always `letter_rule_and_referee` when
+there is a suggestion. The examples below show the earlier shape._
+
+
 `Ack<CoachReport>` (`{ ok: true, data } | { ok: false, error }`), as every
 other event.
 

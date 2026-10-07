@@ -44,8 +44,10 @@ export type EvidenceItem = {
   term: string;
   passes: boolean;
   failure: CandidateFailure | null;
-  /** O1: what the referee said, once `verify_terms` asked it; absent until then. */
+  /** O1: what the referee said, once it was asked; absent until then. */
   referee?: "accepted" | "rejected" | "not_checked";
+  /** The referee's spelling of an accepted word, which is what the player is shown. */
+  shownAs?: string;
 };
 
 export type ToolScope = {
@@ -223,6 +225,8 @@ const verifyResultSchema = z
             id: z.string().regex(/^c\d{1,2}$/),
             verdict: z.enum(["accepted", "rejected", "unverified"]),
             reason: rejectReasonSchema.nullable(),
+            /** The referee's spelling of an accepted word; never shown to the model. */
+            name: z.string().min(1).max(MAX_ANSWER_LENGTH).optional(),
           })
           .strict(),
       )
@@ -234,7 +238,8 @@ export type VerifyResult = z.infer<typeof verifyResultSchema>;
 
 /** Two sheets of at most one word per category: the shape the W04 checker judges. */
 export type RefereeSheets = Record<PlayerSlot, Record<Category, string>>;
-export type RefereeVerdict = { valid: true } | { valid: false; reason: RejectReason };
+/** `name`: the referee's spelling of an accepted word, already checked against the letter. */
+export type RefereeVerdict = { valid: true; name?: string } | { valid: false; reason: RejectReason };
 
 export type VerifyDeps = {
   now: () => number;
@@ -268,6 +273,24 @@ export async function verifyTerms(proposal: unknown, scope: ToolScope, deps: Ver
     if (!item || !isPassing(item) || judged) return { ok: false, reason: "invalid_tool_args" };
     cited.push(item);
   }
+  const items = await askReferee(cited, deps.referee);
+  if (items === null) return { ok: false, reason: "invalid_tool_args" };
+  const raw: VerifyResult = { callId: `t${scope.toolCallsUsed + 1}`, items };
+  if (new TextEncoder().encode(JSON.stringify(raw)).length > MAX_VERIFY_RESULT_BYTES) return { ok: false, reason: "tool_failed" };
+  const result = verifyResultSchema.safeParse(raw);
+  return result.success ? { ok: true, result: result.data } : { ok: false, reason: "tool_failed" };
+}
+
+/**
+ * The referee on words that passed `check_candidates`: two sheets of at most
+ * one word per category, one call. Used by `verify_terms` and by the game's
+ * own check before a report. Null when a category has more than two words.
+ * Never throws: a referee failure leaves every word "unverified".
+ */
+export async function askReferee(
+  cited: readonly EvidenceItem[],
+  referee: VerifyDeps["referee"],
+): Promise<VerifyResult["items"] | null> {
   const sheets: RefereeSheets = {
     1: Object.fromEntries(CATEGORIES.map((category) => [category, ""])) as Record<Category, string>,
     2: Object.fromEntries(CATEGORIES.map((category) => [category, ""])) as Record<Category, string>,
@@ -275,31 +298,24 @@ export async function verifyTerms(proposal: unknown, scope: ToolScope, deps: Ver
   const slotOf = new Map<string, PlayerSlot>();
   for (const item of cited) {
     const slot: PlayerSlot | null = sheets[1][item.category] === "" ? 1 : sheets[2][item.category] === "" ? 2 : null;
-    if (slot === null) return { ok: false, reason: "invalid_tool_args" };
+    if (slot === null) return null;
     sheets[slot][item.category] = item.term;
     slotOf.set(item.id, slot);
   }
 
   let verdictOf: Awaited<ReturnType<VerifyDeps["referee"]>> = null;
   try {
-    verdictOf = await deps.referee(sheets);
+    verdictOf = await referee(sheets);
   } catch {
     verdictOf = null;
   }
 
-  const raw: VerifyResult = {
-    callId: `t${scope.toolCallsUsed + 1}`,
-    items: cited.map((item) => {
-      const verdict = verdictOf?.(slotOf.get(item.id)!, item.category);
-      if (!verdict) return { id: item.id, verdict: "unverified" as const, reason: null };
-      return verdict.valid
-        ? { id: item.id, verdict: "accepted" as const, reason: null }
-        : { id: item.id, verdict: "rejected" as const, reason: verdict.reason };
-    }),
-  };
-  if (new TextEncoder().encode(JSON.stringify(raw)).length > MAX_VERIFY_RESULT_BYTES) return { ok: false, reason: "tool_failed" };
-  const result = verifyResultSchema.safeParse(raw);
-  return result.success ? { ok: true, result: result.data } : { ok: false, reason: "tool_failed" };
+  return cited.map((item) => {
+    const verdict = verdictOf?.(slotOf.get(item.id)!, item.category);
+    if (!verdict) return { id: item.id, verdict: "unverified" as const, reason: null };
+    if (!verdict.valid) return { id: item.id, verdict: "rejected" as const, reason: verdict.reason };
+    return { id: item.id, verdict: "accepted" as const, reason: null, ...(verdict.name ? { name: verdict.name } : {}) };
+  });
 }
 
 /* --------------------------------------------------------------- allowlist */

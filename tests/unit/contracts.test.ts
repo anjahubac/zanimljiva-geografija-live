@@ -47,7 +47,6 @@ import {
 import { COACH_STEP_JSON_SCHEMA, coachStepSchema } from "@contracts/ai-output.schemas";
 import {
   COACH_GOALS,
-  COACH_SUMMARY_MAX,
   coachReportSchema,
   coachRequestSchema,
   coachStopReasonSchema,
@@ -408,7 +407,6 @@ describe("round coach — request (contracts/coach-socket.md)", () => {
 describe("round coach — report, the caller's ack (contracts/coach-socket.md)", () => {
   const completed = {
     status: "completed",
-    summary: "Za reku na Lj prolazi Ljubljanica. Za životinju nisam našao reč na Lj koja prolazi pravilo slova.",
     tips: [
       { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule" },
       { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter", suggestion: null, checkedBy: null },
@@ -418,7 +416,6 @@ describe("round coach — report, the caller's ack (contracts/coach-socket.md)",
   };
   const incomplete = {
     status: "incomplete",
-    summary: null,
     confidence: null,
     tips: [
       { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule" },
@@ -442,11 +439,14 @@ describe("round coach — report, the caller's ack (contracts/coach-socket.md)",
     expect(coachReportSchema.safeParse(failed).success).toBe(true);
   });
 
-  it("rejects completed without a summary, and incomplete with one", () => {
-    expect(coachReportSchema.safeParse({ ...completed, summary: null }).success).toBe(false);
+  it("gives a confidence to a completed report only", () => {
     expect(coachReportSchema.safeParse({ ...completed, confidence: null }).success).toBe(false);
-    expect(coachReportSchema.safeParse({ ...incomplete, summary: "Nešto." }).success).toBe(false);
     expect(coachReportSchema.safeParse({ ...incomplete, confidence: "high" }).success).toBe(false);
+  });
+
+  it("carries no model text: a summary field is refused (owner, 2026-10-07)", () => {
+    expect(coachReportSchema.safeParse({ ...completed, summary: "Rosno more." }).success).toBe(false);
+    expect(coachReportSchema.safeParse({ ...incomplete, summary: null }).success).toBe(false);
   });
 
   it("never carries the log-only stop reason cancelled", () => {
@@ -454,9 +454,7 @@ describe("round coach — report, the caller's ack (contracts/coach-socket.md)",
     expect(coachReportSchema.safeParse({ ...incomplete, stopReason: "cancelled" }).success).toBe(false);
   });
 
-  it("bounds the summary to 280 characters and rejects extra keys on a tip", () => {
-    expect(COACH_SUMMARY_MAX).toBe(280);
-    expect(coachReportSchema.safeParse({ ...completed, summary: "x".repeat(281) }).success).toBe(false);
+  it("rejects extra keys on a tip and on the report", () => {
     const smuggled = { ...completed, tips: [{ ...completed.tips[0], points: 10 }] };
     expect(coachReportSchema.safeParse(smuggled).success).toBe(false);
     expect(coachReportSchema.safeParse({ ...completed, score: 999 }).success).toBe(false);

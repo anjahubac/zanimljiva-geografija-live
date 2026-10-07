@@ -16,9 +16,6 @@ import {
 
 /** Core has one goal (§2C.16 decision 2). */
 export const COACH_GOALS = ["fill_gaps"] as const;
-export const COACH_SUMMARY_MAX = 280;
-
-const noControlCharacters = (value: string) => !/\p{Cc}/u.test(value);
 
 /** Why a focus category scored 0: blank, or one of the reveal's reasons. */
 export const missReasonSchema = z.enum(["empty", ...REJECT_REASONS]);
@@ -69,7 +66,10 @@ export const coachTipSchema = z
     /** From the server's record of the round, never the model's. */
     yourAnswer: z.string().max(MAX_ANSWER_LENGTH),
     whyMissed: missReasonSchema,
-    /** Copied from a passing tool item of this run, never from the model's reply. */
+    /**
+     * A word the referee accepted in this run, in the referee's spelling;
+     * never the model's text (owner, 2026-10-07: only valid and checked answers).
+     */
     suggestion: z.string().min(1).max(MAX_ANSWER_LENGTH).nullable(),
     checkedBy: z.enum(["letter_rule", "letter_rule_and_referee"]).nullable(),
   })
@@ -90,20 +90,19 @@ export const runDetailsSchema = z
   .strict();
 export type RunDetails = z.infer<typeof runDetailsSchema>;
 
+/**
+ * No model text: the summary the player reads is written by the client from
+ * the checked tips (owner, 2026-10-07), so the report has no `summary` field.
+ */
 export const coachReportSchema = z
   .object({
     status: z.enum(["completed", "incomplete", "failed"]),
-    summary: z.string().min(1).max(COACH_SUMMARY_MAX).refine(noControlCharacters, "control character").nullable(),
     tips: z.array(coachTipSchema).min(1).max(CATEGORY_COUNT),
     confidence: z.enum(["low", "medium", "high"]).nullable(),
     stopReason: coachStopReasonSchema,
     run: runDetailsSchema.optional(),
   })
   .strict()
-  // A summary and a confidence belong to a completed report only (§2C.7).
-  .refine((report) =>
-    report.status === "completed"
-      ? report.summary !== null && report.confidence !== null
-      : report.summary === null && report.confidence === null,
-  );
+  // A confidence belongs to a completed report only (§2C.7).
+  .refine((report) => (report.status === "completed") === (report.confidence !== null));
 export type CoachReport = z.infer<typeof coachReportSchema>;

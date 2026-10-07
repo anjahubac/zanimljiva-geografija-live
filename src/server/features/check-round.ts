@@ -38,6 +38,16 @@ export type AiVerdict =
 /** Verdicts for every answer that was sent, keyed by `answerKey`. */
 export type CheckVerdicts = Map<string, AiVerdict>;
 
+/**
+ * The round coach only (`Plan.md` §2C.16, "only valid and checked answers"):
+ * an accepted verdict that also carries the referee's names, so the coach can
+ * show the referee's spelling ("Rtanj") instead of the model's ("Rtnj").
+ * `checked` is the name the letter was checked on.
+ */
+export type NamedVerdict =
+  | { valid: true; canonical: string; names?: { sr: string | null; en: string | null; checked: string } }
+  | { valid: false; reason: RejectReason };
+
 export const answerKey = (slot: PlayerSlot, category: Category): string => `${slot}:${category}`;
 
 export type CheckPlan = {
@@ -95,6 +105,17 @@ export function validateCheck(
   alphabet: Language,
   plan: CheckPlan,
 ): Validation<Map<string, AiVerdict>> {
+  return judgeCheck(text, letter, alphabet, plan, false);
+}
+
+/** The same judgement; with `withNames`, accepted verdicts keep the referee's names. */
+function judgeCheck(
+  text: string,
+  letter: Letter,
+  alphabet: Language,
+  plan: CheckPlan,
+  withNames: boolean,
+): Validation<Map<string, NamedVerdict>> {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -116,7 +137,7 @@ export function validateCheck(
   }
 
   const notes: ValidationNotes = { items: plan.items.length, overrides: 0 };
-  const verdicts = new Map<string, AiVerdict>();
+  const verdicts = new Map<string, NamedVerdict>();
 
   for (const sent of plan.items) {
     const item = byId.get(sent.id)!;
@@ -139,7 +160,12 @@ export function validateCheck(
       // One key per term, whichever language the player used, so "Srbija"
       // and "Serbia" are the same answer.
       const canonical = compactFold(blank(item.recognizedSr) ?? name);
-      verdicts.set(sent.id, { valid: true, canonical });
+      verdicts.set(
+        sent.id,
+        withNames
+          ? { valid: true, canonical, names: { sr: blank(item.recognizedSr), en: blank(item.recognizedEn), checked: name } }
+          : { valid: true, canonical },
+      );
     }
   }
 
@@ -155,10 +181,10 @@ export async function runCheck(
   alphabet: Language,
   sheets: Sheets,
   deps: GatewayDeps & { interactionId: string },
-  options: { budget?: RetryBudget; signal?: AbortSignal } = {},
-): Promise<AiResult<CheckVerdicts>> {
+  options: { budget?: RetryBudget; signal?: AbortSignal; withNames?: boolean } = {},
+): Promise<AiResult<Map<string, NamedVerdict>>> {
   const plan = planCheck(letter, alphabet, sheets);
-  const toAnswers = (byItem: Map<string, AiVerdict>): CheckVerdicts =>
+  const toAnswers = (byItem: Map<string, NamedVerdict>): Map<string, NamedVerdict> =>
     new Map([...plan.itemOf].map(([key, id]) => [key, byItem.get(id)!]));
 
   // Nothing passed the local rule: there is nothing to ask, and it is still verified.
@@ -177,7 +203,7 @@ export async function runCheck(
       temperature: 0,
       maxOutputTokens: 2_000,
       budget: options.budget ?? BUDGETS["check-round"],
-      validate: (text) => validateCheck(text, letter, alphabet, plan),
+      validate: (text) => judgeCheck(text, letter, alphabet, plan, options.withNames ?? false),
     },
     deps,
     options.signal,

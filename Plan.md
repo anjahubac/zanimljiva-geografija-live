@@ -1105,6 +1105,28 @@ W5-0 still waits for the owner's keys (W4-7). W5-4 to W5-10b need no key and
 can start before W4-7; the live runs (W5-11) cannot. **Implementation starts at
 W5-4, and only when the owner asks for it.**
 
+**Owner's decision, 2026-10-07, after the first browser test ("we need to give
+people only valid and checked answers"):** the owner saw a summary naming an
+unchecked "Rosno more" and a suggestion spelled "Rtnj" (Rtanj). Decided:
+
+- **The game always asks the referee.** Before a report is shown, the
+  application itself sends every word it would show and the referee has not
+  judged to the W04 referee, whatever the stop reason. This is not a tool call
+  (the model did not ask for it), but its provider attempts count toward the
+  run's 5 and its call toward `AI_DAILY_CALL_BUDGET`. With no attempt or under
+  2 s left, it is not made.
+- **Only referee-accepted words are shown,** in the referee's own spelling (its
+  name in the player's language when that starts with the round letter,
+  otherwise the name it checked the letter on), re-checked against the letter.
+  "Letter rule only" suggestions are no longer shown.
+- **The summary is written by the game,** from the checked list, in the
+  player's language. The report has no model text; `summary` leaves the report
+  contract, and the model leaves the envelope's `summary` empty
+  (`coach-step.v3`).
+- **Referee unreachable:** unchecked words are not shown; the report is
+  partial if another word was accepted, otherwise "could not complete safely",
+  with the existing stop reason of the failure. No new stop reason or field.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.

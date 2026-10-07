@@ -16,6 +16,8 @@ the opponent's answers. One run per player per round, and the run is bounded
 in steps, checks, AI attempts and time. Nothing about the round itself — sheet,
 letter, timing, judging, scoring — changes. Recorded in `Plan.md` §2C and
 §2C.16, `docs/EVIDENCE_005.md` (W5-1) and `specs/010-round-coach-agent`.
+_2026-10-07, owner:_ only words the answer referee accepted are shown, in the
+referee's spelling, and the summary is written by the game, not the AI.
 
 **Amendment 7 — 2026-09-30, at the product owner's request.** The round
 letter is no longer limited to `A, B, D, K, M, S, V` (§5). A room's letter

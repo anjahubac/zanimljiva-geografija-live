@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import { COACH_STEP_JSON_SCHEMA, coachStepSchema, type CoachStep } from "@contracts/ai-output.schemas";
 import type { Category, Language, Letter } from "@contracts/game.schemas";
 import { runBotAnswers } from "@server/features/bot-answers";
-import { runCheck, type CheckVerdicts, type Sheets } from "@server/features/check-round";
+import { runCheck, type CheckVerdicts, type NamedVerdict, type Sheets } from "@server/features/check-round";
 import { runHint, type HintOutcome } from "@server/features/hint";
 import {
   buildCoachStepContent,
   COACH_STEP_PROMPT_VERSION,
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v2";
+} from "@server/prompts/coach-step.v3";
 import { generate } from "./gateway";
 import { createDebugSink, type DebugEnv } from "./debug-log";
 import type { GatewayDeps } from "./gateway";
@@ -36,7 +36,7 @@ export type CoachStepResult =
 
 /** O1: the referee on the coach's passing words; failures are values, as everywhere. */
 export type VerifyTermsResult =
-  | { ok: true; verdicts: CheckVerdicts; attempts: ProviderAttempt[] }
+  | { ok: true; verdicts: Map<string, NamedVerdict>; attempts: ProviderAttempt[] }
   | { ok: false; code: AiFailureCode; attempts: ProviderAttempt[] };
 
 /** JSON parse and the envelope schema only (contracts/model-step.md). Exported for tests. */
@@ -119,6 +119,7 @@ export function createAiService(deps: Omit<GatewayDeps, "telemetry"> & Partial<P
       const deps = { ...gateway(), interactionId: options.interactionId };
       const result = await runCheck(letter, alphabet, sheets, deps, {
         budget: options.budget,
+        withNames: true,
         ...(options.signal ? { signal: options.signal } : {}),
       }).catch(() => null);
       if (!result) return { ok: false, code: "transport", attempts: [] };

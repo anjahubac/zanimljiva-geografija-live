@@ -2,7 +2,7 @@ import type { Category, Language, Letter } from "@contracts/game.schemas";
 import type { CoachStep } from "@contracts/ai-output.schemas";
 import type { AiService, CoachStepOptions, CoachStepResult, HintResult, VerifyTermsResult } from "@server/ai/service";
 import { answerKey, type CheckVerdicts, type Sheets } from "@server/features/check-round";
-import type { CoachStepInput } from "@server/prompts/coach-step.v2";
+import type { CoachStepInput } from "@server/prompts/coach-step.v3";
 
 /**
  * A scriptable stand-in for the whole AI service, for store and socket tests.
@@ -25,7 +25,6 @@ export type FakeAi = AiService & {
 };
 
 export const DEFAULT_CLUE = "A clue that describes the term without naming it.";
-export const DEFAULT_COACH_SUMMARY = "A short summary of what would have counted.";
 
 /** A promise the test resolves by hand, to hold the AI "thinking". */
 export function deferred<T>() {
@@ -65,7 +64,6 @@ async function defaultCoachStep(input: CoachStepInput): Promise<CoachStepResult>
   const items = input.toolResults.flatMap((result) => (result.tool === "check_candidates" ? result.items : []));
   return coachReply({
     action: "final",
-    summary: DEFAULT_COACH_SUMMARY,
     confidence: "medium",
     tips: input.focus.map((entry) => ({
       category: entry.category,
@@ -103,7 +101,10 @@ export function fakeAi(botSheet?: Partial<Record<Category, string>>): FakeAi {
         ([1, 2] as const).flatMap((slot) =>
           Object.entries(sheets[slot])
             .filter(([, word]) => word !== "")
-            .map(([category, word]) => [answerKey(slot, category as Category), { valid: true as const, canonical: word.toLowerCase() }]),
+            .map(([category, word]) => [
+              answerKey(slot, category as Category),
+              { valid: true as const, canonical: word.toLowerCase(), names: { sr: word, en: null, checked: word } },
+            ]),
         ),
       ),
       attempts: [{ ...FAKE_ATTEMPT }],

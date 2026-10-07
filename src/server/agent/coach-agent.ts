@@ -1,24 +1,22 @@
 import type { CoachStep } from "@contracts/ai-output.schemas";
-import {
-  COACH_SUMMARY_MAX,
-  coachReportSchema,
-  type CoachReport,
-  type CoachStopReason,
-  type CoachTip,
-} from "@contracts/coach.schemas";
-import type { Language } from "@contracts/game.schemas";
-import { answerKey } from "@server/features/check-round";
+import { coachReportSchema, type CoachReport, type CoachStopReason, type CoachTip } from "@contracts/coach.schemas";
+import { MAX_ANSWER_LENGTH, type Category, type Language, type PlayerSlot } from "@contracts/game.schemas";
+import { startsWithLetter } from "@domain/validate-answer";
+import { answerKey, type NamedVerdict } from "@server/features/check-round";
+import { canFallBack } from "@server/ai/classify";
 import { BUDGETS } from "@server/ai/retry-policy";
-import type { AiService, CoachStepResult } from "@server/ai/service";
-import type { AiFailureCode } from "@server/ai/types";
-import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v2";
+import type { AiService, CoachStepResult, VerifyTermsResult } from "@server/ai/service";
+import type { AiFailureCode, ProviderAttempt } from "@server/ai/types";
+import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v3";
 import { RUN_LIMITS } from "./limits";
 import type { AgentRunRecord, RunLogSink, StepRecord } from "./run-log";
 import {
   TOOLS,
+  askReferee,
   isPassing,
   isToolName,
   type EvidenceItem,
+  type RefereeSheets,
   type RefereeVerdict,
   type RoundSnapshot,
   type ToolDeps,
@@ -75,6 +73,17 @@ function stopReasonFor(code: AiFailureCode): CoachStopReason | "cancelled" {
   return "provider_unavailable";
 }
 
+/**
+ * A provider failure is the run's budget (`call_budget`) only when the run's
+ * remaining attempts narrowed this call below the per-step 2, all of them
+ * were used, and the failure is one the gateway would otherwise have retried
+ * or passed to the next model. Anything else keeps the provider's reason.
+ */
+function failureReason(code: AiFailureCode, granted: number, used: number): CoachStopReason | "cancelled" {
+  const narrowedByRun = granted < RUN_LIMITS.maxAttemptsPerStep && used >= granted;
+  return narrowedByRun && canFallBack(code) ? "call_budget" : stopReasonFor(code);
+}
+
 /** Research R7 (with O1): what a step may do, from the run's state alone. */
 function allowedActions(step: number, toolCalls: number, snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): Action[] {
   if (step === 1) return ["check_candidates"];
@@ -89,64 +98,70 @@ function allowedActions(step: number, toolCalls: number, snapshot: RoundSnapshot
   return actions;
 }
 
-const checkedByOf = (item: EvidenceItem): "letter_rule" | "letter_rule_and_referee" =>
-  item.referee === "accepted" ? "letter_rule_and_referee" : "letter_rule";
-
-/** The final's tips, if the final is valid (contracts/model-step.md "Final validation"). */
-function validateFinal(envelope: CoachStep, snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): CoachReport | null {
-  if (envelope.candidates.length > 0 || envelope.evidenceIds.length > 0) return null;
-
-  const summary = envelope.summary.trim();
-  if (summary.length < 1 || summary.length > COACH_SUMMARY_MAX || /\p{Cc}/u.test(summary)) return null;
+/**
+ * The final, whole (contracts/model-step.md "Final validation"): every focus
+ * category exactly once, each with "" or a passing item of this run in the same
+ * category, a confidence, and no model text (owner, 2026-10-07: the summary is
+ * the game's). Returns the cited item per category, or null.
+ */
+function validateFinal(
+  envelope: CoachStep,
+  snapshot: RoundSnapshot,
+  evidence: readonly EvidenceItem[],
+): { cited: Map<Category, EvidenceItem | null>; confidence: (typeof CONFIDENCE)[number] } | null {
+  if (envelope.candidates.length > 0 || envelope.evidenceIds.length > 0 || envelope.summary !== "") return null;
   const confidence = CONFIDENCE.find((level) => level === envelope.confidence);
   if (!confidence) return null;
 
-  // Every focus category exactly once, and nothing else.
   if (envelope.tips.length !== snapshot.focus.length) return null;
-  const cited = new Map<string, string>();
+  const ids = new Map<string, string>();
   for (const tip of envelope.tips) {
-    if (cited.has(tip.category)) return null;
-    cited.set(tip.category, tip.evidenceId);
+    if (ids.has(tip.category)) return null;
+    ids.set(tip.category, tip.evidenceId);
   }
 
-  const tips: CoachTip[] = [];
+  const cited = new Map<Category, EvidenceItem | null>();
   for (const entry of snapshot.focus) {
-    const evidenceId = cited.get(entry.category);
+    const evidenceId = ids.get(entry.category);
     if (evidenceId === undefined) return null;
-    let suggestion: string | null = null;
-    if (evidenceId !== "") {
-      // A passing item of this run, in the same category; its text, not the model's.
-      const item = evidence.find((each) => each.id === evidenceId);
-      if (!item || !isPassing(item) || item.category !== entry.category) return null;
-      suggestion = item.term;
+    if (evidenceId === "") {
+      cited.set(entry.category, null);
+      continue;
     }
-    const item = evidenceId === "" ? undefined : evidence.find((each) => each.id === evidenceId);
-    tips.push({
-      category: entry.category,
-      yourAnswer: entry.yourAnswer,
-      whyMissed: entry.whyMissed,
-      suggestion,
-      checkedBy: suggestion === null || !item ? null : checkedByOf(item),
-    });
+    const item = evidence.find((each) => each.id === evidenceId);
+    if (!item || !isPassing(item) || item.category !== entry.category) return null;
+    cited.set(entry.category, item);
   }
-
-  return { status: "completed", summary, tips, confidence, stopReason: "goal_completed" };
+  return { cited, confidence };
 }
 
-/** Any stop but a valid final: evidence only, no model text (research R10). */
-function evidenceReport(stopReason: CoachStopReason, snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): CoachReport {
-  const tips: CoachTip[] = snapshot.focus.map((entry) => {
-    const item = evidence.find((each) => each.category === entry.category && isPassing(each));
-    return {
-      category: entry.category,
-      yourAnswer: entry.yourAnswer,
-      whyMissed: entry.whyMissed,
-      suggestion: item ? item.term : null,
-      checkedBy: item ? checkedByOf(item) : null,
-    };
-  });
-  const anyPassed = tips.some((tip) => tip.suggestion !== null);
-  return { status: anyPassed ? "incomplete" : "failed", summary: null, tips, confidence: null, stopReason };
+/** Any other stop: per category, the passing word to offer — one the referee accepted, else the first. */
+function bestPassing(snapshot: RoundSnapshot, evidence: readonly EvidenceItem[]): Map<Category, EvidenceItem | null> {
+  return new Map(
+    snapshot.focus.map((entry) => {
+      const passing = evidence.filter((each) => each.category === entry.category && isPassing(each));
+      return [entry.category, passing.find((each) => each.referee === "accepted") ?? passing[0] ?? null];
+    }),
+  );
+}
+
+/**
+ * The spelling to show for an accepted word: the referee's name in the
+ * player's language when it starts with the round letter, else the name the
+ * referee checked the letter on. Never the model's spelling when the referee
+ * gave one ("Rtnj" → "Rtanj").
+ */
+function shownName(verdict: NamedVerdict, language: Language, snapshot: RoundSnapshot): string | undefined {
+  if (!verdict.valid || !verdict.names) return undefined;
+  const { names } = verdict;
+  const preferred = language === "sr" ? names.sr : names.en;
+  return [preferred, names.checked].find(
+    (name): name is string =>
+      name !== null &&
+      name.length <= MAX_ANSWER_LENGTH &&
+      !/\p{Cc}/u.test(name) &&
+      startsWithLetter(name, snapshot.letter, snapshot.alphabet),
+  );
 }
 
 /** The model's action name, for the log only if it is a plain identifier. */
@@ -163,8 +178,121 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
   let toolCalls = 0;
   let attemptsUsed = 0;
 
-  const finish = (stopReason: CoachStopReason | "cancelled", completed?: CoachReport): CoachRunOutcome => {
-    const report = stopReason === "cancelled" ? null : (completed ?? evidenceReport(stopReason, snapshot, evidence));
+  let refereeCheck: AgentRunRecord["refereeCheck"];
+
+  /**
+   * One referee call, bound to the run's time, attempts and signal. Returns the
+   * verdict lookup, or the stop reason it failed with. Used by `verify_terms`
+   * and by the game's own check before a report.
+   */
+  const callReferee = async (
+    sheets: RefereeSheets,
+    interactionId: string,
+    attempts: ProviderAttempt[],
+  ): Promise<{ verdictOf: (slot: PlayerSlot, category: Category) => RefereeVerdict | undefined } | { failed: CoachStopReason | "cancelled" }> => {
+    if (deps.signal.aborted) return { failed: "cancelled" };
+    const timeLeft = deadlineAt - deps.now();
+    const attemptsNow = RUN_LIMITS.maxAttemptsPerRun - attemptsUsed;
+    if (timeLeft < RUN_LIMITS.minStepMs) return { failed: "deadline" };
+    if (attemptsNow <= 0) return { failed: "call_budget" };
+    const verified = await deps.ai
+      .verifyTerms(snapshot.letter, snapshot.alphabet, sheets, {
+        interactionId,
+        budget: {
+          ...BUDGETS["check-round"],
+          totalMs: Math.min(RUN_LIMITS.perStepMs, timeLeft),
+          maxAttempts: Math.min(RUN_LIMITS.maxAttemptsPerStep, attemptsNow),
+        },
+        signal: deps.signal,
+      })
+      .catch((): VerifyTermsResult => ({ ok: false, code: "transport", attempts: [] }));
+    attempts.push(...verified.attempts);
+    attemptsUsed += verified.attempts.length;
+    if (!verified.ok) {
+      const granted = Math.min(RUN_LIMITS.maxAttemptsPerStep, attemptsNow);
+      return { failed: failureReason(verified.code, granted, verified.attempts.length) };
+    }
+    return {
+      verdictOf: (slot, category) => {
+        const verdict = verified.verdicts.get(answerKey(slot, category));
+        if (!verdict) return undefined;
+        if (!verdict.valid) return { valid: false, reason: verdict.reason };
+        const name = shownName(verdict, context.language, snapshot);
+        return name ? { valid: true, name } : { valid: true };
+      },
+    };
+  };
+
+  /** Records what the referee said about each word, and the spelling to show. */
+  const applyVerdicts = (items: ReadonlyArray<{ id: string; verdict: "accepted" | "rejected" | "unverified"; name?: string }>) => {
+    for (const verdict of items) {
+      const item = evidence.find((each) => each.id === verdict.id)!;
+      item.referee = verdict.verdict === "unverified" ? "not_checked" : verdict.verdict;
+      if (verdict.name) item.shownAs = verdict.name;
+    }
+  };
+
+  /**
+   * Ends the run. Owner, 2026-10-07: only valid and checked answers reach the
+   * player. Whatever the stop, the words that would be shown and that the
+   * referee has not accepted go to the referee first (not a tool call; its
+   * attempts count toward the run's 5), and only accepted words are shown, in
+   * the referee's spelling. No model text is shown.
+   */
+  const finish = async (
+    stopReason: CoachStopReason | "cancelled",
+    final?: { cited: Map<Category, EvidenceItem | null>; confidence: (typeof CONFIDENCE)[number] },
+  ): Promise<CoachRunOutcome> => {
+    let outcome: CoachStopReason | "cancelled" = stopReason;
+    let chosen = new Map<Category, EvidenceItem | null>();
+
+    if (stopReason !== "cancelled") {
+      chosen = final ? final.cited : bestPassing(snapshot, evidence);
+      const toCheck = [...chosen.values()].filter(
+        (item): item is EvidenceItem => item !== null && item.referee !== "accepted",
+      );
+      if (toCheck.length > 0) {
+        const attempts: ProviderAttempt[] = [];
+        let failed: CoachStopReason | "cancelled" | null = null;
+        const items = await askReferee(toCheck, async (sheets) => {
+          const answer = await callReferee(sheets, `${context.runId}:check`, attempts);
+          if ("failed" in answer) {
+            failed = answer.failed;
+            return null;
+          }
+          return answer.verdictOf;
+        });
+        if (items) applyVerdicts(items);
+        refereeCheck = {
+          items: toCheck.length,
+          accepted: (items ?? []).filter((item) => item.verdict === "accepted").length,
+          attempts,
+        };
+        if (failed === "cancelled" || deps.signal.aborted) outcome = "cancelled";
+        // A failed check turns a completed run partial; any other stop keeps its own reason.
+        else if (failed && final) outcome = failed;
+      }
+    }
+
+    const tips: CoachTip[] = snapshot.focus.map((entry) => {
+      const item = chosen.get(entry.category) ?? null;
+      const shown = item !== null && item.referee === "accepted" ? (item.shownAs ?? item.term) : null;
+      return {
+        category: entry.category,
+        yourAnswer: entry.yourAnswer,
+        whyMissed: entry.whyMissed,
+        suggestion: shown,
+        checkedBy: shown === null ? null : "letter_rule_and_referee",
+      };
+    });
+    const anyShown = tips.some((tip) => tip.suggestion !== null);
+    const report: Omit<CoachReport, "run"> | null =
+      outcome === "cancelled"
+        ? null
+        : outcome === "goal_completed" && final
+          ? { status: "completed", tips, confidence: final.confidence, stopReason: "goal_completed" }
+          : { status: anyShown ? "incomplete" : "failed", tips, confidence: null, stopReason: outcome };
+
     const totals = { modelSteps: steps.length, providerAttempts: attemptsUsed, toolCalls, elapsedMs: deps.now() - startedAt };
     const record: AgentRunRecord = {
       event: "agent.run",
@@ -172,16 +300,19 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
       goal: context.goal,
       promptVersion: COACH_STEP_PROMPT_VERSION,
       status: report ? report.status : "cancelled",
-      stopReason,
+      stopReason: outcome,
       steps,
+      ...(refereeCheck ? { refereeCheck } : {}),
       totals,
     };
     deps.log(record);
     if (!report) return { cancelled: true };
 
     // O6: the run log's totals and the last provider that answered — no content.
-    const lastSuccess = steps
-      .flatMap((each) => [...each.attempts, ...(each.tool?.attempts ?? [])])
+    const lastSuccess = [
+      ...steps.flatMap((each) => [...each.attempts, ...(each.tool?.attempts ?? [])]),
+      ...(refereeCheck?.attempts ?? []),
+    ]
       .filter((attempt) => attempt.status === "success")
       .at(-1);
     const run = {
@@ -234,18 +365,16 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
 
     if (deps.signal.aborted) return finish("cancelled");
     if (!result.ok) {
-      const reason = stopReasonFor(result.code);
+      const reason = failureReason(result.code, Math.min(RUN_LIMITS.maxAttemptsPerStep, attemptsLeft), result.attempts.length);
       if (reason === "malformed_output") step.rejectReason = "malformed_output";
-      // The gateway stopped on the run's attempt cap: the run's budget, not the provider, ended it.
-      const spent = attemptsUsed >= RUN_LIMITS.maxAttemptsPerRun && reason !== "malformed_output" && reason !== "cancelled";
-      return finish(spent ? "call_budget" : reason);
+      return finish(reason);
     }
 
     if (result.usage) step.usage = result.usage;
     const { envelope } = result;
     step.action = loggableAction(envelope.action);
 
-    const reject = (reason: Exclude<CoachStopReason, "goal_completed">): CoachRunOutcome => {
+    const reject = (reason: Exclude<CoachStopReason, "goal_completed">): Promise<CoachRunOutcome> => {
       step.decision = "rejected";
       if (reason === "unknown_tool" || reason === "invalid_tool_args" || reason === "repeated_call" || reason === "final_invalid" || reason === "max_steps") {
         step.rejectReason = reason;
@@ -263,10 +392,10 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
 
     if (envelope.action === "final") {
       // 4. The final, whole.
-      const report = validateFinal(envelope, snapshot, evidence);
-      if (!report) return reject("final_invalid");
+      const valid = validateFinal(envelope, snapshot, evidence);
+      if (!valid) return reject("final_invalid");
       step.decision = "allowed";
-      return finish("goal_completed", report);
+      return finish("goal_completed", valid);
     }
 
     if (envelope.action === "verify_terms") {
@@ -286,30 +415,11 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
         { snapshot, evidence, toolCallsUsed: toolCalls },
         {
           now: deps.now,
+          // A referee failure is not a tool failure: the words stay unjudged, and the
+          // game asks again before the report.
           referee: async (sheets) => {
-            const timeLeft = deadlineAt - deps.now();
-            const attemptsNow = RUN_LIMITS.maxAttemptsPerRun - attemptsUsed;
-            if (timeLeft < RUN_LIMITS.minStepMs || attemptsNow <= 0) return null;
-            const verified = await deps.ai
-              .verifyTerms(snapshot.letter, snapshot.alphabet, sheets, {
-                interactionId: `${context.runId}:s${n}:verify`,
-                budget: {
-                  ...BUDGETS["check-round"],
-                  totalMs: Math.min(RUN_LIMITS.perStepMs, timeLeft),
-                  maxAttempts: Math.min(RUN_LIMITS.maxAttemptsPerStep, attemptsNow),
-                },
-                signal: deps.signal,
-              })
-              .catch(() => null);
-            if (!verified) return null;
-            refereeAttempts.push(...verified.attempts);
-            attemptsUsed += verified.attempts.length;
-            if (!verified.ok) return null;
-            return (slot, category): RefereeVerdict | undefined => {
-              const verdict = verified.verdicts.get(answerKey(slot, category));
-              if (!verdict) return undefined;
-              return verdict.valid ? { valid: true } : { valid: false, reason: verdict.reason };
-            };
+            const answer = await callReferee(sheets, `${context.runId}:s${n}:verify`, refereeAttempts);
+            return "failed" in answer ? null : answer.verdictOf;
           },
         },
       );
@@ -326,11 +436,13 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
 
       toolCalls += 1;
       step.decision = "allowed";
-      for (const verdict of outcome.result.items) {
-        const item = evidence.find((each) => each.id === verdict.id)!;
-        item.referee = verdict.verdict === "unverified" ? "not_checked" : verdict.verdict;
-      }
-      toolResults.push({ tool: "verify_terms", callId: outcome.result.callId, items: outcome.result.items });
+      applyVerdicts(outcome.result.items);
+      // The model sees ids and verdicts only, never the referee's spelling.
+      toolResults.push({
+        tool: "verify_terms",
+        callId: outcome.result.callId,
+        items: outcome.result.items.map(({ id, verdict, reason }) => ({ id, verdict, reason })),
+      });
       step.tool = {
         name: "verify_terms",
         items: outcome.result.items.length,

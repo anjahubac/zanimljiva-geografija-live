@@ -56,7 +56,6 @@ for (let index = 1; index <= requested; index += 1) {
   }
   const { report } = outcome;
   console.info(`\nreport: ${report.status} (${report.stopReason}), confidence ${report.confidence ?? "-"}`);
-  if (report.summary) console.info(`summary: ${report.summary}`);
   for (const tip of report.tips) {
     const startsWithLj = tip.suggestion === null ? "" : tip.suggestion.startsWith("Lj") ? "  [Lj ok]" : "  [NOT Lj]";
     console.info(`  ${tip.category.padEnd(8)} ${tip.suggestion ?? "(no suggestion)"} ${tip.checkedBy ?? ""}${startsWithLj}`);

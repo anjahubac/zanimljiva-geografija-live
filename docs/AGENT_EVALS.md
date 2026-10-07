@@ -65,6 +65,22 @@ chose FR-016. C2's test now asserts step 2 offers `verify_terms` and `final`
 (never `check_candidates`), and still asserts `completed` with 2 steps and 1
 tool call. The expected text above is left as it was written.
 
+_Amendments, 2026-10-07, from the owner's decision "only valid and checked
+answers" (`Plan.md` §2C.16, last entry). The rows above are left as written;
+where they and this note differ, this note holds:_
+
+- **C1:** 3 model steps and 2 tool calls as written, plus **one referee attempt**
+  for the game's own check of the cited words: 4 provider attempts in all. The
+  suggestions are the referee's accepted names.
+- **C13:** a final with an empty summary is no longer invalid (the model writes
+  no summary now); a final with a non-empty summary — the 281-character case —
+  is `final_invalid`, as before.
+- **C17:** "referee down → run continues" holds, but the words are then sent to
+  the referee again before the report; if it is still down they are **not
+  shown** (no `letter_rule` suggestions any more).
+- **Every report:** a suggestion is shown only if the referee accepted it in
+  this run; `summary` is no longer part of the report.
+
 W05 §32 requires at least one test where `toolCallCount === 0` for a refused
 proposal: C4, C5, C16 and C19 (at step 1) each assert it, and C9 asserts the
 count does not move.

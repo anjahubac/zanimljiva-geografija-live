@@ -96,9 +96,12 @@ Never accept these values as authoritative merely because a client sent them.
   answer, validity, point, phase or timer, and no tool reads the opponent's
   sheet. The model sees only the caller's own misses (`Plan.md` §2C.5).
 - **Caller-only.** The report is the `round:coach` ack; there is no broadcast.
-- **Evidence, not text.** A suggestion shown to a player is copied from a
-  passing `check_candidates` item of the same run; the final cites ids, and a
-  final that cites anything else is rejected whole.
+- **Evidence, not text.** The final cites ids, and a final that cites anything
+  but a passing item is rejected whole. A suggestion is shown only if the
+  referee accepted it in the same run — before any report the game itself
+  sends the words it would show to the referee — and it is shown in the
+  referee's spelling. No model text reaches the player: the summary is the
+  game's own sentence (owner, 2026-10-07).
 - **Bounded by code.** `RUN_LIMITS` (steps, tool calls, attempts per step and
   per run, time) is checked before every step, and the gateway's
   `maxAttempts` caps each step. Every model step counts toward

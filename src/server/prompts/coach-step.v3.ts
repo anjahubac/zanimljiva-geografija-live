@@ -13,9 +13,13 @@ import { CATEGORY_RULES, LETTER_RULES } from "./category-rules";
  * the terms, so a Serbian player could be shown "Euphrates" for Eufrat. The
  * game accepts either language, so code cannot refuse it; the prompt asks for
  * the name the player would write, and the other language only as a fallback.
+ *
+ * v3 (2026-10-07, owner: "only valid and checked answers"): the model writes no
+ * summary — the game writes it from the checked list — and is told that the
+ * words it cites go to the referee before anything is shown.
  */
 
-export const COACH_STEP_PROMPT_VERSION = "coach-step.v2";
+export const COACH_STEP_PROMPT_VERSION = "coach-step.v3";
 
 /** Exactly the fields of contracts/model-step.md, in that order; nothing else reaches the model. */
 export type CoachStepInput = {
@@ -64,10 +68,10 @@ Each step you reply with exactly one action, and only one listed in "allowedActi
   field empty.
 - "final": fill "tips" with every focus category exactly once. Its "evidenceId" is the id of a
   passing item of that same category from "toolResults", or "" when you have no passing term.
-  Never cite an item that failed. Write "summary": one or two sentences, at most 280 characters,
-  in the language given by "language" ("sr" = Serbian Latin, "en" = English), telling the player
-  what would have counted. Set "confidence" to "low", "medium" or "high". Leave "candidates" and
-  "evidenceIds" empty.
+  Never cite an item that failed or that the referee rejected. Leave "summary" "": the game
+  writes the player's summary itself. Set "confidence" to "low", "medium" or "high". Leave
+  "candidates" and "evidenceIds" empty. Before anything is shown, the game sends every term you
+  cite to its answer referee; a term the referee does not accept is not shown.
 
 Write every term the way the player would write it on their sheet, in the language given by
 "language": the Serbian Latin name when "language" is "sr" (Eufrat, not Euphrates; Dunav, not

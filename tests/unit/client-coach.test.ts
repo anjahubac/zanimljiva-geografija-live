@@ -37,16 +37,15 @@ const FOCUS: Category[] = ["country", "river", "animal"];
 
 const completed: CoachReport = {
   status: "completed",
-  summary: "Za reku na Lj prolazi Ljubljanica.",
   tips: [
     { category: "country", yourAnswer: "Ljubljana", whyMissed: "wrong_category", suggestion: null, checkedBy: null },
-    { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule" },
-    { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter", suggestion: "Ljuskavac", checkedBy: "letter_rule" },
+    { category: "river", yourAnswer: "", whyMissed: "empty", suggestion: "Ljubljanica", checkedBy: "letter_rule_and_referee" },
+    { category: "animal", yourAnswer: "Lav", whyMissed: "wrong_letter", suggestion: "Ljuskavac", checkedBy: "letter_rule_and_referee" },
   ],
   confidence: "medium",
   stopReason: "goal_completed",
 };
-const incomplete: CoachReport = { ...completed, status: "incomplete", summary: null, confidence: null, stopReason: "repeated_call" };
+const incomplete: CoachReport = { ...completed, status: "incomplete", confidence: null, stopReason: "repeated_call" };
 const failed: CoachReport = {
   ...incomplete,
   status: "failed",
@@ -89,18 +88,20 @@ describe("the coach panel — statuses", () => {
     expect(markup).toMatch(/<button[^>]*disabled=""/);
   });
 
-  it("shows a completed report: summary, each answer, why it missed, the suggestion and how it was checked", () => {
+  it("shows a completed report: the game's own summary, each answer, why it missed, the suggestion and how it was checked", () => {
     const markup = render(view({ status: "report", report: completed }));
     expect(markup).toContain(UI_SR.coach.completed);
-    expect(markup).toContain(completed.summary!);
+    // Written by the game from the checked list, never by the model (owner, 2026-10-07).
+    expect(markup).toContain(UI_SR.coach.summary.replace("{n}", "2").replace("{total}", "3"));
     expect(markup).toContain("Ljubljana");
     expect(markup).toContain(UI_SR.rejectReasons.wrong_category);
     expect(markup).toContain(UI_SR.rejectReasons.wrong_letter);
     expect(markup).toContain(UI_SR.coach.empty);
     expect(markup).toContain("Ljubljanica");
     expect(markup).toContain("Ljuskavac");
-    expect(markup).toContain(UI_SR.coach.checkedBy.letter_rule);
+    expect(markup).toContain(UI_SR.coach.checkedBy.letter_rule_and_referee);
     expect(markup).toContain(UI_SR.coach.noSuggestion);
+    expect(UI_SR.coach.noSuggestion).toBe("Nema proverenog predloga.");
     expectNoCodes(markup);
   });
 
@@ -108,7 +109,6 @@ describe("the coach panel — statuses", () => {
     const markup = render(view({ status: "report", report: incomplete }));
     expect(markup).toContain(UI_SR.coach.incomplete);
     expect(markup).toContain(UI_SR.coach.stopReasons.repeated_call);
-    expect(markup).not.toContain(completed.summary!);
     expect(markup).toContain("Ljubljanica");
     expectNoCodes(markup);
   });
@@ -145,7 +145,8 @@ describe("the coach panel — statuses", () => {
     const markup = render(view({ status: "report", report: completed }), "en");
     expect(markup).toContain(UI_EN.coach.title);
     expect(markup).toContain(UI_EN.coach.completed);
-    expect(markup).toContain(UI_EN.coach.checkedBy.letter_rule);
+    expect(markup).toContain(UI_EN.coach.checkedBy.letter_rule_and_referee);
+    expect(markup).toContain(UI_EN.coach.summary.replace("{n}", "2").replace("{total}", "3"));
     expect(markup).toContain(CATEGORY_LABELS_EN.river);
   });
 });

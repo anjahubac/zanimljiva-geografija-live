@@ -24,7 +24,7 @@ Read-only afterwards.
 | `roundId` | the room's current round (`ROUND_STALE` otherwise); the phase must be `results`, with the round revealed (`WRONG_PHASE` otherwise) |
 | `goal` | `"fill_gaps"` (the only value) |
 | `focus` | 1–8 distinct categories, each one where the caller has `valid: false` (`INVALID_PAYLOAD` otherwise) |
-| `language` | `"sr"` or `"en"`; the summary's language |
+| `language` | `"sr"` or `"en"`; the player's language (for the referee's spelling and the prompt) |
 
 Strict: any other key is `INVALID_PAYLOAD`. See [contracts/coach-socket.md](contracts/coach-socket.md).
 
@@ -112,7 +112,7 @@ A **passing** item: `passes` and `referee !== "rejected"`.
 | Field | Rule |
 | --- | --- |
 | `status` | `completed`, `incomplete`, `failed` |
-| `summary` | 1–280 characters, no control characters; `completed` only, else `null` |
+| ~~`summary`~~ | _Removed 2026-10-07 (owner): no model text reaches the player; the client writes the summary from the tips._ |
 | `tips[]` | one per focus category, in category order |
 | `tips[].category` | the focus category |
 | `tips[].yourAnswer` | from the reveal (`raw`) |

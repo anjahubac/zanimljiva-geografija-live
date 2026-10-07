@@ -107,7 +107,9 @@ export const UI_SR = {
     yourAnswer: "Tvoj odgovor",
     empty: "bez odgovora",
     suggestion: "Predlog",
-    noSuggestion: "Nema predloga koji prolazi pravilo slova.",
+    noSuggestion: "Nema proverenog predloga.",
+    /** Written by the game from the checked list, never by the AI. */
+    summary: "Provereni predlog postoji za {n} od {total} kategorija.",
     checkedBy: {
       letter_rule: "provereno pravilom slova",
       letter_rule_and_referee: "provereno pravilom slova i AI sudijom",
@@ -254,7 +256,9 @@ export const UI_EN: Strings = {
     yourAnswer: "Your answer",
     empty: "no answer",
     suggestion: "Suggestion",
-    noSuggestion: "No suggestion passes the letter rule.",
+    noSuggestion: "No checked suggestion.",
+    /** Written by the game from the checked list, never by the AI. */
+    summary: "Checked suggestions for {n} of {total} categories.",
     checkedBy: {
       letter_rule: "checked against the letter rule",
       letter_rule_and_referee: "checked against the letter rule and by the AI referee",

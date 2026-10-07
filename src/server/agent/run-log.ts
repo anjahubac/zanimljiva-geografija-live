@@ -34,6 +34,11 @@ export type AgentRunRecord = {
   status: "completed" | "incomplete" | "failed" | "cancelled";
   stopReason: CoachStopReason | "cancelled";
   steps: StepRecord[];
+  /**
+   * The game's own referee check before the report (owner, 2026-10-07): words
+   * sent, words accepted, its provider attempts. Absent when nothing needed it.
+   */
+  refereeCheck?: { items: number; accepted: number; attempts: ProviderAttempt[] };
   totals: { modelSteps: number; providerAttempts: number; toolCalls: number; elapsedMs: number };
 };
 

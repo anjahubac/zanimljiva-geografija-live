@@ -27,7 +27,7 @@ the code disagree, the code wins and this file is the one to fix.
 | `src/contracts/errors.ts` | The closed `GAME_ERROR_CODES` list, the server's (Serbian) message per code, the `Ack<T>` envelope, `ok()`, `fail()`, `ackSchema()` |
 | `src/contracts/socket.schemas.ts` | Every client request, every ack, every server event payload, and the event-name constants `CLIENT_EVENTS` / `SERVER_EVENTS` |
 | `src/contracts/ai-output.schemas.ts` | What the AI model must return (check, bot answers, hint, and the round coach's step envelope `coachStepSchema` with `COACH_STEP_JSON_SCHEMA`). Server-only; never sent to a browser |
-| `src/contracts/coach.schemas.ts` | Week 5 (`Plan.md` §2C): `coachRequestSchema` (strict, distinct focus), `coachReportSchema` (the caller's ack: status, summary, tips, confidence, stop reason, optional `run` details), `coachStopReasonSchema`, `missReasonSchema`, `runDetailsSchema`, `COACH_GOALS`, `COACH_SUMMARY_MAX` |
+| `src/contracts/coach.schemas.ts` | Week 5 (`Plan.md` §2C): `coachRequestSchema` (strict, distinct focus), `coachReportSchema` (the caller's ack: status, tips, confidence, stop reason, optional `run` details; no `summary` and no model text since 2026-10-07 — the client writes the summary from the tips), `coachStopReasonSchema`, `missReasonSchema`, `runDetailsSchema`, `COACH_GOALS` |
 
 Client payloads use `.strict()`, so an unexpected key is a rejection, not a
 silently ignored field. This is what stops a browser from smuggling `letter`,

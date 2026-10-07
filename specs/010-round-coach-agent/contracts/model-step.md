@@ -14,6 +14,14 @@ of "Eufrat". v2 asks for the name the player would write in their interface
 language, and the other language only when that name misses the round letter.
 The request and response shapes are unchanged. This is a prompt hint: the game
 accepts both languages, so code does not enforce it._
+
+_Update 2026-10-07, `coach-step.v3` (owner: "only valid and checked
+answers"): a final's `summary` must be `""` (any text is `final_invalid`); the
+summary is the game's. After the final, or any other stop, the game sends the
+words it would show to the referee itself before the report; only accepted
+words are shown, in the referee's spelling. That check is not a tool call, but
+its attempts count toward the run's 5. The model never sees the referee's
+spelling._
 ## Request (built by the server per step)
 
 The system instruction is fixed per prompt version. The user content is one

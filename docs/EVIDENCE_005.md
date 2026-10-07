@@ -80,6 +80,16 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | Skip the deadline check before a step | `coach-agent.ts` | C11 | 1 failed / 28 passed: C11 (a third model step was called) |
 | Trust the model's citation: take the cited id's text without checking pass and category | `coach-agent.ts` | C13 | 3 failed / 26 passed: C13 failed id, unknown id, other category's id |
 
+Re-run after the "only valid and checked answers" change (2026-10-07, same
+method; the fourth change now targets the rewritten final validation):
+
+| Change | Must fail | Observed |
+| --- | --- | --- |
+| Skip the allowlist check | C4, C16 | 4 failed / 40 passed: C4, C16, C10, C13 "final at step 1" |
+| Skip the repeat guard | C9 | 1 failed / 43 passed: C9 |
+| Skip the deadline check before a step | C11 | 1 failed / 43 passed: C11 |
+| Trust the model's citation (keep only "the id exists") | C13 | 3 failed / 41 passed: C13 failed id and other category, C17 referee-rejected citation. The unknown-id case still fails safe, because the mutation keeps the "id exists" check |
+
 ---
 
 ## 4. Runs
@@ -102,6 +112,7 @@ passed 56/56 and `git diff` showed no change to `tools.ts`.
 | W5-11 live, Gemini | 2026-10-07 | after `502a9b1` | `AI_PROVIDER_ORDER=gemini npm run smoke:coach -- 3` | 3 runs: 3 `completed`; 9 model steps, 12 provider attempts (all first-attempt successes), 6 tool calls (3 check, 3 verify); 4.8–5.3 s each | run logs below |
 | W5-11 live, Groq | 2026-10-07 | after `502a9b1` | `AI_PROVIDER_ORDER=groq npm run smoke:coach -- 3` | 3 runs: 1 `failed` (`invalid_tool_args`), 2 `incomplete` (`invalid_tool_args`, `final_invalid`); 6 model steps, 8 provider attempts (1 rate-limited, then fallback), 3 tool calls (2 check, 1 verify); 0.9–3.7 s each | run logs below |
 | Prompt `coach-step.v2` | 2026-10-07 | after `34c5a8c` | `npx vitest run tests/unit/ai-features.test.ts tests/unit/coach-agent.test.ts`, then `npm run verify` | the owner saw "Euphrates" suggested to a Serbian player; red first (v2 missing), then 72 tests passed; verify below | implementation session |
+| Only valid and checked answers, `coach-step.v3` | 2026-10-07 | after `40c033f` | `npx vitest run` and `npm run verify` | the owner saw an unchecked "Rosno more" in the model's summary and "Rtnj" for Rtanj; decision in `Plan.md` §2C.16; red first (19 loop, 8 contract/client/wire cases); a mis-attributed `call_budget` found and fixed on the way; then 34 files, 637 tests; mutation checks re-run, 4/4 | implementation session |
 
 Live-run budget (W05 §44): ≤ 15 agent runs in development, ≤ 3 in the demo.
 Used: **6** in development (3 Gemini, 3 Groq), 0 in the demo.
@@ -201,7 +212,7 @@ a run shows it.
 | Deadline | 25 s, checked before every step; each step's gateway budget ≤ time left | C11; mutation check (deadline check removed → C11 fails) | holds |
 | Bounded retries | ≤ 2 attempts per step, ≤ 5 per run (gateway `maxAttempts`) | C7, C8, C12; Groq live run 3 used exactly 5 | holds |
 | Logs hold no keys | `agent.run` of typed fields only | T032 run-log test; the 6 live logs above | holds |
-| Final output is validated | final validation of `contracts/model-step.md`; suggestion text copied from evidence | C13, C19; mutation check (model's citation trusted → C13 fails); Groq live run 3 | holds |
+| Final output is validated | final validation of `contracts/model-step.md`; only referee-accepted words shown, in the referee's spelling; no model text in the report (2026-10-07) | C13, C19; mutation check (model's citation trusted → C13 fails); Groq live run 3 | holds |
 | User-facing errors hide internals | stop reasons become sentences in `strings.ts` | `client-coach.test.ts` (no code rendered) | holds |
 
 --- | --- | --- | --- |
@@ -234,10 +245,14 @@ a run shows it.
 - One status while waiting, not live step progress.
 - Players behind one address share one hourly limit.
 - 6 live runs are a small sample (3 per provider), all with `coach-step.v1`.
-- The language of a suggested term is a prompt hint (`coach-step.v2`), not
-  enforced: the game accepts Serbian and English names alike, so "Euphrates"
-  still passes every check if the model ignores the hint. v2 has not had a
-  live run.
+- The language of a suggested term is a prompt hint, not enforced; since the
+  "checked answers" change the player sees the referee's name in their
+  language when it gives one that starts with the letter, which covers most
+  cases (Eufrat for a Serbian player). Neither has had a live run.
+- Only referee-accepted words are shown, but the referee is an AI: live, it
+  accepted the invented "Ljlama" once. The game cannot check facts by itself.
+- The game's own referee check needs time and an attempt: a run stopped by the
+  deadline or the attempt budget shows no suggestion at all.
 
 ---
 

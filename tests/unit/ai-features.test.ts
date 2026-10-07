@@ -11,7 +11,7 @@ import {
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   buildCoachStepContent,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v2";
+} from "@server/prompts/coach-step.v3";
 import { fakeAdapter, fakeTime, type Step } from "../fakes/fake-adapter";
 
 const sheet = (answers: Partial<Record<Category, string>> = {}): Record<Category, string> =>
@@ -441,13 +441,20 @@ describe("coach step — the service and the prompt (contracts/model-step.md)", 
   });
 
   it("v2: asks for each term as the player would write it, in the interface language (Eufrat, not Euphrates)", () => {
-    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v2");
+    expect(COACH_STEP_PROMPT_VERSION).toBe("coach-step.v3");
     for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
       expect(instruction).toMatch(/Serbian Latin name when "language" is "sr"/);
       expect(instruction).toMatch(/Eufrat, not Euphrates/);
       expect(instruction).toMatch(/English name when it is "en"/);
       // The other language only as a fallback, when the player's own name misses the letter.
       expect(instruction).toMatch(/only when the name in the player's language does not start with the round letter/);
+    }
+  });
+
+  it("v3: asks for no summary, and says cited words go to the referee before anything is shown", () => {
+    for (const instruction of Object.values(COACH_STEP_SYSTEM_INSTRUCTIONS)) {
+      expect(instruction).toMatch(/Leave "summary" ""/);
+      expect(instruction).toMatch(/every term you\s+cite to its answer referee/);
     }
   });
 

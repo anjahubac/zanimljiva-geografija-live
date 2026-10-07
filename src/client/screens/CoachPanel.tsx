@@ -85,7 +85,12 @@ export function CoachPanelView({ focus, selected, state, onToggle, onSubmit }: V
 
       {report && !failed ? (
         <div className="coach-report">
-          {report.summary ? <p className="coach-summary">{report.summary}</p> : null}
+          {/* The game's own sentence, from the checked list: no AI text is shown. */}
+          <p className="coach-summary">
+            {t.coach.summary
+              .replace("{n}", String(report.tips.filter((tip) => tip.suggestion !== null).length))
+              .replace("{total}", String(report.tips.length))}
+          </p>
           {report.status === "incomplete" ? <p className="notice">{t.coach.stopReasons[report.stopReason]}</p> : null}
           <ul className="coach-tips">
             {report.tips.map((tip) => (

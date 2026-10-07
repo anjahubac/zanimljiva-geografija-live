@@ -185,6 +185,13 @@ describe("C14 — privacy and authority over the wire", () => {
       expect(sent).not.toContain(roundId);
       expect(sent).not.toContain("Marko");
     }
+    // The game's own referee check sends only the words it would show.
+    expect(ai.verifyCalls.length).toBeGreaterThan(0);
+    for (const { sheets } of ai.verifyCalls) {
+      const sent = JSON.stringify(sheets);
+      for (const word of Object.values(P2_SHEET)) expect(sent).not.toContain(word);
+      for (const word of Object.values(P1_SHEET)) if (word) expect(sent).not.toContain(`"${word}"`);
+    }
 
     // A repeat returns the same report with no AI.
     const calls = ai.coachCalls.length;
