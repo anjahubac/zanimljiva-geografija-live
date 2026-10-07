@@ -7,7 +7,7 @@ import { CATEGORY_RULES, LETTER_RULES } from "./category-rules";
  * contracts/model-step.md). The prompt is a hint; the fence is in code: the
  * envelope schema, the per-step allowlist, each tool's argument check and the
  * final-evidence check. The player's answers are data — the same untrusted-data
- * discipline as `check-round.v3`.
+ * discipline as `check-round.v4`.
  *
  * v2 (2026-10-07): v1 asked for the summary in the player's language but not
  * the terms, so a Serbian player could be shown "Euphrates" for Eufrat. The
@@ -30,9 +30,18 @@ import { CATEGORY_RULES, LETTER_RULES } from "./category-rules";
  * asks for a term in every category, and when no well-known one comes to mind,
  * a systematic pass through the category, with where to look per category,
  * for a lesser-known term that really exists — never an invented one.
+ *
+ * v6 (2026-10-07, owner): Serbian players were shown foreign spellings again
+ * ("Ganges" for Gang, "Graz" for Grac). v6 says Serbian writes foreign names
+ * as they are pronounced, with examples, and in a Serbian game starts the
+ * search with Serbia and its neighbours (a mountain for G was missed although
+ * Golija exists). Owner, the same day: no English spelling in a Serbian game
+ * and no Serbian spelling in an English one, so v6 drops v2's fallback to the
+ * other language's name; the game shows only the referee's name in the
+ * player's language.
  */
 
-export const COACH_STEP_PROMPT_VERSION = "coach-step.v5";
+export const COACH_STEP_PROMPT_VERSION = "coach-step.v6";
 
 /** Exactly the fields of contracts/model-step.md, in that order; nothing else reaches the model. */
 export type CoachStepInput = {
@@ -104,12 +113,17 @@ search the category systematically now.
 
 Write every term the way the player would write it on their sheet, in the language given by
 "language": the Serbian Latin name when "language" is "sr" (Eufrat, not Euphrates; Dunav, not
-Danube; Švajcarska, not Switzerland), the English name when it is "en". Use the other
-language's name only when the name in the player's language does not start with the round letter.
+Danube; Švajcarska, not Switzerland), the English name when it is "en". Serbian writes
+foreign names as they are pronounced, not in their original spelling: Grac, not Graz; Gang,
+not Ganges; Minhen, not München; Cirih, not Zürich; Hadson, not Hudson; Njujork, not New York.
+Never use the other language's name: no English spelling when "language" is "sr" and no
+Serbian spelling when it is "en". A term whose name in the player's language does not start
+with the round letter does not count; propose a different term.
 
 Prefer well-known terms. Never give up on a category while a real term exists: when no
 well-known term comes to mind, go through the category systematically and propose a
-lesser-known term that really exists:
+lesser-known term that really exists. When "language" is "sr", start with Serbia and its
+neighbours, then the rest of Europe, then the world:
 - sea: every ocean, then its marginal and inland seas region by region, including the many
   smaller named seas of South-East Asia, the Arctic and the Southern Ocean.
 - river: the large rivers of each continent, then their tributaries.

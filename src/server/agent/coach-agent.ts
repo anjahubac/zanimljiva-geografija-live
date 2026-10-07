@@ -7,7 +7,7 @@ import { canFallBack } from "@server/ai/classify";
 import { BUDGETS } from "@server/ai/retry-policy";
 import type { AiService, CoachStepResult, VerifyTermsResult } from "@server/ai/service";
 import type { AiFailureCode, ProviderAttempt } from "@server/ai/types";
-import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v5";
+import { COACH_STEP_PROMPT_VERSION, type CoachStepInput } from "@server/prompts/coach-step.v6";
 import { RUN_LIMITS } from "./limits";
 import type { AgentRunRecord, RunLogSink, StepRecord } from "./run-log";
 import {
@@ -154,23 +154,26 @@ function bestPassing(snapshot: RoundSnapshot, evidence: readonly EvidenceItem[])
   );
 }
 
+/** Serbian Latin has no q, w, x or y, and no foreign diacritics: "New York" and "Zürich" are not Serbian spellings. */
+const SERBIAN_LATIN = /^[a-pr-vzčćšžđ' .-]+$/iu;
+
 /**
  * The spelling to show for an accepted word: the referee's name in the
- * player's language when it starts with the round letter, else the name the
- * referee checked the letter on. Never the model's spelling when the referee
- * gave one ("Rtnj" → "Rtanj").
+ * player's language, and only that (owner, 2026-10-07: no English spelling in
+ * a Serbian game and no Serbian spelling in an English one). Never the model's
+ * spelling ("Rtnj" → "Rtanj"). When that name is missing or is not Serbian
+ * Latin in a Serbian game ("unrecognized"), or misses the round letter
+ * ("Cirih" for Z: "wrong_letter"), the word is not shown.
  */
-function shownName(verdict: NamedVerdict, language: Language, snapshot: RoundSnapshot): string | undefined {
-  if (!verdict.valid || !verdict.names) return undefined;
-  const { names } = verdict;
-  const preferred = language === "sr" ? names.sr : names.en;
-  return [preferred, names.checked].find(
-    (name): name is string =>
-      name !== null &&
-      name.length <= MAX_ANSWER_LENGTH &&
-      !/\p{Cc}/u.test(name) &&
-      startsWithLetter(name, snapshot.letter, snapshot.alphabet),
-  );
+function shownName(
+  names: NonNullable<Extract<NamedVerdict, { valid: true }>["names"]>,
+  language: Language,
+  snapshot: RoundSnapshot,
+): { name: string } | { reason: "unrecognized" | "wrong_letter" } {
+  const name = language === "sr" ? names.sr : names.en;
+  if (name === null || name.length > MAX_ANSWER_LENGTH || /\p{Cc}/u.test(name)) return { reason: "unrecognized" };
+  if (language === "sr" && !SERBIAN_LATIN.test(name)) return { reason: "unrecognized" };
+  return startsWithLetter(name, snapshot.letter, snapshot.alphabet) ? { name } : { reason: "wrong_letter" };
 }
 
 /** The model's action name, for the log only if it is a plain identifier. */
@@ -232,8 +235,10 @@ export async function runCoach(context: CoachRunContext, deps: CoachRunDeps): Pr
         const verdict = verified.verdicts.get(answerKey(slot, category));
         if (!verdict) return undefined;
         if (!verdict.valid) return { valid: false, reason: verdict.reason };
-        const name = shownName(verdict, context.language, snapshot);
-        return name ? { valid: true, name } : { valid: true };
+        if (!verdict.names) return { valid: true };
+        // No name in the player's language: not shown, so the backup or the repair is tried.
+        const shown = shownName(verdict.names, context.language, snapshot);
+        return "name" in shown ? { valid: true, name: shown.name } : { valid: false, reason: shown.reason };
       },
     };
   };

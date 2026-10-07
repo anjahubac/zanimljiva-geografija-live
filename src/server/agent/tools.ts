@@ -246,7 +246,7 @@ export type RefereeVerdict = { valid: true; name?: string } | { valid: false; re
 export type VerifyDeps = {
   now: () => number;
   /**
-   * The existing referee (`check-round.v3`), bound by the orchestrator to the
+   * The existing referee (`check-round.v4`), bound by the orchestrator to the
    * run's budget and signal. Null when it failed: every word stays unverified.
    */
   referee: (sheets: RefereeSheets) => Promise<((slot: PlayerSlot, category: Category) => RefereeVerdict | undefined) | null>;

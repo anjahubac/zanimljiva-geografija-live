@@ -9,7 +9,7 @@ import {
   COACH_STEP_PROMPT_VERSION,
   COACH_STEP_SYSTEM_INSTRUCTIONS,
   type CoachStepInput,
-} from "@server/prompts/coach-step.v5";
+} from "@server/prompts/coach-step.v6";
 import { generate } from "./gateway";
 import { createDebugSink, type DebugEnv } from "./debug-log";
 import type { GatewayDeps } from "./gateway";
@@ -60,7 +60,7 @@ export type AiService = {
   hint(letter: Letter, alphabet: Language, category: Category, language: Language): Promise<HintResult>;
   /** Week 5 (§2C): one model step of the round coach, with the run's budget and signal. */
   coachStep(input: CoachStepInput, options: CoachStepOptions): Promise<CoachStepResult>;
-  /** O1 (§2C.16): the W04 checker (`check-round.v3`, unchanged) on the coach's cited words only. */
+  /** O1 (§2C.16): the W04 checker (`check-round.v4`) on the coach's cited words only. */
   verifyTerms(letter: Letter, alphabet: Language, sheets: Sheets, options: CoachStepOptions): Promise<VerifyTermsResult>;
 };
 
