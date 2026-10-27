@@ -33,6 +33,8 @@ they have no spec.
 | # | Feature | Status | Design |
 | --- | --- | --- | --- |
 | [009](009-full-alphabet-letters/spec.md) | Letters from the whole alphabet | Built 2026-09-30, full flow | `Plan.md` §2B.13 |
+| [010](010-post-round-coach/spec.md) | Bounded post-round AI coach (W05) | Built 2026-10-07, full flow | `Plan.md` §2C |
+| [011](011-secure-the-arcade/spec.md) | Secure the Arcade (W08 hardening) | Built 2026-10-25, full flow | `Plan.md` §2D |
 
 Use the full flow: `/speckit-specify` → `/speckit-clarify` (optional) →
 `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`.

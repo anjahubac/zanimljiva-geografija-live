@@ -29,6 +29,9 @@ export async function startTestServer(
     ai?: AiService;
     coach?: CoachCapability;
     random?: () => number;
+    /** W08 security events; silent unless a test collects them. */
+    writeSecurityEvent?: (line: string) => void;
+    securityHeaders?: boolean;
   } = {},
 ): Promise<TestContext> {
   const { clock, scheduler, advance, setNow } = createTestClock();
@@ -43,6 +46,8 @@ export async function startTestServer(
     ai: options.ai ?? null,
     coach: options.coach ?? null,
     ...(options.random ? { random: options.random } : {}),
+    writeSecurityEvent: options.writeSecurityEvent ?? (() => {}),
+    ...(options.securityHeaders === false ? { securityHeaders: false } : {}),
   });
 
   await new Promise<void>((resolve) => {

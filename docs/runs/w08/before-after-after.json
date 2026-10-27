@@ -1,0 +1,75 @@
+{
+  "label": "after",
+  "recordedAt": "2026-10-25T13:50:26.183Z",
+  "oversizedPayload": {
+    "input": "valid coach request + 64 KiB extra field",
+    "outcome": {
+      "disconnected": "transport close"
+    },
+    "adapterCalls": 0
+  },
+  "concurrency": {
+    "input": "3 simultaneous coach requests (3 rooms) while the fake provider holds every call open",
+    "firstResponsesWithin300ms": [
+      "pending",
+      "pending",
+      {
+        "ok": false,
+        "code": "RATE_LIMITED"
+      }
+    ],
+    "maxConcurrentProviderCalls": 2,
+    "finalAcks": [
+      {
+        "ok": true,
+        "status": "completed",
+        "providerAttemptCount": 2
+      },
+      {
+        "ok": true,
+        "status": "completed",
+        "providerAttemptCount": 2
+      },
+      {
+        "ok": false,
+        "code": "RATE_LIMITED"
+      }
+    ],
+    "nextLegitimateRequestAfterRelease": {
+      "ok": true,
+      "status": "completed",
+      "providerAttemptCount": 2
+    },
+    "totalAdapterCalls": 6
+  },
+  "headers": {
+    "input": "GET / from the production static server",
+    "status": 200,
+    "contentSecurityPolicy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer"
+  },
+  "rejectedRequestEvent": {
+    "input": "coach request with role=admin and maxSteps=999",
+    "ack": {
+      "ok": false,
+      "error": {
+        "code": "INVALID_PAYLOAD",
+        "message": "Zahtev nije ispravan."
+      }
+    },
+    "adapterCalls": 0,
+    "securityEvents": [
+      {
+        "event": "agent.request.rejected",
+        "timestamp": "2023-11-14T22:13:23.000Z",
+        "correlationId": "ee25b438-dba2-4575-a6b8-d4fce326171e",
+        "operation": "round:coach",
+        "reasonCode": "INVALID_PAYLOAD",
+        "outcome": "denied",
+        "providerAttempts": 0,
+        "executedToolCalls": 0
+      }
+    ]
+  }
+}

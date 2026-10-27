@@ -17,6 +17,8 @@ export const COACH_MAX_TOOL_RESULT_BYTES = 16_384;
 export const COACH_MAX_TRACE_BYTES = 16_384;
 export const COACH_MAX_MODEL_TEXT_BYTES = 8_192;
 export const COACH_MAX_OUTPUT_TOKENS = 1_024;
+/** W08: admitted coach runs in flight at once, across all players of one server process. */
+export const COACH_MAX_CONCURRENT_RUNS = 2;
 
 export const coachGoalSchema = z.literal("review_round");
 export const analyzeRoundFocusSchema = z.enum(["overview", "blank_categories", "rejected_answers"]);

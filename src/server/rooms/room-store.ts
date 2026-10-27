@@ -11,8 +11,8 @@ import {
   type RoomPhase,
   type ServerConfig,
 } from "@contracts/game.schemas";
-import { type Ack, fail, ok } from "@contracts/errors";
-import { coachRunViewSchema, coachSourceSchema, type CoachRequest, type CoachRunView, type CoachSource } from "@contracts/coach.schemas";
+import { type Ack, type GameErrorCode, fail, ok } from "@contracts/errors";
+import { COACH_MAX_CONCURRENT_RUNS, coachRunViewSchema, coachSourceSchema, type CoachRequest, type CoachRunView, type CoachSource } from "@contracts/coach.schemas";
 import {
   SERVER_EVENTS,
   type DraftAck,
@@ -40,6 +40,7 @@ import type { JudgedAnswer } from "@domain/score-category";
 import type { AiService } from "@server/ai/service";
 import type { UsageLimits } from "@server/usage-limits";
 import type { CoachCapability } from "@server/features/post-round-coach";
+import type { SecurityLog } from "@server/security-events";
 import { randomUUID } from "node:crypto";
 import type { Cancel, Clock, Scheduler } from "@server/clock";
 import { answerKey, type CheckVerdicts } from "@server/features/check-round";
@@ -140,6 +141,8 @@ export type RoomStoreDeps = {
   coach?: CoachCapability | null;
   /** Per-visitor and daily AI bounds (§2B.11); absent means unbounded, as in most unit tests. */
   limits?: UsageLimits | null;
+  /** W08 allowed/denied coach decisions; absent means not recorded, as in most unit tests. */
+  securityLog?: SecurityLog | null;
   /** The bot's choices; injected so tests are deterministic. */
   random?: () => number;
 };
@@ -230,6 +233,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const limits = deps.limits ?? null;
   const ai = deps.ai && limits ? countedAi(deps.ai, limits, clock) : (deps.ai ?? null);
   const coach = deps.coach ?? null;
+  const securityLog = deps.securityLog ?? null;
+  /** Admitted coach runs not yet terminal, across every room (W08, one process). */
+  let activeCoachRuns = 0;
   const random = deps.random ?? Math.random;
 
   const rooms = new Map<string, Room>();
@@ -928,14 +934,23 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   }
 
   function reviewRound(input: CoachRequest, socketId: string, visitor: string): Promise<Ack<CoachRunView>> {
+    // Every refusal here happens before a run exists: zero provider and tool calls.
+    const reject = (code: GameErrorCode, reasonCode: Parameters<SecurityLog["rejected"]>[0] = code): Promise<Ack<CoachRunView>> => {
+      securityLog?.rejected(reasonCode);
+      return Promise.resolve(fail(code));
+    };
     const room = getRoomBySocket(socketId);
-    if (!room) return Promise.resolve(fail("NOT_IN_ROOM"));
+    if (!room) return reject("NOT_IN_ROOM");
     const player = findPlayerBySocket(room, socketId);
-    if (!player || player.bot || !player.connected) return Promise.resolve(fail("NOT_IN_ROOM"));
-    if (room.round?.roundId !== input.roundId) return Promise.resolve(fail("ROUND_STALE"));
-    if (room.phase !== "results" || !room.round.revealed || !player.coachSource) return Promise.resolve(fail("WRONG_PHASE"));
-    if (!coach || !limits) return Promise.resolve(fail("AI_UNAVAILABLE"));
+    if (!player || player.bot || !player.connected) return reject("NOT_IN_ROOM");
+    // A foreign and a nonexistent round get the same answer: no existence oracle.
+    if (room.round?.roundId !== input.roundId) return reject("ROUND_STALE");
+    if (room.phase !== "results" || !room.round.revealed || !player.coachSource) return reject("WRONG_PHASE");
+    if (!coach || !limits) return reject("AI_UNAVAILABLE");
     if (player.coachRun?.roundId === input.roundId) return player.coachRun.promise;
+    // Checked synchronously, before the visitor allowance is charged, so a
+    // refused request neither starts provider work nor spends the allowance.
+    if (activeCoachRuns >= COACH_MAX_CONCURRENT_RUNS) return reject("RATE_LIMITED", "CONCURRENCY_LIMIT");
 
     const source = coachSourceSchema.parse(player.coachSource);
     const capturedSource = player.coachSource;
@@ -985,7 +1000,16 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
         }
         return ok(coachRunViewSchema.parse({ runId, roundId: input.roundId, status: "failed", stopReason: "provider_failed", stepCount: 0, toolCallCount: 0, providerAttemptCount: actualAttempts, elapsedMs: 0, result: null }));
       }
+    }).then((ack) => {
+      if (ack.ok) securityLog?.finished(ack.data);
+      else securityLog?.rejected(ack.error.code);
+      return ack;
+    }).finally(() => {
+      // The engine reaches a terminal state by its 30 s deadline even when a
+      // dependency ignores abort, so a slot cannot be held indefinitely.
+      activeCoachRuns -= 1;
     });
+    activeCoachRuns += 1;
     player.coachRun = { roundId: input.roundId, runId, sourceVersion, controller, promise };
     return promise;
   }

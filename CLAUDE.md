@@ -47,7 +47,9 @@ above; it does not replace them, and `Plan.md` stays the plan of record.
 Features 001–008 in `specs/` were reconstructed after they were built. New
 features start at 009 and use the full specify → plan → tasks flow.
 
-Current feature: `specs/010-post-round-coach/spec.md` (`Plan.md` §2C).
+Current feature: `specs/011-secure-the-arcade/spec.md` (`Plan.md` §2D), W08
+hardening of the W05 coach; evidence in `docs/EVIDENCE_W08.md`, security suite
+`npm run security:check`. Previous feature: `specs/010-post-round-coach/spec.md` (`Plan.md` §2C).
 Week 5 status: implementation and automated verification complete (555 tests
 across 40 files; typecheck, lint and client/server builds pass). Live-provider,
 interactive browser and pair-evidence gates remain pending. Read the

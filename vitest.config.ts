@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
@@ -14,6 +14,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    // The W08 real-browser suite has its own config (vitest.browser.config.ts).
+    exclude: [...configDefaults.exclude, "tests/browser/**"],
     testTimeout: 5000,
     hookTimeout: 5000,
     coverage: {

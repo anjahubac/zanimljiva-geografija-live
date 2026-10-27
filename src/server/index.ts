@@ -14,6 +14,8 @@ import { createRoomStore, type RoomStore } from "@server/rooms/room-store";
 import { registerHandlers } from "@server/socket/register-handlers";
 import { createUsageLimits } from "@server/usage-limits";
 import type { CoachCapability } from "@server/features/post-round-coach";
+import { createSecurityLog } from "@server/security-events";
+import { MAX_SOCKET_MESSAGE_BYTES } from "@contracts/socket.schemas";
 
 const CLIENT_DIR = join(process.cwd(), "dist", "client");
 const CLEANUP_INTERVAL_MS = 60_000;
@@ -43,6 +45,31 @@ async function serveStatic(urlPath: string): Promise<{ body: Buffer; type: strin
 }
 
 /**
+ * W08 browser policy for every HTTP response. Matches what the production
+ * build actually loads: hashed same-origin scripts and styles, same-origin SVG
+ * and `data:` images from the stylesheet, and the same-origin Socket.IO
+ * connection. No inline script, no eval, no plugins, no framing.
+ */
+export const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join("; ");
+
+export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  "content-security-policy": CONTENT_SECURITY_POLICY,
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+};
+
+/**
  * A browser on another site must not open a socket to this game with the
  * player's connection (cross-site WebSocket hijacking). Non-browser clients
  * send no Origin and are allowed.
@@ -65,6 +92,14 @@ export type GameServerDeps = {
   ai?: AiService | null;
   coach?: CoachCapability | null;
   random?: () => number;
+  /** Where W08 security events go; defaults to the server console. */
+  writeSecurityEvent?: (line: string) => void;
+  /**
+   * Test-only control for the W08 CSP proof: false serves the same build
+   * without the policy, to show a blocked resource would otherwise load.
+   * Not reachable from the environment or any request.
+   */
+  securityHeaders?: boolean;
 };
 
 export type GameServer = {
@@ -86,8 +121,12 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     scheduler = systemScheduler,
     selectLetter = randomLetterSelector,
   } = deps;
+  const securityLog = createSecurityLog(deps.writeSecurityEvent, () => clock.now());
 
   const httpServer = createServer((req, res) => {
+    if (deps.securityHeaders !== false) {
+      for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
+    }
     void (async () => {
       if (req.url === "/healthz") {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -118,7 +157,9 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     });
   });
 
-  const io = new SocketServer(httpServer);
+  // The transport refuses an oversized message before decoding it (W08 I6):
+  // over WebSocket the connection is closed, over polling the POST is refused.
+  const io = new SocketServer(httpServer, { maxHttpBufferSize: MAX_SOCKET_MESSAGE_BYTES });
   io.use((socket, next) => {
     if (socket.request.headers.origin && !sameOrigin(socket.request)) return next(new Error("Origin not allowed"));
     next();
@@ -132,6 +173,7 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     ai: deps.ai ?? null,
     coach: deps.coach ?? null,
     limits: createUsageLimits(config),
+    securityLog,
     ...(deps.random ? { random: deps.random } : {}),
     // The store addresses a recipient; only this line knows about sockets.
     deliver: ({ socketId, event, payload }) => {
@@ -139,7 +181,7 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     },
   });
 
-  registerHandlers(io, store, { trustProxyHops: config.trustProxyHops });
+  registerHandlers(io, store, { trustProxyHops: config.trustProxyHops, securityLog });
 
   return {
     httpServer,

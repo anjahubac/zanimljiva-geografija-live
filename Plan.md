@@ -690,6 +690,34 @@ wiring, reducer-backed client flow, bilingual evidence rendering, fake-e2e and
 `docs/EVIDENCE_W05.md`; do not treat this worktree as final until those gates
 are honestly resolved.
 
+## 2D. Week 8 Secure the Arcade — hardening of the post-round coach (2026-10-25)
+
+**Owner request:** Aleksa asked for the W08 assignment to be done on the
+existing W05 project: harden one agent flow and prove its boundaries with
+executable tests. Local branch `011-secure-the-arcade` from
+`010-post-round-coach` at `67aa13e`; no commit, push or deployment yet.
+**Feature:** `specs/011-secure-the-arcade/spec.md`. **Evidence:** `docs/EVIDENCE_W08.md`.
+
+Scope decisions (constitution principle V):
+
+- **New dev dependency `playwright-core` 1.63.0 (exact pin, dev only).** W08
+  requires real-browser rendering and CSP tests (T04, T05, T16). It drives a
+  locally cached Chromium; it is not in the client or server bundle.
+- **No new event, service, database or user-facing error code.** The global
+  concurrency refusal reuses `RATE_LIMITED`.
+- **New limits:** Socket.IO messages are capped at 16 KiB, and at most 2 coach
+  runs can be active per process.
+- **New HTTP headers:** CSP, `nosniff` and `Referrer-Policy: no-referrer`. The
+  inline theme script moved to `public/theme-init.js` with unchanged behavior.
+- **New log line:** a minimal security event with closed fields
+  (`src/server/security-events.ts`).
+- **Not done:** major upgrades flagged by `npm audit` (zod 4, vite 8, vitest 5)
+  are recorded with exposure analysis and left for a separate dependency PR
+  with Anja, because the lockfile is shared.
+
+Status: automated verification passes (636 tests in 43 files, plus 5 browser
+tests). Pair contribution and defence remain open.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.
