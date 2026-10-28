@@ -1,6 +1,6 @@
 # Feature Specification: Round coach hardening (W08)
 
-**Feature Branch**: `feature/w08-hardening` (from `main` at `9b12bc1`)
+**Feature Branch**: `feature/w08-hardening` (from `main` at `9b12bc1`; updated with `main` at `6d42d93` after `011-secure-the-arcade` was merged)
 
 **Created**: 2026-10-28
 
@@ -8,7 +8,7 @@
 
 **Design of record**: `Plan.md` §2D. The round coach itself (steps, tools, report) stays owned by [spec 010](../010-round-coach-agent/spec.md) and is not changed.
 
-**Input**: the owner asked to bring the W08 "Secure the Arcade" work to `main`. That work was built on `011-secure-the-arcade` against a different coach; this feature ports the controls `main` lacked onto the round coach.
+**Input**: the owner asked to bring the W08 "Secure the Arcade" work to `main`. That work was built on `011-secure-the-arcade` against Aleksa's post-round review (now on `main` as `round:review`, `Plan.md` §2E/§2F); this feature ports the controls onto the round coach. The transport cap, headers and theme file arrived with that merge; what this feature adds is the round coach's run cap, its security events and its tests.
 
 ## User Scenarios & Testing
 
@@ -37,12 +37,12 @@
 ## Requirements
 
 - **FR-001** The Socket.IO server MUST refuse client messages over `MAX_SOCKET_MESSAGE_BYTES` (16 KiB) before decoding.
-- **FR-002** At most `RUN_LIMITS.maxConcurrentRuns` (2) coach runs MAY be active per process; the check MUST run before the visitor is charged, and the slot MUST be freed when the run settles, including on cancel.
+- **FR-002** At most `RUN_LIMITS.maxConcurrentRuns` (2) round-coach runs MAY be active per process; the check MUST run before the visitor is charged, and the slot MUST be freed when the run settles, including on cancel. The post-round review keeps its own cap of 2.
 - **FR-003** Every HTTP response MUST carry the CSP in `Plan.md` §2D, `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`. The CSP MUST NOT allow inline script, `eval`, wildcards, plugins or framing.
 - **FR-004** The theme script MUST be a same-origin file, not inline.
-- **FR-005** Each refused `round:coach` request and each finished run MUST produce one event line whose every field is an enum, a bounded count, a server timestamp or a server UUID; a line that fails the schema MUST be dropped.
+- **FR-005** Each refused `round:coach` or `round:review` request and each finished run of either agent MUST produce one event line, with `operation` naming the agent, whose every field is an enum, a bounded count, a server timestamp or a server UUID; a line that fails the schema MUST be dropped.
 - **FR-006** No new socket event, error code, runtime dependency or service. The concurrency refusal uses the existing `RATE_LIMITED`.
 
 ## Out of scope
 
-Everything in spec 010; the `011-secure-the-arcade` branch and its post-round coach; multi-process limits; accounts; dependency upgrades.
+Everything in spec 010-round-coach-agent; the post-round review's own behavior (specs 010-post-round-coach, 011-secure-the-arcade); multi-process limits; accounts; dependency upgrades.

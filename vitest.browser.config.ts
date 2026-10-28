@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import { fileURLToPath, URL } from "node:url";
 
 /**
- * W08 real-browser suite (`Plan.md` §2D): Chromium against the production client build. Kept
+ * W08 real-browser suite: Chromium against the production client build. Kept
  * out of the default `npm test` because it needs `dist/client` and a browser;
  * run it with `npm run test:browser`.
  */

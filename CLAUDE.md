@@ -52,7 +52,11 @@ above; it does not replace them, and `Plan.md` stays the plan of record.
 Features 001–008 in `specs/` were reconstructed after they were built. New
 features start at 009 and use the full specify → plan → tasks flow.
 
-Current feature: `specs/011-round-coach-hardening/plan.md` (`Plan.md` §2D) —
+Current feature: `specs/012-round-coach-hardening/plan.md` (`Plan.md` §2D) —
 the W08 controls on the round coach, built on `feature/w08-hardening` (2026-10-28).
 The previous feature, `specs/010-round-coach-agent` (`Plan.md` §2C), is built.
+Aleksa's post-round review (`round:review`, `specs/010-post-round-coach`,
+`Plan.md` §2E) and its W08 hardening (`specs/011-secure-the-arcade`, evidence
+`docs/EVIDENCE_W08.md`, `npm run security:check`) were merged into `main` on
+2026-10-28; both coaches run side by side.
 <!-- SPECKIT END -->

@@ -4,7 +4,7 @@
 
 ## Approach
 
-Port, onto the round coach, the four W08 controls that `main` lacked; keep every existing control and change no coach behavior. The generic pieces (transport cap, headers, theme file) are the same code as on `011-secure-the-arcade`; the run cap and security events are rewritten for `requestCoach`, `RUN_LIMITS` and the round coach's report.
+Port, onto the round coach, the four W08 controls that `main` lacked; keep every existing control and change no coach behavior. The generic pieces (transport cap, headers, theme file) are the same code as on `011-secure-the-arcade` and reached `main` with its merge; the run cap is written for `requestCoach` and `RUN_LIMITS`, and `security-events.ts` is unified so one module records both agents (`rejected(operation, code)`, `coachFinished`, `reviewFinished`).
 
 | Change | Where | Consumers checked |
 | --- | --- | --- |
@@ -12,12 +12,12 @@ Port, onto the round coach, the four W08 controls that `main` lacked; keep every
 | `RUN_LIMITS.maxConcurrentRuns = 2`, checked after the single-flight join and before `limits.check/charge`; decremented in `runCoach(...).finally` | `src/server/agent/limits.ts`, `src/server/rooms/room-store.ts` | A join to a running run takes no slot; a cancelled run ends through the gateway's abort, so its slot is freed |
 | CSP, `nosniff`, `no-referrer` on every response; `securityHeaders: false` exists only as a test dependency | `src/server/index.ts` | The production build loads only hashed same-origin JS/CSS, SVG and `data:` images and same-origin Socket.IO |
 | Inline theme script → `public/theme-init.js` | `index.html`, `public/` | Vite copies `public/` to `dist/client`; behavior unchanged |
-| `security-events.ts`; `reject()` in `requestCoach`; `refuse()` for the coach event in `register-handlers.ts` | `src/server/` | The existing `agent.run` record is unchanged; test servers default the sink to silent |
+| `security-events.ts` for both agents; `reject()` in `requestCoach` and `reviewRound`; `refuse()` for both events in `register-handlers.ts` | `src/server/` | The existing `agent.run` record and the review's trace are unchanged; test servers default the sink to silent |
 
 ## Tests
 
 - `tests/security/w08-hardening.test.ts` (in `npm test`): transport cap, privileged fields, run cap with cancel and allowance, tool rejection and log-injection events, cross-origin handshake, headers. Real server, schemas, store and coach agent; fake AI service and clock.
-- `tests/browser/w08-browser.test.ts` (`npm run test:browser`, own config): Chromium on the production build; control without headers; with headers, a full round and coach with zero CSP violations, hostile text inert, injected scripts blocked.
+- `tests/browser/w08-coach-browser.test.ts` (`npm run test:browser`, own config, next to the review's `w08-browser.test.ts`): Chromium on the production build; control without headers; with headers, a full round and coach with zero CSP violations, hostile text inert, injected scripts blocked.
 
 ## Risks
 

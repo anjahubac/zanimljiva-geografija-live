@@ -8,5 +8,6 @@
 - [X] H004 `RUN_LIMITS.maxConcurrentRuns` and the check/release in `requestCoach`.
 - [X] H005 `src/server/security-events.ts`, wired in `index.ts`, `register-handlers.ts` and `room-store.ts`.
 - [X] H006 `tests/security/w08-hardening.test.ts`; each control was disabled once to confirm its test fails.
-- [X] H007 `tests/browser/w08-browser.test.ts`, `vitest.browser.config.ts`, `playwright-core` 1.63.0 (dev, exact).
+- [X] H007 `tests/browser/w08-coach-browser.test.ts`, `vitest.browser.config.ts`, `playwright-core` 1.63.0 (dev, exact).
 - [X] H008 `npm run verify` and `npm run security:check` pass.
+- [X] H009 Update with `main` after `011-secure-the-arcade` was merged (2026-10-28): renumber to 012, one security-events module for both agents, a separate run counter per agent, keep both browser suites.

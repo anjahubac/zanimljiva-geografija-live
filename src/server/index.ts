@@ -13,6 +13,7 @@ import { createAiServiceFromEnv, type AiService } from "@server/ai/service";
 import { createRoomStore, type RoomStore } from "@server/rooms/room-store";
 import { registerHandlers } from "@server/socket/register-handlers";
 import { createUsageLimits } from "@server/usage-limits";
+import type { CoachCapability } from "@server/features/post-round-coach";
 import { createSecurityLog } from "@server/security-events";
 import { MAX_SOCKET_MESSAGE_BYTES } from "@contracts/socket.schemas";
 
@@ -89,6 +90,7 @@ export type GameServerDeps = {
   selectLetter?: LetterSelector;
   /** The AI checker, bot and hints; absent means the local letter rule only (§2B). */
   ai?: AiService | null;
+  coach?: CoachCapability | null;
   random?: () => number;
   /** Where W08 security events go; defaults to the server console. */
   writeSecurityEvent?: (line: string) => void;
@@ -169,6 +171,7 @@ export function createGameServer(deps: GameServerDeps): GameServer {
     selectLetter,
     config,
     ai: deps.ai ?? null,
+    coach: deps.coach ?? null,
     limits: createUsageLimits(config),
     securityLog,
     ...(deps.random ? { random: deps.random } : {}),
@@ -209,7 +212,7 @@ if (entryPoint === fileURLToPath(import.meta.url)) {
     // Behind a host proxy every visitor would share the proxy's address, and so one AI limit (§2B.11).
     console.warn("[limits] TRUST_PROXY_HOPS is 0: behind a host proxy, all visitors share one AI usage limit");
   }
-  const server = createGameServer({ config, ai: ai?.service ?? null });
+  const server = createGameServer({ config, ai: ai?.service ?? null, coach: ai?.coach ?? null });
 
   const cleanupTimer = setInterval(() => server.store.cleanup(), CLEANUP_INTERVAL_MS);
   cleanupTimer.unref();

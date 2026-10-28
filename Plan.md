@@ -1230,12 +1230,14 @@ human rehearsal must come from observed work, not inferred names or activity.
 ## 2D. Week 8 — security hardening of the round coach (2026-10-28)
 
 **Origin.** The W08 assignment ("Secure the Arcade") was done on branch
-`011-secure-the-arcade` against a separate post-round coach, not this round
-coach; that branch stays the W08 submission and is not merged (it conflicts
-with §2C in 28 files, including the `round:coach` event). On 2026-10-28 the
-owner asked to bring the W08 work to `main` and left the approach open. The
-chosen approach ports the W08 controls that `main` lacked onto the round coach
-and removes nothing. Spec: `specs/011-round-coach-hardening`.
+`011-secure-the-arcade` against Aleksa's post-round review (§2E, §2F), not this
+round coach. On 2026-10-28 the owner asked to bring the W08 work to `main` and
+left the approach open; this section ports the W08 controls onto the round
+coach and removes nothing. The same day the owner also had `011-secure-the-arcade`
+merged into `main` (both coaches side by side), which brought the shared
+controls (transport cap, headers, theme file) first; this section adds what is
+specific to the round coach and makes the security events cover both agents.
+Spec: `specs/012-round-coach-hardening`.
 
 **What `main` lacked (checked 2026-10-28):** no transport limit before decode
 (Socket.IO default 1 MB), no process-wide cap on concurrent coach runs, no
@@ -1247,16 +1249,130 @@ HTTP security headers (and an inline theme script that would need
 | Control | Value | Where |
 | --- | --- | --- |
 | Socket.IO message cap, enforced before decode | 16 KiB | `MAX_SOCKET_MESSAGE_BYTES`, `maxHttpBufferSize` in `src/server/index.ts` |
-| Concurrent coach runs per server process | 2, checked before the visitor is charged; refused as `RATE_LIMITED` | `RUN_LIMITS.maxConcurrentRuns`, `requestCoach` in `room-store.ts` |
+| Concurrent round-coach runs per server process | 2, checked before the visitor is charged; refused as `RATE_LIMITED`. The review keeps its own cap of 2 (§2F), so at most 4 agent runs per process | `RUN_LIMITS.maxConcurrentRuns`, `requestCoach` in `room-store.ts` |
 | HTTP headers on every response | CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, `nosniff`, `Referrer-Policy: no-referrer` | `src/server/index.ts` |
 | Theme script | moved verbatim from `index.html` to `public/theme-init.js` | — |
-| Security events | one JSON line per refused coach request and per finished run; closed fields only (enum, count, timestamp, server UUID) | `src/server/security-events.ts` |
+| Security events | one JSON line per refused request and per finished run of either agent; `operation` is `round:coach` or `round:review`; closed fields only (enum, count, timestamp, server UUID) | `src/server/security-events.ts` |
 | Dev dependency | `playwright-core` `1.63.0` (exact), for the real-browser CSP test only; not in any bundle | `package.json` |
 
 New commands: `npm run test:security`, `npm run test:browser` (builds the
 client, then Chromium against `dist/client`), `npm run security:check` (both).
 No new event, error code, runtime dependency, service or feature. All limits
 are in memory and per process.
+
+## 2E. Week 5 post-round review (Aleksa) — specification and implementation (2026-10-07)
+
+**Merged into `main` on 2026-10-28** at the owner's request, next to the round
+coach (§2C); both run side by side. Built on `010-post-round-coach` as "the
+post-round coach" and written there as §2C/§2D; renumbered §2E/§2F here. The
+merge changed only what was needed for the two features to coexist:
+
+- its socket event is `round:review` (it was `round:coach`, which §2C uses);
+  its contracts moved to `src/contracts/review.schemas.ts`;
+- its own allowance `reviewRunsPerVisitorHour` / `REVIEW_RUNS_PER_VISITOR_HOUR`
+  (default 5, max 5) instead of sharing §2C's `coachRunsPerVisitorHour`;
+- its copy is `STRINGS.*.review`, its panel heading id `review-title`;
+- its documents `docs/AGENT_FLOW.md` and `docs/AGENT_EVALS.md` became
+  `docs/REVIEW_AGENT_FLOW.md` and `docs/REVIEW_AGENT_EVALS.md`; its scripts
+  `review:fake-e2e` and `review:smoke` (`scripts/review-smoke.ts`);
+- its W08 security events carry `operation: "round:review"`.
+
+The original text follows unchanged except for section numbers.
+
+**Owner request:** specify the proposed Zanimljiva Geografija post-round coach
+using Spec Kit, meet the complete W05 assignment/addendum and retain all
+required artifacts. Work on a local branch from Anja's main, commit at the
+agreed final milestone, and do not push. The initial specification pass was
+documentation only; the user later explicitly authorized implementation of
+the approved detailed design after root consistency review.
+
+**Status (2026-10-07):** implementation and automated verification complete.
+Final `npm.cmd run verify` passed 555 tests across 40 files, typecheck, lint,
+and client/server builds. Live-provider demo, interactive browser review and
+human pair gates remain open; see `docs/EVIDENCE_W05.md`.
+**Feature:** `specs/010-post-round-coach/spec.md`.
+**Branch/base:** `010-post-round-coach`, created after fetching `origin/main`
+at `4dea3b59e35c5dc89a09776cea43bb5e8487ad5e`; no upstream, push or deployment.
+
+The goal is **Review this completed round and recommend up to two things to
+practice**. Only the requesting human's completed results are used. The
+model proposes `analyze_round`, a checked read-only local operation; its
+evidence returns to a second model decision. The backend checks evidence
+references and eligible advice; approved SR/EN wording renders the review.
+There are no generated replacement geography answers or agent game writes.
+
+Proposed scope expansion is limited to the coach feature, one new
+`round:coach` request/terminal ack, bounded own-result/run metadata and a
+separate visitor allowance. No new dependency, database, service or deployment.
+Existing W04 score/checker/hint/alphabet/reveal behavior remains the baseline.
+`docs/GAME_SPEC.md` contains a clearly labeled W05 amendment describing the
+read-only results review and its limits.
+
+Limits: two model decisions, one tool, three actual provider attempts,
+one recovery and one configured-model/provider fallback for the whole run;
+30-second total deadline, eight-second attempt cap and 250 ms tool cap.
+One admitted run per human/round, five admitted runs per visitor/hour,
+terminal/in-flight duplicate reuse. Each coach attempt checks/consumes the
+shared daily allowance. Existing W04 logical-call accounting and checker
+priority remain unchanged; their mixed-unit limitation is documented.
+
+The source inspection identified three integration decisions: capture exact
+canonical completed results rather than rejudge locked answers; enforce
+W05 shared guards before actual gateway attempts rather than around two
+unbounded interactions; avoid unrestricted prose that cannot be validated
+against evidence. Consumers, before/after cases and tradeoffs are in
+`specs/010-post-round-coach/impact-analysis.md`.
+
+Required artifact entry points: `docs/AGENT_FEATURE_SPEC.md`,
+`docs/AGENT_FLOW.md`, `docs/TOOL_CONTRACTS.md`, `docs/AGENT_EVALS.md`,
+`docs/EVIDENCE_W05.md` and the existing `docs/AI_USAGE_LOG.md`.
+All assignment sections/Core items are mapped in
+`specs/010-post-round-coach/checklists/assignment-coverage.md`.
+Automated evidence is recorded in `docs/EVIDENCE_W05.md`; live-provider,
+interactive browser and human pair contribution evidence remain pending.
+
+Approval record: the user authorized the approved spec package and its exact
+design for implementation; root consistency review passed before code. No
+separate owner review of the generated plan is claimed. Any behavior outside
+the approved spec/data model/contracts requires owner clarification. W04 live
+evaluation in §2B.6 remains pending. No production deployment is needed for
+W05. Only existing bounded fallback reuse and grounded quality eval are in
+scope.
+
+Implemented: strict contracts, source snapshot, deterministic tool,
+two-step engine, physical-attempt guard, limits, telemetry, service/store/socket
+wiring, reducer-backed client flow, bilingual evidence rendering, fake-e2e and
+ opt-in live smoke scripts. See the actual test output and remaining gates in
+`docs/EVIDENCE_W05.md`; do not treat this worktree as final until those gates
+are honestly resolved.
+
+## 2F. Week 8 Secure the Arcade — hardening of the post-round review (2026-10-25)
+
+**Owner request:** Aleksa asked for the W08 assignment to be done on the
+existing W05 project: harden one agent flow and prove its boundaries with
+executable tests. Local branch `011-secure-the-arcade` from
+`010-post-round-coach` at `67aa13e`; no commit, push or deployment yet.
+**Feature:** `specs/011-secure-the-arcade/spec.md`. **Evidence:** `docs/EVIDENCE_W08.md`.
+
+Scope decisions (constitution principle V):
+
+- **New dev dependency `playwright-core` 1.63.0 (exact pin, dev only).** W08
+  requires real-browser rendering and CSP tests (T04, T05, T16). It drives a
+  locally cached Chromium; it is not in the client or server bundle.
+- **No new event, service, database or user-facing error code.** The global
+  concurrency refusal reuses `RATE_LIMITED`.
+- **New limits:** Socket.IO messages are capped at 16 KiB, and at most 2 coach
+  runs can be active per process.
+- **New HTTP headers:** CSP, `nosniff` and `Referrer-Policy: no-referrer`. The
+  inline theme script moved to `public/theme-init.js` with unchanged behavior.
+- **New log line:** a minimal security event with closed fields
+  (`src/server/security-events.ts`).
+- **Not done:** major upgrades flagged by `npm audit` (zod 4, vite 8, vitest 5)
+  are recorded with exposure analysis and left for a separate dependency PR
+  with Anja, because the lockfile is shared.
+
+Status: automated verification passes (636 tests in 43 files, plus 5 browser
+tests). Pair contribution and defence remain open.
 
 ## 2A. Execution contract for the implementation model
 

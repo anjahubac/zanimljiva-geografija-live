@@ -25,6 +25,8 @@ export type UsageLimitsConfig = {
   aiDailyCallBudget: number;
   /** Week 5 (§2C.8): round-coach runs, charged when a run starts. */
   coachRunsPerVisitorHour: number;
+  /** Week 5 (§2E): post-round review admissions; 5 when absent. */
+  reviewRunsPerVisitorHour?: number;
 };
 
 export type UsageLimits = {
@@ -34,12 +36,16 @@ export type UsageLimits = {
   charge(action: LimitedAction, visitor: string, now: number): void;
   /** Counts one AI call toward today's budget, whatever the operation. */
   countCall(now: number): void;
+  /** Post-round review (§2E): atomically charges one admitted run and checks current daily availability. */
+  admitCoachRun(visitor: string, now: number): Extract<GameErrorCode, "AI_LIMIT" | "RATE_LIMITED"> | null;
+  /** Post-round review (§2E): atomically checks and charges one physical provider attempt. */
+  chargeCoachAttempt(now: number): boolean;
   /** Forgets visitors whose hour has passed. */
   prune(now: number): void;
 };
 
 export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
-  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number; coach: number }>();
+  const visitors = new Map<string, { startedAt: number; aiRoom: number; hint: number; coach: number; review: number }>();
   let day = -1;
   let callsToday = 0;
 
@@ -75,7 +81,7 @@ export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
     charge(action, visitor, now) {
       let window = windowOf(visitor, now);
       if (!window) {
-        window = { startedAt: now, aiRoom: 0, hint: 0, coach: 0 };
+        window = { startedAt: now, aiRoom: 0, hint: 0, coach: 0, review: 0 };
         visitors.set(visitor, window);
       }
       window[action] += 1;
@@ -83,6 +89,25 @@ export function createUsageLimits(config: UsageLimitsConfig): UsageLimits {
     countCall(now) {
       rollDay(now);
       callsToday += 1;
+    },
+    admitCoachRun(visitor, now) {
+      rollDay(now);
+      if (callsToday >= config.aiDailyCallBudget) return "AI_LIMIT";
+      const current = windowOf(visitor, now);
+      if (current && current.review >= (config.reviewRunsPerVisitorHour ?? 5)) return "RATE_LIMITED";
+      let window = current;
+      if (!window) {
+        window = { startedAt: now, aiRoom: 0, hint: 0, coach: 0, review: 0 };
+        visitors.set(visitor, window);
+      }
+      window.review += 1;
+      return null;
+    },
+    chargeCoachAttempt(now) {
+      rollDay(now);
+      if (callsToday >= config.aiDailyCallBudget) return false;
+      callsToday += 1;
+      return true;
     },
     prune(now) {
       for (const [visitor, window] of visitors) {

@@ -1,0 +1,68 @@
+{
+  "label": "before",
+  "recordedAt": "2026-10-25T13:34:01.174Z",
+  "oversizedPayload": {
+    "input": "valid coach request + 64 KiB extra field",
+    "outcome": {
+      "ack": {
+        "ok": false,
+        "error": {
+          "code": "INVALID_PAYLOAD",
+          "message": "Zahtev nije ispravan."
+        }
+      }
+    },
+    "adapterCalls": 0
+  },
+  "concurrency": {
+    "input": "3 simultaneous coach requests (3 rooms) while the fake provider holds every call open",
+    "firstResponsesWithin300ms": [
+      "pending",
+      "pending",
+      "pending"
+    ],
+    "maxConcurrentProviderCalls": 3,
+    "finalAcks": [
+      {
+        "ok": true,
+        "status": "completed",
+        "providerAttemptCount": 2
+      },
+      {
+        "ok": true,
+        "status": "completed",
+        "providerAttemptCount": 2
+      },
+      {
+        "ok": true,
+        "status": "completed",
+        "providerAttemptCount": 2
+      }
+    ],
+    "nextLegitimateRequestAfterRelease": {
+      "ok": true,
+      "status": "completed",
+      "providerAttemptCount": 2
+    },
+    "totalAdapterCalls": 8
+  },
+  "headers": {
+    "input": "GET / from the production static server",
+    "status": 200,
+    "contentSecurityPolicy": null,
+    "xContentTypeOptions": null,
+    "referrerPolicy": null
+  },
+  "rejectedRequestEvent": {
+    "input": "coach request with role=admin and maxSteps=999",
+    "ack": {
+      "ok": false,
+      "error": {
+        "code": "INVALID_PAYLOAD",
+        "message": "Zahtev nije ispravan."
+      }
+    },
+    "adapterCalls": 0,
+    "securityEvents": []
+  }
+}

@@ -189,7 +189,7 @@ describe("W08 security events (I7)", () => {
 
     expect(await coach(p1, request(roundId))).toMatchObject({ ok: true, data: { status: "failed", stopReason: "unknown_tool" } });
     expect(log.events()).toEqual([
-      expect.objectContaining({ event: "agent.tool.rejected", reasonCode: "unknown_tool", outcome: "denied", providerAttempts: 1, executedToolCalls: 0 }),
+      expect.objectContaining({ event: "agent.tool.rejected", operation: "round:coach", reasonCode: "unknown_tool", outcome: "denied", providerAttempts: 1, executedToolCalls: 0 }),
     ]);
   });
 

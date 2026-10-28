@@ -11,6 +11,7 @@ import {
   draftRequestSchema,
   finishRequestSchema,
   hintRequestSchema,
+  reviewRequest,
   joinRoomRequestSchema,
   playAiRequestSchema,
   roomAckSchema,
@@ -86,10 +87,10 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
         // rejected, because ignoring a rejection is how UIs desynchronize.
         if (!response.ok) socket.emit(SERVER_EVENTS.gameError, response.error);
       };
-      // W08: the coach's refusals before the store are security events too.
+      // W08: both coaches' refusals before the store are security events too.
       // Only the closed code is recorded, never the rejected payload.
       const refuse = (code: "RATE_LIMITED" | "INVALID_PAYLOAD" | "INTERNAL"): void => {
-        if (event === CLIENT_EVENTS.coach) options.securityLog?.rejected(code);
+        if (event === CLIENT_EVENTS.coach || event === CLIENT_EVENTS.review) options.securityLog?.rejected(event, code);
         respond(fail(code));
       };
 
@@ -223,6 +224,11 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
     // Week 5 (§2C): the round coach. The report is this ack, so it reaches only the caller.
     socket.on(CLIENT_EVENTS.coach, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.coach, coachRequestSchema, raw, ack, (input) => store.requestCoach(input, socket.id, visitor));
+    });
+
+    // Week 5 (§2E): the post-round review. The view is this ack, so it reaches only the caller.
+    socket.on(CLIENT_EVENTS.review, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.review, reviewRequest, raw, ack, (input) => store.reviewRound(input, socket.id, visitor));
     });
 
     socket.on("disconnect", () => {

@@ -54,5 +54,8 @@ export function formatDebugEntry(entry: DebugEntry): string {
 /** Returns a sink only when debugging is allowed here; otherwise undefined (nothing is printed). */
 export function createDebugSink(env: DebugEnv, write: (line: string) => void = (line) => console.info(line)): DebugSink | undefined {
   if (!isDebugLogEnabled(env)) return undefined;
-  return (entry) => write(formatDebugEntry(entry));
+  return (entry) => {
+    if (entry.operation === "post-round-coach") return;
+    write(formatDebugEntry(entry));
+  };
 }
