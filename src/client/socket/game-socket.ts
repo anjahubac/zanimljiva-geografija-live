@@ -8,6 +8,8 @@ import {
   draftAckSchema,
   finishAckSchema,
   hintAckSchema,
+  reviewAckSchema,
+  reviewRequest,
   playerFinishedSchema,
   quickPlayAckSchema,
   roomAckSchema,
@@ -22,6 +24,8 @@ import {
   type FinishAck,
   type HintAck,
   type HintRequest,
+  type ReviewRequest,
+  type ReviewAck,
   type PlayAiRequest,
   type PlayerFinished,
   type QuickPlayAck,
@@ -67,6 +71,8 @@ export type GameSocket = {
   requestHint(input: HintRequest): Promise<Ack<HintAck>>;
   /** Week 5 (§2C). Resolves null when no report arrives within `COACH_ACK_TIMEOUT_MS`. */
   requestCoach(input: CoachRequest): Promise<Ack<CoachReport> | null>;
+  /** Week 5 (§2E): the post-round review of the caller's own round. */
+  reviewRound(input: ReviewRequest, signal?: AbortSignal): Promise<Ack<ReviewAck>>;
   clientReady(roomCode: string): Promise<Ack<ClientReadyAck>>;
   sendDraft(input: DraftRequest): Promise<Ack<DraftAck>>;
   finishRound(roundId: string): Promise<Ack<FinishAck>>;
@@ -88,12 +94,30 @@ export function createGameSocket(url?: string): GameSocket {
     event: string,
     payload: unknown,
     dataSchema: S,
+    timeoutMs?: number,
+    signal?: AbortSignal,
   ): Promise<Ack<z.infer<S>>> {
     return new Promise((resolve) => {
+      let settled = false;
+      const finish = (result: Ack<z.infer<S>>) => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        signal?.removeEventListener("abort", onAbort);
+        resolve(result);
+      };
+      const onAbort = () => finish({ ok: false, error: gameError("AI_UNAVAILABLE") });
+      const timer = timeoutMs === undefined ? undefined : setTimeout(() => {
+        finish({ ok: false, error: gameError("AI_UNAVAILABLE") });
+      }, timeoutMs);
+      if (signal?.aborted) { onAbort(); return; }
+      signal?.addEventListener("abort", onAbort, { once: true });
+      if (!socket.connected && timeoutMs !== undefined) { finish({ ok: false, error: gameError("AI_UNAVAILABLE") }); return; }
       socket.emit(event, payload, (raw: unknown) => {
+        if (settled) return;
         const parsed = ackSchema(dataSchema).safeParse(raw);
         // A malformed acknowledgement is a failure, not something to guess at.
-        resolve(parsed.success ? (parsed.data as Ack<z.infer<S>>) : { ok: false, error: gameError("INTERNAL") });
+        finish(parsed.success ? (parsed.data as Ack<z.infer<S>>) : { ok: false, error: gameError("INTERNAL") });
       });
     });
   }
@@ -128,6 +152,13 @@ export function createGameSocket(url?: string): GameSocket {
           resolve(parseCoachAck(error, raw));
         });
       }),
+    reviewRound: (input, signal) => {
+      const parsed = reviewRequest.safeParse(input);
+      if (!parsed.success) return Promise.resolve({ ok: false, error: gameError("INVALID_PAYLOAD") });
+      return emitAck(CLIENT_EVENTS.review, parsed.data, reviewAckSchema, 32_000, signal).then((ack) =>
+        ack.ok && ack.data.roundId !== parsed.data.roundId ? { ok: false, error: gameError("INTERNAL") } : ack,
+      );
+    },
     clientReady: (roomCode) =>
       emitAck(CLIENT_EVENTS.clientReady, { roomCode }, clientReadyAckSchema),
     sendDraft: (input) => emitAck(CLIENT_EVENTS.draft, input, draftAckSchema),

@@ -224,6 +224,8 @@ export const serverConfigSchema = z.object({
   aiDailyCallBudget: z.coerce.number().int().min(1).max(1_000_000).default(1_500),
   /** Round-coach runs per visitor per hour (`Plan.md` §2C.8). */
   coachRunsPerVisitorHour: z.coerce.number().int().min(1).max(10_000).default(6),
+  /** Post-round review admissions per visitor per hour (`Plan.md` §2E). */
+  reviewRunsPerVisitorHour: z.coerce.number().int().min(1).max(5).default(5),
   /** Proxies in front of the server whose x-forwarded-for entry is trusted; 0 = none. */
   trustProxyHops: z.coerce.number().int().min(0).max(5).default(0),
 });

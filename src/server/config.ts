@@ -14,6 +14,7 @@ const ENV_KEYS = {
   HINTS_PER_VISITOR_HOUR: "hintsPerVisitorHour",
   AI_DAILY_CALL_BUDGET: "aiDailyCallBudget",
   COACH_RUNS_PER_VISITOR_HOUR: "coachRunsPerVisitorHour",
+  REVIEW_RUNS_PER_VISITOR_HOUR: "reviewRunsPerVisitorHour",
   TRUST_PROXY_HOPS: "trustProxyHops",
 } as const;
 

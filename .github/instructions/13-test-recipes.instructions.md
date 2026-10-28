@@ -288,3 +288,7 @@ only path that does, and it is not a test.
   seen the output.
 - A test that needs a `setTimeout` longer than 500 ms is testing time instead of
   behavior. Inject the clock instead.
+
+## Week 5 coach tests
+
+Coach tests exercise the real engine, deterministic tool, shared schemas and provider-attempt guard with scripted adapter responses. Cover exact physical calls, zero-tool denials, validated evidence, late abort behavior, private socket ack and unchanged canonical results. `npm.cmd run coach:fake-e2e` records four deterministic fake scenarios; it is not a replacement for the full `npm.cmd run test:unit`, `npm.cmd run test:integration` or `npm.cmd run verify` suites. `npm.cmd run coach:smoke` is the only W05 live path and requires explicit opt-in plus configured credentials. Never call a live provider from a default test.

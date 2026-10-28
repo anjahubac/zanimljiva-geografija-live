@@ -1,0 +1,66 @@
+{
+  "observedAt": "2026-10-07T12:58:34.942Z",
+  "scenario": "unknown_tool",
+  "status": "stopped",
+  "stopReason": "unknown_tool",
+  "stepCount": 1,
+  "toolCallCount": 0,
+  "providerAttemptCount": 1,
+  "adapterCallCount": 1,
+  "elapsedMs": 1,
+  "trace": [
+    {
+      "event": "ai.coach",
+      "runId": "3f7f7548-bd90-498e-85f9-21d5ab102dda",
+      "status": "stopped",
+      "stopReason": "unknown_tool",
+      "stepCount": 1,
+      "toolCallCount": 0,
+      "providerAttemptCount": 1,
+      "elapsedMs": 1,
+      "toolName": null,
+      "validations": [
+        {
+          "kind": "proposal",
+          "step": 1,
+          "shape": "tool_request",
+          "toolName": "unknown",
+          "outcome": "rejected",
+          "reason": "unknown_tool"
+        },
+        {
+          "kind": "tool",
+          "toolName": "unknown",
+          "execution": "not_executed",
+          "resultValidation": "not_run",
+          "reason": "unknown_tool"
+        }
+      ],
+      "attemptUsage": {
+        "usageReportedAttempts": 1,
+        "unknownAttempts": 0,
+        "returnedInputTokenSum": 10,
+        "returnedOutputTokenSum": 5,
+        "returnedTotalTokenSum": 15
+      },
+      "attempts": [
+        {
+          "step": 1,
+          "attempt": 1,
+          "kind": "initial",
+          "provider": "gemini",
+          "model": "fake-model",
+          "status": "transport_success",
+          "latencyMs": 1,
+          "usage": {
+            "inputTokens": 10,
+            "outputTokens": 5,
+            "totalTokens": 15
+          }
+        }
+      ]
+    }
+  ],
+  "result": null,
+  "usageKind": "scripted fake-provider usage, not live billing usage"
+}

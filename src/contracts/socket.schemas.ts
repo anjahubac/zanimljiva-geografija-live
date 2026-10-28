@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { coachRequestSchema as reviewRequestSchema, coachRunViewSchema as reviewRunViewSchema } from "./review.schemas";
 import {
   CATEGORY_COUNT,
   HINTS_PER_ROUND,
@@ -24,6 +25,14 @@ import {
 } from "./game.schemas";
 
 /* ------------------------------------------------------- client -> server */
+
+/**
+ * W08: the largest client->server Socket.IO message the transport accepts. The
+ * WebSocket/polling layer enforces it before a payload is decoded; the largest
+ * legitimate request (a draft or a name) is well under 1 KiB.
+ */
+export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024;
+
 /*
  * Every request schema is .strict(). An unexpected key is a rejection, not an
  * ignored field: this is what stops a browser smuggling `letter`, `playerId`,
@@ -81,6 +90,10 @@ export const hintRequestSchema = z
   .strict();
 export type HintRequest = z.infer<typeof hintRequestSchema>;
 
+/** Week 5, Aleksa's post-round review (`Plan.md` §2E): the request is three closed fields. */
+export const reviewRequest = reviewRequestSchema;
+export type ReviewRequest = z.infer<typeof reviewRequest>;
+
 /* ------------------------------------------------------- acknowledgements */
 
 /** Returned only to the caller. `resumeToken` is never broadcast. */
@@ -135,6 +148,9 @@ export const hintAckSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 export type HintAck = z.infer<typeof hintAckSchema>;
+
+export const reviewAckSchema = reviewRunViewSchema;
+export type ReviewAck = z.infer<typeof reviewAckSchema>;
 
 /* ------------------------------------------------------- server -> client */
 
@@ -230,6 +246,8 @@ export const CLIENT_EVENTS = {
   hint: "round:hint",
   /** Week 5 (§2C): the round coach. Answered by an ack to the caller only; no server event. */
   coach: "round:coach",
+  /** Week 5 (§2E): the post-round review. Answered by an ack to the caller only; no server event. */
+  review: "round:review",
 } as const;
 
 export const SERVER_EVENTS = {
