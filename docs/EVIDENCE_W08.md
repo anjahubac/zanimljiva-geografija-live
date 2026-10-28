@@ -1,6 +1,6 @@
 # `EVIDENCE_W08.md` — Secure the Arcade
 
-**Status (2026-10-25):** kontrole su implementirane, a automatizovani dokazi pokrenuti i prolaze (rezultati ispod). **Otvoreno:** doprinos para i zamena uloga, individualna odbrana i završni commit. Ovaj zapis razlikuje **planirano / izvršeno / opaženo / zaključeno**; ništa ovde nije upisano bez stvarnog pokretanja.
+**Status (ažurirano 2026-10-28):** kontrole su implementirane i commit-ovane (`f0710e6`), a automatizovani dokazi pokrenuti i prolaze na Windows-u (2026-10-25) i ponovo na macOS-u (2026-10-28). **Otvoreno:** doprinos para i zamena uloga, individualna odbrana (§10). Ovaj zapis razlikuje **planirano / izvršeno / opaženo / zaključeno**; ništa ovde nije upisano bez stvarnog pokretanja.
 
 Pravila i limiti su u [spec 011](../specs/011-secure-the-arcade/spec.md), pristup i izmene u [plan](../specs/011-secure-the-arcade/plan.md), a redosled rada u [tasks](../specs/011-secure-the-arcade/tasks.md). Ovaj dokument nosi model pretnji, inventar podataka i dokaze, i ne ponavlja spec.
 
@@ -10,8 +10,9 @@ Pravila i limiti su u [spec 011](../specs/011-secure-the-arcade/spec.md), pristu
 - **Igra i tok:** „Zanimljiva geografija Live“ (dva igrača, 8 kategorija, slovo). Ojačan je W05 **post-round coach**: `Analyze my round` → socket događaj `round:coach` → model korak 1 predlaže `analyze_round` → backend izvršava read-only alat → model korak 2 bira nalaze i preporuke → backend validira → UI prikazuje zatvoren, lokalizovan tekst.
 - **Repo:** `week5/zanimljiva-geografija-live` (origin `anjahubac/zanimljiva-geografija-live`).
 - **Početni checkpoint:** grana `010-post-round-coach`, commit `67aa13ebb5ebda5a18f5f2231c13c4638b146268`.
-- **Završno stanje:** lokalna grana `011-secure-the-arcade` (napravljena iz `67aa13e`). **Commit još nije napravljen i ništa nije push-ovano**; izmene su u radnoj kopiji.
-- **Okruženje:** Windows 11, Node v24.12.0, npm 11.6.2, Chromium iz `playwright-core@1.63.0` (build 1243, lokalno keširan).
+- **Završni commit:** grana `011-secure-the-arcade` (napravljena iz `67aa13e`), commit `f0710e6654f100c08dc33238b321d4a0ecae2c2a`, push-ovan na `origin/011-secure-the-arcade`. Kasniji commit-i na grani menjaju samo dokumentaciju; kod i testovi iz ovog zapisa su oni na `f0710e6`.
+- **Okruženje (prvo pokretanje, 2026-10-25, radna kopija pre commit-a):** Windows 11, Node v24.12.0, npm 11.6.2, Chromium iz `playwright-core@1.63.0` (build 1243, lokalno keširan).
+- **Okruženje (ponovljeno 2026-10-28, tačno na `f0710e6`):** macOS 26.6.2, Node v26.8.1, npm 11.19.0, isti Chromium build 1243. Rezultati u §8.
 - **Početni rezultati (izvršeno na `67aa13e`):** `npm run verify` → typecheck i lint čisti, **555 testova u 40 fajlova prošlo**, Vite client build i tsup server build uspešni.
 - **Model pristupa:** nema naloga. Identitet je serverska socket konekcija vezana za mesto (seat) u sobi; rezultati runde su privatni za dva igrača te sobe. Kod sobe i `roundId` su **identifikatori resursa, ne tokeni**: odluka uvek ide preko `socket.id → soba → seat`. `resumeToken` postoji u serverskom ack-u, ali ga klijent ne čuva i ne šalje (`grep resumeToken src/client` je prazan).
 - **Početni W05 tok je radio** (fake provider): 2 model koraka, 1 alat, validan rezultat (`docs/EVIDENCE_W05.md`, i ponovo T00 ispod).
@@ -134,7 +135,7 @@ Nije pokrenut `npm audit fix --force`. Jedina nova zavisnost je `playwright-core
 
 ## 6. Poređenje pre/posle
 
-Ista skripta i isti ulazi pokrenuti su na `67aa13e` i na W08 radnoj kopiji: `npx tsx scripts/w08-before-after.ts before|after`. Izlaz je u `docs/runs/w08/before-after-{before,after}.json`. Proba koristi samo javni server interfejs i fake provider.
+Ista skripta i isti ulazi pokrenuti su na `67aa13e` i na W08 radnoj kopiji: `npx tsx scripts/w08-before-after.ts before|after`. Izlaz je u `docs/runs/w08/before-after-{before,after}.json`. „After" je ponovo pokrenut 2026-10-28 na `f0710e6` (macOS): isti ishodi, razlikuju se samo `recordedAt` i nasumični `correlationId`. Proba koristi samo javni server interfejs i fake provider.
 
 | Scenario | Pre (`67aa13e`) | Izmena | Posle (W08) | Šta dokazuje, a šta ne |
 |---|---|---|---|---|
@@ -163,7 +164,7 @@ Ista skripta i isti ulazi pokrenuti su na `67aa13e` i na W08 radnoj kopiji: `npx
 
 ## 8. Ponovljivost i isporuka
 
-| Provera | Komanda | Stvarni izlaz (2026-10-25, W08 radna kopija) | Ograničenje |
+| Provera | Komanda | Stvarni izlaz (2026-10-25, Windows, W08 radna kopija pre commit-a) | Ograničenje |
 |---|---|---|---|
 | Typecheck + lint + svi testovi + build | `npm run verify` | exit 0; **636 testova u 43 fajla** (555 postojećih + 81 novih); Vite build i tsup build uspešni | — |
 | Security suite (unit/integracija) | `npm run test:security` | 81/81, pokrenuto 3 puta zaredom, stabilno | fake provider |
@@ -173,11 +174,21 @@ Ista skripta i isti ulazi pokrenuti su na `67aa13e` i na W08 radnoj kopiji: `npx
 | Pre/posle | `npx tsx scripts/w08-before-after.ts after` | `docs/runs/w08/before-after-after.json` | „before“ se pokreće na `67aa13e` sa kopijom skripte i `tests/helpers/coach-round.ts` |
 | Dependency audit | `npm audit --omit=dev`, `npm audit` | §5 | stanje registra na dan pokretanja |
 
+**Ponovljeno 2026-10-28 tačno na `f0710e6`** (macOS 26.6.2, Node v26.8.1, npm 11.19.0, Chromium build 1243, posle `npm ci`):
+
+| Komanda | Stvarni izlaz |
+|---|---|
+| `npm run verify` | exit 0; typecheck i lint čisti; **636 testova u 43 fajla**; Vite build i tsup build uspešni |
+| `npm run security:check` | exit 0; `test:security` **81/81** (3 fajla), `test:browser` **5/5** |
+| `npx tsx scripts/w08-before-after.ts after` | exit 0; isti ishodi kao u `before-after-after.json`, razlikuju se samo `recordedAt` i nasumični `correlationId` |
+
+Time je potvrđeno da commit-ovani kod daje iste rezultate kao radna kopija sa Windows-a. Audit iz §5 nije ponovo pokretan.
+
 Reset nije potreban: sve je u memoriji, a svaki test pravi svoj server na portu 0.
 
 ## 9. Zaključci i preostali rizik
 
-- **Dokazano (na radnoj kopiji iz `67aa13e`):** I1–I8 kroz testove u §5. Ponašanje pre izmena za R1–R3 je izmereno istom probom.
+- **Dokazano (na `f0710e6`; prvo na Windows radnoj kopiji, zatim ponovljeno na macOS-u, §8):** I1–I8 kroz testove u §5. Ponašanje pre izmena za R1–R3 je izmereno istom probom.
 - **Samo pregledano u kodu, nije posebno izvršeno:** polling transport (testovi koriste WebSocket; `maxHttpBufferSize` važi i za polling POST po engine.io dokumentaciji); W04 tokovi provere odgovora i hintova (nisu izabrani tok).
 - **Nije provereno:** pravi Gemini/Groq poziv (nije potreban za W08; ključ nije korišćen), više serverskih procesa, HTTPS, drugi browseri osim Chromium-a.
 - **Važi samo lokalno/fake:** svi limiti su u memoriji jednog procesa; IP posetioca zavisi od `TRUST_PROXY_HOPS` na hostu; fake testovi ne dokazuju da pravi model neće pratiti injection.
