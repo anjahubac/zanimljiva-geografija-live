@@ -35,4 +35,9 @@ export const RUN_LIMITS = Object.freeze({
   /** One model attempt and one referee attempt: no retry, no fallback. */
   repairAttempts: 2,
   repairExtraMs: 10_000,
+  /**
+   * W08 (§2D): admitted runs not yet finished, across every room of one server
+   * process. A run holds a provider call for up to 35 s and the quota is shared.
+   */
+  maxConcurrentRuns: 2,
 });

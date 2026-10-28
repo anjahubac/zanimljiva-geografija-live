@@ -31,6 +31,7 @@ export async function startTestServer(
     random?: () => number;
     /** W08 security events; silent unless a test collects them. */
     writeSecurityEvent?: (line: string) => void;
+    /** W08 CSP control: false serves the build without the security headers. */
     securityHeaders?: boolean;
   } = {},
 ): Promise<TestContext> {

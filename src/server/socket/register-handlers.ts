@@ -87,10 +87,10 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
         // rejected, because ignoring a rejection is how UIs desynchronize.
         if (!response.ok) socket.emit(SERVER_EVENTS.gameError, response.error);
       };
-      // W08: the post-round review's refusals before the store are security events too.
+      // W08: both coaches' refusals before the store are security events too.
       // Only the closed code is recorded, never the rejected payload.
       const refuse = (code: "RATE_LIMITED" | "INVALID_PAYLOAD" | "INTERNAL"): void => {
-        if (event === CLIENT_EVENTS.review) options.securityLog?.rejected(code);
+        if (event === CLIENT_EVENTS.coach || event === CLIENT_EVENTS.review) options.securityLog?.rejected(event, code);
         respond(fail(code));
       };
 

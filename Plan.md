@@ -1227,6 +1227,39 @@ prepare the seven-minute demo and record a bounded current-version live check.
 Pair contribution details, the historical browser-run count and an actual
 human rehearsal must come from observed work, not inferred names or activity.
 
+## 2D. Week 8 — security hardening of the round coach (2026-10-28)
+
+**Origin.** The W08 assignment ("Secure the Arcade") was done on branch
+`011-secure-the-arcade` against Aleksa's post-round review (§2E, §2F), not this
+round coach. On 2026-10-28 the owner asked to bring the W08 work to `main` and
+left the approach open; this section ports the W08 controls onto the round
+coach and removes nothing. The same day the owner also had `011-secure-the-arcade`
+merged into `main` (both coaches side by side), which brought the shared
+controls (transport cap, headers, theme file) first; this section adds what is
+specific to the round coach and makes the security events cover both agents.
+Spec: `specs/012-round-coach-hardening`.
+
+**What `main` lacked (checked 2026-10-28):** no transport limit before decode
+(Socket.IO default 1 MB), no process-wide cap on concurrent coach runs, no
+HTTP security headers (and an inline theme script that would need
+`'unsafe-inline'`), and no security events for refused coach requests.
+
+**Added, and nothing else:**
+
+| Control | Value | Where |
+| --- | --- | --- |
+| Socket.IO message cap, enforced before decode | 16 KiB | `MAX_SOCKET_MESSAGE_BYTES`, `maxHttpBufferSize` in `src/server/index.ts` |
+| Concurrent round-coach runs per server process | 2, checked before the visitor is charged; refused as `RATE_LIMITED`. The review keeps its own cap of 2 (§2F), so at most 4 agent runs per process | `RUN_LIMITS.maxConcurrentRuns`, `requestCoach` in `room-store.ts` |
+| HTTP headers on every response | CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, `nosniff`, `Referrer-Policy: no-referrer` | `src/server/index.ts` |
+| Theme script | moved verbatim from `index.html` to `public/theme-init.js` | — |
+| Security events | one JSON line per refused request and per finished run of either agent; `operation` is `round:coach` or `round:review`; closed fields only (enum, count, timestamp, server UUID) | `src/server/security-events.ts` |
+| Dev dependency | `playwright-core` `1.63.0` (exact), for the real-browser CSP test only; not in any bundle | `package.json` |
+
+New commands: `npm run test:security`, `npm run test:browser` (builds the
+client, then Chromium against `dist/client`), `npm run security:check` (both).
+No new event, error code, runtime dependency, service or feature. All limits
+are in memory and per process.
+
 ## 2E. Week 5 post-round review (Aleksa) — specification and implementation (2026-10-07)
 
 **Merged into `main` on 2026-10-28** at the owner's request, next to the round

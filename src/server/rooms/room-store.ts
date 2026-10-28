@@ -48,6 +48,7 @@ import { answerKey, type CheckVerdicts } from "@server/features/check-round";
 import { generateResumeToken, generateRoomCode, generateRoundId } from "@server/ids";
 import { runCoach, type CoachRunOutcome } from "@server/agent/coach-agent";
 import { consoleRunLog, type RunLogSink } from "@server/agent/run-log";
+import { RUN_LIMITS } from "@server/agent/limits";
 import type { FocusEntry } from "@server/agent/tools";
 import type { LetterSelector } from "@server/letters";
 
@@ -156,12 +157,12 @@ export type RoomStoreDeps = {
   coach?: CoachCapability | null;
   /** Per-visitor and daily AI bounds (§2B.11); absent means unbounded, as in most unit tests. */
   limits?: UsageLimits | null;
-  /** W08 allowed/denied coach decisions; absent means not recorded, as in most unit tests. */
-  securityLog?: SecurityLog | null;
   /** The bot's choices; injected so tests are deterministic. */
   random?: () => number;
   /** Where each coach run's `agent.run` record goes; the console by default. */
   runLog?: RunLogSink;
+  /** W08 allowed/denied decisions of both coaches (§2D, §2F); absent means not recorded, as in most unit tests. */
+  securityLog?: SecurityLog | null;
 };
 
 export type CreateRoomResult = { room: Room; resumeToken: string; slot: PlayerSlot };
@@ -263,11 +264,13 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const limits = deps.limits ?? null;
   const ai = deps.ai && limits ? countedAi(deps.ai, limits, clock) : (deps.ai ?? null);
   const coach = deps.coach ?? null;
-  const securityLog = deps.securityLog ?? null;
-  /** Admitted coach runs not yet terminal, across every room (W08, one process). */
-  let activeCoachRuns = 0;
+  /** Admitted post-round reviews not yet terminal, across every room (W08 §2F, one process). */
+  let activeReviewRuns = 0;
   const random = deps.random ?? Math.random;
   const runLog = deps.runLog ?? consoleRunLog;
+  const securityLog = deps.securityLog ?? null;
+  /** Admitted round-coach runs not yet finished, across every room (W08 §2D, one process). */
+  let activeCoachRuns = 0;
 
   const rooms = new Map<string, Room>();
   const roomCodeBySocket = new Map<string, string>();
@@ -763,33 +766,44 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
    * state; the visitor is charged only when a run actually starts.
    */
   async function requestCoach(input: CoachRequest, socketId: string, visitor = socketId): Promise<Ack<CoachReport> | null> {
+    // Every refusal here happens before a run exists: zero provider and tool calls (W08 I1).
+    const reject = (code: GameErrorCode, reasonCode: Parameters<SecurityLog["rejected"]>[1] = code): Ack<CoachReport> => {
+      securityLog?.rejected("round:coach", reasonCode);
+      return fail(code);
+    };
+
     // 2. A human player of a room: the bot has no socket, so it never gets here.
     const room = getRoomBySocket(socketId);
-    if (!room) return fail("NOT_IN_ROOM");
+    if (!room) return reject("NOT_IN_ROOM");
     const player = findPlayerBySocket(room, socketId);
-    if (!player || player.bot) return fail("NOT_IN_ROOM");
+    if (!player || player.bot) return reject("NOT_IN_ROOM");
 
     // 3. That room's round, then 4. revealed (so a request while judging is WRONG_PHASE).
+    // A foreign and a nonexistent round get the same answer: no existence oracle.
     const round = room.round;
-    if (!round || round.roundId !== input.roundId) return fail("ROUND_STALE");
-    if (room.phase !== "results" || !round.reveal) return fail("WRONG_PHASE");
+    if (!round || round.roundId !== input.roundId) return reject("ROUND_STALE");
+    if (room.phase !== "results" || !round.reveal) return reject("WRONG_PHASE");
 
     // 5. Only categories where the caller scored 0, i.e. was not valid.
     const sheet = player.slot === 1 ? round.reveal.player1 : round.reveal.player2;
     const missed = new Map(sheet.filter((answer) => !answer.valid).map((answer) => [answer.category, answer]));
-    if (!input.focus.every((category) => missed.has(category))) return fail("INVALID_PAYLOAD");
+    if (!input.focus.every((category) => missed.has(category))) return reject("INVALID_PAYLOAD");
 
     // 6. An AI to coach with.
-    if (!ai) return fail("AI_UNAVAILABLE");
+    if (!ai) return reject("AI_UNAVAILABLE");
 
     // 7. One run per player per round: join it, or return its report.
     const existing = player.coach?.roundId === round.roundId ? player.coach : null;
     if (existing?.state === "done") return ok(existing.report);
     if (existing?.state === "running") return settleCoach(await existing.promise);
 
+    // W08 (§2D): the process-wide cap, checked before the visitor is charged, so a
+    // refused request neither starts provider work nor spends the allowance.
+    if (activeCoachRuns >= RUN_LIMITS.maxConcurrentRuns) return reject("RATE_LIMITED", "CONCURRENCY_LIMIT");
+
     // 8-9. The daily budget, then this visitor's hourly runs; 10. charge and start.
     const limited = limits?.check("coach", visitor, clock.now());
-    if (limited) return fail(limited);
+    if (limited) return reject(limited);
     limits?.charge("coach", visitor, clock.now());
 
     // Exactly what the agent may see (§2C.5): the caller's own misses, in category order.
@@ -798,15 +812,21 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       return { category, yourAnswer: answer.raw, whyMissed: answer.reason ?? "empty" };
     });
     const controller = new AbortController();
+    const runId = randomUUID();
+    activeCoachRuns += 1;
     const promise = runCoach(
       {
-        runId: randomUUID(),
+        runId,
         goal: input.goal,
         language: input.language,
         snapshot: Object.freeze({ letter: round.letter, alphabet: round.alphabet, focus: Object.freeze(focus) }),
       },
       { ai, now: () => clock.now(), signal: controller.signal, log: runLog },
-    );
+    ).finally(() => {
+      // The run ends by its own deadline even when a provider ignores abort,
+      // so a slot cannot be held indefinitely.
+      activeCoachRuns -= 1;
+    });
     const running: CoachState = { state: "running", roundId: round.roundId, promise, controller };
     player.coach = running;
 
@@ -814,6 +834,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     if (player.coach === running) {
       player.coach = outcome.cancelled ? null : { state: "done", roundId: round.roundId, report: outcome.report };
     }
+    if (!outcome.cancelled) securityLog?.coachFinished(runId, outcome.report);
     return settleCoach(outcome);
   }
 
@@ -1042,8 +1063,8 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
   function reviewRound(input: ReviewRequest, socketId: string, visitor: string): Promise<Ack<CoachRunView>> {
     // Every refusal here happens before a run exists: zero provider and tool calls.
-    const reject = (code: GameErrorCode, reasonCode: Parameters<SecurityLog["rejected"]>[0] = code): Promise<Ack<CoachRunView>> => {
-      securityLog?.rejected(reasonCode);
+    const reject = (code: GameErrorCode, reasonCode: Parameters<SecurityLog["rejected"]>[1] = code): Promise<Ack<CoachRunView>> => {
+      securityLog?.rejected("round:review", reasonCode);
       return Promise.resolve(fail(code));
     };
     const room = getRoomBySocket(socketId);
@@ -1057,7 +1078,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     if (player.coachRun?.roundId === input.roundId) return player.coachRun.promise;
     // Checked synchronously, before the visitor allowance is charged, so a
     // refused request neither starts provider work nor spends the allowance.
-    if (activeCoachRuns >= COACH_MAX_CONCURRENT_RUNS) return reject("RATE_LIMITED", "CONCURRENCY_LIMIT");
+    if (activeReviewRuns >= COACH_MAX_CONCURRENT_RUNS) return reject("RATE_LIMITED", "CONCURRENCY_LIMIT");
 
     const source = coachSourceSchema.parse(player.coachSource);
     const capturedSource = player.coachSource;
@@ -1108,15 +1129,15 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
         return ok(coachRunViewSchema.parse({ runId, roundId: input.roundId, status: "failed", stopReason: "provider_failed", stepCount: 0, toolCallCount: 0, providerAttemptCount: actualAttempts, elapsedMs: 0, result: null }));
       }
     }).then((ack) => {
-      if (ack.ok) securityLog?.finished(ack.data);
-      else securityLog?.rejected(ack.error.code);
+      if (ack.ok) securityLog?.reviewFinished(ack.data);
+      else securityLog?.rejected("round:review", ack.error.code);
       return ack;
     }).finally(() => {
       // The engine reaches a terminal state by its 30 s deadline even when a
       // dependency ignores abort, so a slot cannot be held indefinitely.
-      activeCoachRuns -= 1;
+      activeReviewRuns -= 1;
     });
-    activeCoachRuns += 1;
+    activeReviewRuns += 1;
     player.coachRun = { roundId: input.roundId, runId, sourceVersion, controller, promise };
     return promise;
   }

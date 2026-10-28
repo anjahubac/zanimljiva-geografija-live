@@ -36,6 +36,7 @@ they have no spec.
 | [010](010-round-coach-agent/spec.md) | Round coach — Week 5 bounded agentic feature | Specified and re-analyzed 2026-10-07 (38 requirements / 68 tasks mapped, no critical design conflict); Built 2026-10-07 on `feature/round-coach`: Core, O1, O6 and bounded backup/repair; current prompts v6/checker v4; 6 recorded v1 smoke runs; current live evidence, browser count and pair/demo handoff open | `Plan.md` §2C.17 (current), §2C.16 (history) |
 | [010](010-post-round-coach/spec.md) | Post-round review — Aleksa's Week 5 bounded agent (`round:review` on `main`) | Built 2026-10-07 on `010-post-round-coach`, full flow; merged into `main` 2026-10-28 | `Plan.md` §2E |
 | [011](011-secure-the-arcade/spec.md) | Secure the Arcade — W08 hardening of the post-round review (the W08 submission) | Built 2026-10-25 on `011-secure-the-arcade`; merged into `main` 2026-10-28 | `Plan.md` §2E |
+| [012](012-round-coach-hardening/spec.md) | Round coach hardening — Week 8 controls on the round coach | Built 2026-10-28 on `feature/w08-hardening` | `Plan.md` §2D |
 
 Two features share the number 010: `010-round-coach-agent` and `010-post-round-coach` were
 specified in parallel on separate branches on 2026-10-07 and merged on 2026-10-28.
