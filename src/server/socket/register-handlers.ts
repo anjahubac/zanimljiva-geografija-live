@@ -11,6 +11,7 @@ import {
   draftRequestSchema,
   finishRequestSchema,
   hintRequestSchema,
+  reviewRequest,
   joinRoomRequestSchema,
   playAiRequestSchema,
   roomAckSchema,
@@ -20,6 +21,7 @@ import {
 } from "@contracts/socket.schemas";
 import type { RoomStore } from "@server/rooms/room-store";
 import { visitorAddress } from "@server/usage-limits";
+import type { SecurityLog } from "@server/security-events";
 
 /**
  * Flood protection for one socket. Wall-clock time is correct here: this is a
@@ -56,7 +58,7 @@ function createRateLimiter() {
  * no timing and no scoring decision: it parses, resolves the caller from the
  * socket (never from the payload), delegates, and acknowledges.
  */
-export function registerHandlers(io: Server, store: RoomStore, options: { trustProxyHops: number }): void {
+export function registerHandlers(io: Server, store: RoomStore, options: { trustProxyHops: number; securityLog?: SecurityLog }): void {
   const limiter = createRateLimiter();
 
   io.on("connection", (socket: Socket) => {
@@ -85,9 +87,15 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
         // rejected, because ignoring a rejection is how UIs desynchronize.
         if (!response.ok) socket.emit(SERVER_EVENTS.gameError, response.error);
       };
+      // W08: the post-round review's refusals before the store are security events too.
+      // Only the closed code is recorded, never the rejected payload.
+      const refuse = (code: "RATE_LIMITED" | "INVALID_PAYLOAD" | "INTERNAL"): void => {
+        if (event === CLIENT_EVENTS.review) options.securityLog?.rejected(code);
+        respond(fail(code));
+      };
 
       if (!limiter.allow(socket.id)) {
-        respond(fail("RATE_LIMITED"));
+        refuse("RATE_LIMITED");
         return;
       }
 
@@ -95,7 +103,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
       if (!parsed.success) {
         // The parse error itself is not logged: it quotes the rejected value,
         // which may be an unrevealed answer.
-        respond(fail("INVALID_PAYLOAD"));
+        refuse("INVALID_PAYLOAD");
         return;
       }
 
@@ -103,7 +111,7 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
         // Event name and error type only. A message or stack could carry an
         // answer, a token, or a path (module 05).
         console.error(`handler failed: event=${event} error=${(error as Error)?.name ?? "unknown"}`);
-        respond(fail("INTERNAL"));
+        refuse("INTERNAL");
       };
 
       try {
@@ -216,6 +224,11 @@ export function registerHandlers(io: Server, store: RoomStore, options: { trustP
     // Week 5 (§2C): the round coach. The report is this ack, so it reaches only the caller.
     socket.on(CLIENT_EVENTS.coach, (raw: unknown, ack: unknown) => {
       handle(CLIENT_EVENTS.coach, coachRequestSchema, raw, ack, (input) => store.requestCoach(input, socket.id, visitor));
+    });
+
+    // Week 5 (§2E): the post-round review. The view is this ack, so it reaches only the caller.
+    socket.on(CLIENT_EVENTS.review, (raw: unknown, ack: unknown) => {
+      handle(CLIENT_EVENTS.review, reviewRequest, raw, ack, (input) => store.reviewRound(input, socket.id, visitor));
     });
 
     socket.on("disconnect", () => {

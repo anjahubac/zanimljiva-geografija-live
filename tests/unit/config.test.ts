@@ -19,6 +19,7 @@ describe("serverConfigSchema", () => {
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
       coachRunsPerVisitorHour: 6,
+      reviewRunsPerVisitorHour: 5,
       trustProxyHops: 0,
     });
   });
@@ -50,6 +51,7 @@ describe("serverConfigSchema", () => {
     ["a waiting-room TTL under 1min", { waitingRoomTtlMs: "59999" }],
     ["zero AI rooms per visitor", { aiRoomsPerVisitorHour: "0" }],
     ["zero hints per visitor", { hintsPerVisitorHour: "0" }],
+    ["more than five review runs per visitor", { reviewRunsPerVisitorHour: "6" }],
     ["a zero daily AI budget", { aiDailyCallBudget: "0" }],
     ["zero coaching runs per visitor", { coachRunsPerVisitorHour: "0" }],
     ["more than 10 000 coaching runs per visitor", { coachRunsPerVisitorHour: "10001" }],
@@ -84,6 +86,7 @@ describe("loadConfig", () => {
       hintsPerVisitorHour: 20,
       aiDailyCallBudget: 1_500,
       coachRunsPerVisitorHour: 6,
+      reviewRunsPerVisitorHour: 5,
       trustProxyHops: 0,
     });
   });
@@ -101,6 +104,7 @@ describe("loadConfig", () => {
         HINTS_PER_VISITOR_HOUR: "8",
         AI_DAILY_CALL_BUDGET: "900",
         COACH_RUNS_PER_VISITOR_HOUR: "3",
+        REVIEW_RUNS_PER_VISITOR_HOUR: "4",
         TRUST_PROXY_HOPS: "1",
       }),
     ).toEqual({
@@ -114,6 +118,7 @@ describe("loadConfig", () => {
       hintsPerVisitorHour: 8,
       aiDailyCallBudget: 900,
       coachRunsPerVisitorHour: 3,
+      reviewRunsPerVisitorHour: 4,
       trustProxyHops: 1,
     });
   });
@@ -130,6 +135,7 @@ describe("loadConfig", () => {
       "hintsPerVisitorHour",
       "nodeEnv",
       "port",
+      "reviewRunsPerVisitorHour",
       "roundDurationMs",
       "trustProxyHops",
       "waitingRoomTtlMs",

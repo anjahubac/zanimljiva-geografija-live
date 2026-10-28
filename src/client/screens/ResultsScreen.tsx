@@ -3,12 +3,21 @@ import type { Category, PlayerSlot, RejectReason } from "@contracts/game.schemas
 import type { RoundResults, RoundRevealed } from "@contracts/socket.schemas";
 import { useI18n } from "@client/i18n";
 import { CoachPanel, type CoachAnswer } from "./CoachPanel";
+import type { CoachRunView } from "@contracts/review.schemas";
+import type { GameErrorCode } from "@contracts/errors";
 
 type Props = {
   you: PlayerSlot;
   revealed: RoundRevealed;
   results: RoundResults;
   opponentIsBot?: boolean;
+  /** The post-round review (§2E). */
+  coachView?: CoachRunView | null;
+  coachLoading?: boolean;
+  coachUnavailable?: boolean;
+  coachErrorCode?: GameErrorCode | null;
+  coachDisabled?: boolean;
+  onReviewRound?: () => void;
   onLeave: () => void;
   /** The round coach (§2C); without it the panel is not shown. */
   onCoach?: (focus: Category[]) => Promise<CoachAnswer>;
@@ -40,7 +49,7 @@ type SheetRow = {
  *  same height and shape it had while the round was being played. */
 const BLANK_SHEET_ROWS = [1, 2, 3];
 
-export function ResultsScreen({ you, revealed, results, opponentIsBot = false, onLeave, onCoach }: Props) {
+export function ResultsScreen({ you, revealed, results, opponentIsBot = false, coachView = null, coachLoading = false, coachUnavailable = false, coachErrorCode = null, coachDisabled = false, onReviewRound = () => {}, onLeave, onCoach }: Props) {
   const { t, labels } = useI18n();
 
   const buildRow = (slot: PlayerSlot, label: string): SheetRow => {
@@ -85,6 +94,7 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
       : (results.outcome === "player_1") === (you === 1)
         ? t.outcomeWin
         : t.outcomeLoss;
+  const coachResult = coachView?.status === "completed" ? coachView.result : null;
 
   return (
     <section className="screen screen-results screen-wide" aria-labelledby="results-title">
@@ -180,6 +190,55 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
 
       {onCoach ? <CoachPanel key={revealed.roundId} focus={missed} onCoach={onCoach} /> : null}
 
+      <section className="coach-panel" aria-labelledby="review-title">
+        <h2 id="review-title">{t.review.summary}</h2>
+        <button type="button" onClick={onReviewRound} disabled={coachLoading || coachView !== null || coachUnavailable || coachDisabled}>
+          {coachLoading ? t.review.loading : t.review.action}
+        </button>
+        {coachLoading ? <p role="status" aria-live="polite">{t.review.loading}</p> : null}
+        {coachUnavailable ? <p role="alert">{coachErrorCode ? t.errors[coachErrorCode] : t.review.unavailable}</p> : null}
+        {coachView?.status === "completed" ? <p role="status">{t.review.completed}</p> : null}
+        {coachView && coachView.status !== "completed" ? <p role="status">{t.review.stopReasons[coachView.stopReason]}</p> : null}
+        {coachView?.status === "completed" && coachResult ? (
+          <div className="coach-result">
+            <p>{coachResult.confidence === "medium" ? t.review.confidenceMedium : t.review.confidenceLow}</p>
+            <h3>{t.review.finding}</h3>
+            <ul>{coachResult.summary.findingIds.map((id) => {
+              const evidence = coachResult.evidence.find((item) => item.id === id)!;
+              if (evidence.kind === "cell") {
+                const state = evidence.blank ? t.review.blank : evidence.accepted ? t.review.accepted : t.review.rejected;
+                const reason = evidence.rejectReason ? `: ${t.rejectReasons[evidence.rejectReason]}` : "";
+                return <li key={id}>{t.review.findingCell.replace("{{category}}", labels[evidence.category]).replace("{{state}}", state).replace("{{reason}}", reason).replace("{{points}}", String(evidence.points))}</li>;
+              }
+              if (evidence.kind === "totals") return <li key={id}>{t.review.totalsEvidence.replace("{{blank}}", String(evidence.blank)).replace("{{accepted}}", String(evidence.accepted)).replace("{{rejected}}", String(evidence.rejectedNonblank)).replace("{{hinted}}", String(evidence.hinted)).replace("{{duplicates}}", String(evidence.acceptedDuplicates)).replace("{{points}}", String(evidence.ownPoints))}</li>;
+              return <li key={id}>{t.review.verifiedEvidence.replace("{{status}}", evidence.verified ? t.review.yes : t.review.no)}</li>;
+            })}</ul>
+            <h3>{t.review.recommendations}</h3>
+            <ul>{coachResult.recommendations.map((item, index) => (
+              <li key={`${item.code}-${item.category ?? "all"}-${index}`}>
+                {item.code === "maintain_approach"
+                  ? coachResult.evidence.find((entry) => entry.kind === "verification")?.verified ? t.review.maintainVerified : t.review.maintainLocal
+                  : t.review.recommendationText[item.code].replace("{{category}}", item.category ? labels[item.category] : "")}
+              </li>
+            ))}</ul>
+            <ul>{coachResult.limitations.map((limitation) => (
+              <li key={limitation}>{limitation === "single_round" ? t.review.limitationSingleRound : limitation === "checker_can_be_wrong" ? t.review.limitationChecker : t.review.limitationLocal}</li>
+            ))}</ul>
+            <details>
+              <summary>{t.review.evidence}</summary>
+              <ul>{coachResult.evidence.map((item) => {
+                if (item.kind === "cell") {
+                  const state = item.blank ? t.review.blank : item.accepted ? t.review.accepted : t.review.rejected;
+                  return <li key={item.id}>{t.review.evidenceCell.replace("{{category}}", labels[item.category]).replace("{{state}}", state).replace("{{points}}", String(item.points)).replace("{{hint}}", item.hinted ? t.review.hintedEvidence : "")}</li>;
+                }
+                if (item.kind === "totals") return <li key={item.id}>{t.review.totalsEvidence.replace("{{blank}}", String(item.blank)).replace("{{accepted}}", String(item.accepted)).replace("{{rejected}}", String(item.rejectedNonblank)).replace("{{hinted}}", String(item.hinted)).replace("{{duplicates}}", String(item.acceptedDuplicates)).replace("{{points}}", String(item.ownPoints))}</li>;
+                return <li key={item.id}>{t.review.verifiedEvidence.replace("{{status}}", item.verified ? t.review.yes : t.review.no)}</li>;
+              })}</ul>
+            </details>
+          </div>
+        ) : null}
+      </section>
+
       {/* The closing note and the way out share one line: the round is over and
           a room holds exactly one round, so the way on is a new room rather
           than a rematch in this one. */}
@@ -193,6 +252,7 @@ export function ResultsScreen({ you, revealed, results, opponentIsBot = false, o
           {t.backToLobby}
         </button>
       </div>
+
     </section>
   );
 }

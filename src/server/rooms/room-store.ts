@@ -12,8 +12,9 @@ import {
   type RoomPhase,
   type ServerConfig,
 } from "@contracts/game.schemas";
-import { type Ack, fail, ok } from "@contracts/errors";
+import { type Ack, type GameErrorCode, fail, ok } from "@contracts/errors";
 import type { CoachReport, CoachRequest } from "@contracts/coach.schemas";
+import { COACH_MAX_CONCURRENT_RUNS, coachRunViewSchema, coachSourceSchema, type CoachRequest as ReviewRequest, type CoachRunView, type CoachSource } from "@contracts/review.schemas";
 import {
   SERVER_EVENTS,
   type DraftAck,
@@ -40,6 +41,8 @@ import { scoreJudgedRound } from "@domain/score-round";
 import type { JudgedAnswer } from "@domain/score-category";
 import type { AiService } from "@server/ai/service";
 import type { UsageLimits } from "@server/usage-limits";
+import type { CoachCapability } from "@server/features/post-round-coach";
+import type { SecurityLog } from "@server/security-events";
 import type { Cancel, Clock, Scheduler } from "@server/clock";
 import { answerKey, type CheckVerdicts } from "@server/features/check-round";
 import { generateResumeToken, generateRoomCode, generateRoundId } from "@server/ids";
@@ -78,6 +81,9 @@ type Player = {
    * requests join it) or done (later requests get the same report).
    */
   coach: CoachState | null;
+  /** Post-round review (§2E): detached own-only source, populated after canonical result construction. */
+  coachSource: CoachSource | null;
+  coachRun: { roundId: string; runId: string; sourceVersion: string; controller: AbortController; promise: Promise<Ack<CoachRunView>> } | null;
 };
 
 type CoachState =
@@ -147,8 +153,11 @@ export type RoomStoreDeps = {
   deliver: (delivery: Delivery) => void;
   /** Absent when no AI key is configured: rounds use the local rule, and there is no bot or hint. */
   ai?: AiService | null;
+  coach?: CoachCapability | null;
   /** Per-visitor and daily AI bounds (§2B.11); absent means unbounded, as in most unit tests. */
   limits?: UsageLimits | null;
+  /** W08 allowed/denied coach decisions; absent means not recorded, as in most unit tests. */
+  securityLog?: SecurityLog | null;
   /** The bot's choices; injected so tests are deterministic. */
   random?: () => number;
   /** Where each coach run's `agent.run` record goes; the console by default. */
@@ -178,15 +187,26 @@ export type RoomStore = {
   requestHint(input: HintRequest, socketId: string, visitor?: string): Promise<Ack<HintAck>>;
   /** Week 5 (§2C). Null: the run was cancelled because the caller left or the room was reaped; send nothing. */
   requestCoach(input: CoachRequest, socketId: string, visitor?: string): Promise<Ack<CoachReport> | null>;
+  /** Week 5 (§2E): the post-round review of the caller's own round. */
+  reviewRound(input: ReviewRequest, socketId: string, visitor: string): Promise<Ack<CoachRunView>>;
   closeRound(roundId: string, reason: ClosedReason): void;
   projectRoomState(room: Room, slot: PlayerSlot): RoomState;
   markDisconnected(socketId: string): void;
   getRoomByCode(roomCode: string): Room | undefined;
   getRoomBySocket(socketId: string): Room | undefined;
+  getCoachSource(roundId: string, socketId: string): { source: CoachSource; seat: PlayerSlot } | null;
   cleanup(): void;
 };
 
 const MAX_ROOM_CODE_ATTEMPTS = 50;
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  }
+  return value;
+}
 
 /**
  * Longest the room waits for the AI check before scoring with the local rule.
@@ -242,6 +262,10 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
   const { clock, scheduler, selectLetter, config, deliver } = deps;
   const limits = deps.limits ?? null;
   const ai = deps.ai && limits ? countedAi(deps.ai, limits, clock) : (deps.ai ?? null);
+  const coach = deps.coach ?? null;
+  const securityLog = deps.securityLog ?? null;
+  /** Admitted coach runs not yet terminal, across every room (W08, one process). */
+  let activeCoachRuns = 0;
   const random = deps.random ?? Math.random;
   const runLog = deps.runLog ?? consoleRunLog;
 
@@ -284,6 +308,8 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       hinted: new Set(),
       hintPending: false,
       coach: null,
+      coachSource: null,
+      coachRun: null,
     };
   }
 
@@ -337,6 +363,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     const startsAt = serverNow + config.countdownMs;
     const endsAt = startsAt + config.roundDurationMs;
     const roundId = generateRoundId();
+    for (const player of playersOf(room)) disposeCoach(player);
 
     room.round = {
       roundId,
@@ -904,11 +931,9 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       player1: one.revealed,
       player2: two.revealed,
     });
+    // Kept read-only for the round coach (§2C); delivered below, before the results.
     round.reveal = revealed;
-    for (const player of playersOf(room)) {
-      if (!player.socketId) continue;
-      deliver({ socketId: player.socketId, event: SERVER_EVENTS.roundRevealed, payload: revealed });
-    }
+
 
     // 7. One scored result, to both.
     const results: RoundResults = roundResultsSchema.parse({
@@ -917,6 +942,43 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
       verified,
       botFailed: round.bot !== null && round.bot.status !== "ready",
     });
+
+    // A coach source becomes ready only after both canonical payloads have
+    // passed their runtime schemas. Never rebuild it from the locked answers.
+    for (const player of [player1, player2]) {
+      if (player.bot || !player.connected) continue;
+      const ownRevealed = player.slot === 1 ? revealed.player1 : revealed.player2;
+      const ownTotal = player.slot === 1 ? results.player1Total : results.player2Total;
+      const cells = ownRevealed.map((answer) => {
+        const score = results.scores.find((item) => item.category === answer.category);
+        if (!score) return null;
+        return {
+          category: answer.category,
+          blank: answer.raw.trim() === "",
+          accepted: answer.valid,
+          rejectReason: answer.reason,
+          hinted: answer.hinted,
+          points: player.slot === 1 ? score.player1Points : score.player2Points,
+          scoringReason: score.reason,
+        };
+      });
+      if (cells.some((cell) => cell === null)) continue;
+      const parsedSource = coachSourceSchema.safeParse({
+        letter: round.letter,
+        alphabet: round.alphabet,
+        verified: results.verified,
+        total: ownTotal,
+        cells,
+      });
+      if (!parsedSource.success) continue;
+      player.coachSource = deepFreeze(JSON.parse(JSON.stringify(parsedSource.data)) as CoachSource);
+    }
+
+    // Preserve the existing reveal-before-results delivery order.
+    for (const player of playersOf(room)) {
+      if (!player.socketId) continue;
+      deliver({ socketId: player.socketId, event: SERVER_EVENTS.roundRevealed, payload: revealed });
+    }
     for (const player of playersOf(room)) {
       if (!player.socketId) continue;
       deliver({ socketId: player.socketId, event: SERVER_EVENTS.roundResults, payload: results });
@@ -938,6 +1000,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
 
     const player = findPlayerBySocket(room, socketId);
     if (!player) return;
+    disposeCoach(player);
 
     // Before a round is scheduled, a room whose last human has gone is
     // abandoned: its code must stop working at once, or a friend could join a
@@ -969,6 +1032,101 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     return roomCode ? rooms.get(roomCode) : undefined;
   }
 
+  function getCoachSource(roundId: string, socketId: string): { source: CoachSource; seat: PlayerSlot } | null {
+    const room = getRoomBySocket(socketId);
+    if (room?.phase !== "results" || room.round?.roundId !== roundId || !room.round.revealed) return null;
+    const player = findPlayerBySocket(room, socketId);
+    if (!player || player.bot || !player.connected || !player.coachSource) return null;
+    return { source: player.coachSource, seat: player.slot };
+  }
+
+  function reviewRound(input: ReviewRequest, socketId: string, visitor: string): Promise<Ack<CoachRunView>> {
+    // Every refusal here happens before a run exists: zero provider and tool calls.
+    const reject = (code: GameErrorCode, reasonCode: Parameters<SecurityLog["rejected"]>[0] = code): Promise<Ack<CoachRunView>> => {
+      securityLog?.rejected(reasonCode);
+      return Promise.resolve(fail(code));
+    };
+    const room = getRoomBySocket(socketId);
+    if (!room) return reject("NOT_IN_ROOM");
+    const player = findPlayerBySocket(room, socketId);
+    if (!player || player.bot || !player.connected) return reject("NOT_IN_ROOM");
+    // A foreign and a nonexistent round get the same answer: no existence oracle.
+    if (room.round?.roundId !== input.roundId) return reject("ROUND_STALE");
+    if (room.phase !== "results" || !room.round.revealed || !player.coachSource) return reject("WRONG_PHASE");
+    if (!coach || !limits) return reject("AI_UNAVAILABLE");
+    if (player.coachRun?.roundId === input.roundId) return player.coachRun.promise;
+    // Checked synchronously, before the visitor allowance is charged, so a
+    // refused request neither starts provider work nor spends the allowance.
+    if (activeCoachRuns >= COACH_MAX_CONCURRENT_RUNS) return reject("RATE_LIMITED", "CONCURRENCY_LIMIT");
+
+    const source = coachSourceSchema.parse(player.coachSource);
+    const capturedSource = player.coachSource;
+    const runId = randomUUID();
+    const sourceVersion = randomUUID();
+    const controller = new AbortController();
+    const isCurrent = () => rooms.get(room.roomCode) === room
+      && getRoomBySocket(socketId) === room
+      && player.connected && player.socketId === socketId
+      && room.phase === "results" && room.round?.roundId === input.roundId
+      && player.coachSource === capturedSource
+      && player.coachRun?.runId === runId && player.coachRun.sourceVersion === sourceVersion;
+    const promise = Promise.resolve().then(async () => {
+      if (!isCurrent() || controller.signal.aborted) {
+        return ok(coachRunViewSchema.parse({ runId, roundId: input.roundId, status: "stopped", stopReason: "cancelled", stepCount: 0, toolCallCount: 0, providerAttemptCount: 0, elapsedMs: 0, result: null }));
+      }
+      const admissionError = limits.admitCoachRun(visitor, clock.now());
+      if (admissionError) {
+        if (player.coachRun?.runId === runId) player.coachRun = null;
+        return fail(admissionError);
+      }
+      let actualAttempts = 0;
+      try {
+        const received = await coach.run({
+          runId, roundId: input.roundId, source, language: input.language, sourceVersion,
+          signal: controller.signal, now: () => clock.now(),
+          schedule: (at, fn) => scheduler.schedule(at, fn), isCurrent,
+          authorizeAndCharge: () => {
+            if (!isCurrent() || controller.signal.aborted || !limits.chargeCoachAttempt(clock.now())) return false;
+            actualAttempts += 1;
+            return true;
+          },
+        });
+        const view = coachRunViewSchema.parse(received);
+        if (view.runId !== runId || view.roundId !== input.roundId) throw new Error("coach_view_binding_invalid");
+        if (!isCurrent() || controller.signal.aborted) {
+          return ok(coachRunViewSchema.parse({
+            runId, roundId: input.roundId, status: "stopped", stopReason: "cancelled",
+            stepCount: view.stepCount, toolCallCount: view.toolCallCount,
+            providerAttemptCount: view.providerAttemptCount, elapsedMs: view.elapsedMs, result: null,
+          }));
+        }
+        return ok(view);
+      } catch {
+        if (!isCurrent() || controller.signal.aborted) {
+          return ok(coachRunViewSchema.parse({ runId, roundId: input.roundId, status: "stopped", stopReason: "cancelled", stepCount: 0, toolCallCount: 0, providerAttemptCount: actualAttempts, elapsedMs: 0, result: null }));
+        }
+        return ok(coachRunViewSchema.parse({ runId, roundId: input.roundId, status: "failed", stopReason: "provider_failed", stepCount: 0, toolCallCount: 0, providerAttemptCount: actualAttempts, elapsedMs: 0, result: null }));
+      }
+    }).then((ack) => {
+      if (ack.ok) securityLog?.finished(ack.data);
+      else securityLog?.rejected(ack.error.code);
+      return ack;
+    }).finally(() => {
+      // The engine reaches a terminal state by its 30 s deadline even when a
+      // dependency ignores abort, so a slot cannot be held indefinitely.
+      activeCoachRuns -= 1;
+    });
+    activeCoachRuns += 1;
+    player.coachRun = { roundId: input.roundId, runId, sourceVersion, controller, promise };
+    return promise;
+  }
+
+  function disposeCoach(player: Player): void {
+    player.coachRun?.controller.abort();
+    player.coachRun = null;
+    player.coachSource = null;
+  }
+
   function dropRoom(room: Room): void {
     room.phase = "closed";
     room.round?.cancelStart?.();
@@ -977,6 +1135,7 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     room.round?.bot?.cancelFinish?.();
     for (const player of playersOf(room)) {
       abortCoach(player);
+      disposeCoach(player);
       if (player.socketId) roomCodeBySocket.delete(player.socketId);
     }
     if (room.round) roomCodeByRound.delete(room.round.roundId);
@@ -1012,11 +1171,13 @@ export function createRoomStore(deps: RoomStoreDeps): RoomStore {
     finish,
     requestHint,
     requestCoach,
+    reviewRound,
     closeRound,
     projectRoomState,
     markDisconnected,
     getRoomByCode,
     getRoomBySocket,
+    getCoachSource,
     cleanup,
   };
 }
