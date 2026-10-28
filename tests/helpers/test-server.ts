@@ -27,6 +27,10 @@ export async function startTestServer(
     config?: Record<string, unknown>;
     ai?: AiService;
     random?: () => number;
+    /** W08 security events; silent unless a test collects them. */
+    writeSecurityEvent?: (line: string) => void;
+    /** W08 CSP control: false serves the build without the security headers. */
+    securityHeaders?: boolean;
   } = {},
 ): Promise<TestContext> {
   const { clock, scheduler, advance, setNow } = createTestClock();
@@ -40,6 +44,8 @@ export async function startTestServer(
     selectLetter: options.selectLetter ?? (() => letter),
     ai: options.ai ?? null,
     ...(options.random ? { random: options.random } : {}),
+    writeSecurityEvent: options.writeSecurityEvent ?? (() => {}),
+    ...(options.securityHeaders === false ? { securityHeaders: false } : {}),
   });
 
   await new Promise<void>((resolve) => {

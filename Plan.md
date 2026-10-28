@@ -1227,6 +1227,37 @@ prepare the seven-minute demo and record a bounded current-version live check.
 Pair contribution details, the historical browser-run count and an actual
 human rehearsal must come from observed work, not inferred names or activity.
 
+## 2D. Week 8 — security hardening of the round coach (2026-10-28)
+
+**Origin.** The W08 assignment ("Secure the Arcade") was done on branch
+`011-secure-the-arcade` against a separate post-round coach, not this round
+coach; that branch stays the W08 submission and is not merged (it conflicts
+with §2C in 28 files, including the `round:coach` event). On 2026-10-28 the
+owner asked to bring the W08 work to `main` and left the approach open. The
+chosen approach ports the W08 controls that `main` lacked onto the round coach
+and removes nothing. Spec: `specs/011-round-coach-hardening`.
+
+**What `main` lacked (checked 2026-10-28):** no transport limit before decode
+(Socket.IO default 1 MB), no process-wide cap on concurrent coach runs, no
+HTTP security headers (and an inline theme script that would need
+`'unsafe-inline'`), and no security events for refused coach requests.
+
+**Added, and nothing else:**
+
+| Control | Value | Where |
+| --- | --- | --- |
+| Socket.IO message cap, enforced before decode | 16 KiB | `MAX_SOCKET_MESSAGE_BYTES`, `maxHttpBufferSize` in `src/server/index.ts` |
+| Concurrent coach runs per server process | 2, checked before the visitor is charged; refused as `RATE_LIMITED` | `RUN_LIMITS.maxConcurrentRuns`, `requestCoach` in `room-store.ts` |
+| HTTP headers on every response | CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`, `nosniff`, `Referrer-Policy: no-referrer` | `src/server/index.ts` |
+| Theme script | moved verbatim from `index.html` to `public/theme-init.js` | — |
+| Security events | one JSON line per refused coach request and per finished run; closed fields only (enum, count, timestamp, server UUID) | `src/server/security-events.ts` |
+| Dev dependency | `playwright-core` `1.63.0` (exact), for the real-browser CSP test only; not in any bundle | `package.json` |
+
+New commands: `npm run test:security`, `npm run test:browser` (builds the
+client, then Chromium against `dist/client`), `npm run security:check` (both).
+No new event, error code, runtime dependency, service or feature. All limits
+are in memory and per process.
+
 ## 2A. Execution contract for the implementation model
 
 This plan intentionally locks the Core decisions. An implementation model must not invent alternatives, add optional features, or pause for product choices already resolved here.

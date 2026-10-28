@@ -34,6 +34,7 @@ they have no spec.
 | --- | --- | --- | --- |
 | [009](009-full-alphabet-letters/spec.md) | Letters from the whole alphabet | Built 2026-09-30, full flow | `Plan.md` §2B.13 |
 | [010](010-round-coach-agent/spec.md) | Round coach — Week 5 bounded agentic feature | Specified and re-analyzed 2026-10-07 (38 requirements / 68 tasks mapped, no critical design conflict); Built 2026-10-07 on `feature/round-coach`: Core, O1, O6 and bounded backup/repair; current prompts v6/checker v4; 6 recorded v1 smoke runs; current live evidence, browser count and pair/demo handoff open | `Plan.md` §2C.17 (current), §2C.16 (history) |
+| [011](011-round-coach-hardening/spec.md) | Round coach hardening — Week 8 controls on `main` | Built 2026-10-28 on `feature/w08-hardening`; the W08 submission itself is branch `011-secure-the-arcade` | `Plan.md` §2D |
 
 Use the full flow: `/speckit-specify` → `/speckit-clarify` (optional) →
 `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`.

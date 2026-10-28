@@ -24,6 +24,14 @@ import {
 } from "./game.schemas";
 
 /* ------------------------------------------------------- client -> server */
+
+/**
+ * W08: the largest client->server Socket.IO message the transport accepts. The
+ * WebSocket/polling layer enforces it before a payload is decoded; the largest
+ * legitimate request (a coach focus list, a draft or a name) is well under 1 KiB.
+ */
+export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024;
+
 /*
  * Every request schema is .strict(). An unexpected key is a rejection, not an
  * ignored field: this is what stops a browser smuggling `letter`, `playerId`,
